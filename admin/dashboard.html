@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>CoopVote — Admin Dashboard</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --navy: #0b1931;
+      --navy2: #0f2040;
+      --navy3: #162a52;
+      --navy4: #1e3566;
+      --gold: #c9a84c;
+      --gold2: #e8c96a;
+      --white: #ffffff;
+      --muted: #7a8ba0;
+      --muted2: #a8b8cc;
+      --border: rgba(255, 255, 255, .08);
+      --danger: #e05c5c;
+      --success: #4caf82;
+      --warn: #e0a030;
+      --info: #4a9fd4;
+      --sidebar-w: 260px;
+      --header-h: 64px;
+      --radius: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow: hidden
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .12);
+      border-radius: 99px
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--navy2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+      z-index: 200
+    }
+
+    .sidebar-logo {
+      padding: 28px 22px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3);
+      position: relative;
+      overflow: hidden
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -70%;
+      width: 40%;
+      height: 100%;
+      background: rgba(255, 255, 255, .3);
+      transform: skewX(-20deg);
+      animation: shimmer 4s ease-in-out infinite
+    }
+
+    @keyframes shimmer {
+
+      0%,
+      100% {
+        left: -70%
+      }
+
+      50% {
+        left: 140%
+      }
+    }
+
+    .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--navy)
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: .3px
+    }
+
+    .logo-text span {
+      color: var(--gold)
+    }
+
+    .sidebar-section {
+      padding: 20px 14px 8px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--muted2);
+      transition: all .2s;
+      position: relative;
+      white-space: nowrap;
+      overflow: hidden;
+      text-decoration: none
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, .06);
+      color: var(--white)
+    }
+
+    .nav-item.active {
+      background: rgba(201, 168, 76, .14);
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--gold)
+    }
+
+    .nav-item svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: .7
+    }
+
+    .nav-item.active svg {
+      opacity: 1
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--danger);
+      color: #fff;
+      font-size: .68rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      animation: pulse-badge 2s ease-in-out infinite
+    }
+
+    @keyframes pulse-badge {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(224, 92, 92, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 5px rgba(224, 92, 92, 0)
+      }
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 14px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .admin-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .05);
+      cursor: pointer;
+      transition: background .2s
+    }
+
+    .admin-card:hover {
+      background: rgba(255, 255, 255, .09)
+    }
+
+    .admin-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--navy4), var(--navy3));
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0
+    }
+
+    .admin-info {
+      flex: 1;
+      overflow: hidden
+    }
+
+    .admin-name {
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .admin-role {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0
+    }
+
+    .header {
+      height: var(--header-h);
+      flex-shrink: 0;
+      background: rgba(11, 25, 49, .85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+      z-index: 100
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted2);
+      padding: 6px;
+      border-radius: 8px;
+      transition: color .2s, background .2s
+    }
+
+    .hamburger:hover {
+      color: var(--white);
+      background: rgba(255, 255, 255, .07)
+    }
+
+    .header-title {
+      flex: 1
+    }
+
+    .header-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700
+    }
+
+    .header-title p {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .hbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      cursor: pointer;
+      transition: all .2s;
+      position: relative
+    }
+
+    .hbtn:hover {
+      background: rgba(255, 255, 255, .12);
+      color: var(--white)
+    }
+
+    .hbtn svg {
+      width: 18px;
+      height: 18px
+    }
+
+    .hbtn .dot {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--danger);
+      border: 1.5px solid var(--navy);
+      animation: pulse-badge 2s ease-in-out infinite
+    }
+
+    .election-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid var(--border);
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted2);
+      cursor: default;
+      white-space: nowrap
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0
+    }
+
+    .election-status.live {
+      background: rgba(76, 175, 130, .12);
+      border-color: rgba(76, 175, 130, .25);
+      color: var(--success)
+    }
+
+    .election-status.live .status-dot {
+      background: var(--success);
+      animation: pulse-badge 2s ease-in-out infinite
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* ── STAT CARDS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px
+    }
+
+    .stat-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp .6s cubic-bezier(.22, 1, .36, 1) both;
+      transition: transform .2s, box-shadow .2s;
+      cursor: default
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .35)
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      transform: translate(30px, -30px);
+      opacity: .12
+    }
+
+    .stat-card.gold::after {
+      background: var(--gold)
+    }
+
+    .stat-card.blue::after {
+      background: var(--info)
+    }
+
+    .stat-card.green::after {
+      background: var(--success)
+    }
+
+    .stat-card.red::after {
+      background: var(--danger)
+    }
+
+    .stat-card:nth-child(1) {
+      animation-delay: .05s
+    }
+
+    .stat-card:nth-child(2) {
+      animation-delay: .1s
+    }
+
+    .stat-card:nth-child(3) {
+      animation-delay: .15s
+    }
+
+    .stat-card:nth-child(4) {
+      animation-delay: .2s
+    }
+
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .stat-icon.gold {
+      background: rgba(201, 168, 76, .15)
+    }
+
+    .stat-icon.gold svg {
+      color: var(--gold)
+    }
+
+    .stat-icon.blue {
+      background: rgba(74, 159, 212, .15)
+    }
+
+    .stat-icon.blue svg {
+      color: var(--info)
+    }
+
+    .stat-icon.green {
+      background: rgba(76, 175, 130, .15)
+    }
+
+    .stat-icon.green svg {
+      color: var(--success)
+    }
+
+    .stat-icon.red {
+      background: rgba(224, 92, 92, .15)
+    }
+
+    .stat-icon.red svg {
+      color: var(--danger)
+    }
+
+    .stat-icon svg {
+      width: 20px;
+      height: 20px
+    }
+
+    .stat-change {
+      font-size: .72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px
+    }
+
+    .stat-change.up {
+      background: rgba(76, 175, 130, .15);
+      color: var(--success)
+    }
+
+    .stat-change.warn {
+      background: rgba(224, 160, 48, .15);
+      color: var(--warn)
+    }
+
+    .stat-change.neutral {
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted)
+    }
+
+    .stat-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -1px;
+      color: var(--white)
+    }
+
+    .stat-value.empty {
+      color: var(--muted);
+      font-size: 1.8rem
+    }
+
+    .stat-label {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 4px
+    }
+
+    .stat-bar {
+      height: 3px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .07);
+      overflow: hidden;
+      margin-top: 4px
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1.2s cubic-bezier(.22, 1, .36, 1);
+      width: 0%
+    }
+
+    .stat-bar-fill.gold {
+      background: linear-gradient(90deg, var(--gold), var(--gold2))
+    }
+
+    .stat-bar-fill.blue {
+      background: linear-gradient(90deg, #2980b9, var(--info))
+    }
+
+    .stat-bar-fill.green {
+      background: linear-gradient(90deg, #27ae60, var(--success))
+    }
+
+    .stat-bar-fill.red {
+      background: linear-gradient(90deg, #c0392b, var(--danger))
+    }
+
+    /* ── MID ROW ── */
+    .mid-row {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px
+    }
+
+    .card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp .6s .25s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .card-head {
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .card-title {
+      font-size: .9rem;
+      font-weight: 600
+    }
+
+    .card-sub {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .chip {
+      padding: 5px 12px;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .75rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      transition: all .2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center
+    }
+
+    .chip:hover {
+      background: rgba(201, 168, 76, .15);
+      color: var(--gold)
+    }
+
+    .chart-body {
+      padding: 24px 22px
+    }
+
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 140px
+    }
+
+    .bar-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 1;
+      gap: 6px;
+      /* A definite height is required: the bars are sized as a percentage,
+         and without it the group collapsed to the height of its label, so
+         every bar fell back to its 4px minimum and the chart looked flat. */
+      height: 100%;
+      min-width: 0
+    }
+
+    .bar {
+      width: 100%;
+      border-radius: 6px 6px 0 0;
+      transition: height 1.2s cubic-bezier(.22, 1, .36, 1);
+      min-height: 4px;
+      position: relative;
+      cursor: pointer;
+      /* Do not let the flex column squash the bar back down. */
+      flex-shrink: 0
+    }
+
+    /* The count sits above every bar at all times. It used to appear only
+       on hover, so the chart read as shapes with no figures — you had to
+       point at each bar one by one to learn anything from it. */
+    .bar::after {
+      content: attr(data-val);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 5px;
+      font-size: .7rem;
+      font-weight: 700;
+      color: var(--gold);
+      background: transparent;
+      padding: 1px 4px;
+      border-radius: 5px;
+      white-space: nowrap;
+      transition: background .2s, color .2s;
+    }
+
+    .bar:hover::after {
+      background: var(--gold);
+      color: var(--navy);
+    }
+
+    .bar-label {
+      font-size: .68rem;
+      color: var(--muted);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .chart-empty {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 8px;
+      color: var(--muted)
+    }
+
+    .chart-empty svg {
+      opacity: .3
+    }
+
+    /* election panel */
+    .election-card {
+      animation-delay: .3s
+    }
+
+    .election-card .card-body {
+      padding: 0
+    }
+
+    .election-info {
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .04);
+      padding: 14px;
+      margin: 16px 16px 0
+    }
+
+    .election-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0
+    }
+
+    .election-info-row:not(:last-child) {
+      border-bottom: 1px solid var(--border)
+    }
+
+    .ei-label {
+      font-size: .75rem;
+      color: var(--muted)
+    }
+
+    .ei-val {
+      font-size: .8rem;
+      font-weight: 600
+    }
+
+    .ei-val.green {
+      color: var(--success)
+    }
+
+    .ei-val.gold {
+      color: var(--gold)
+    }
+
+    .progress-wrap {
+      margin: 14px 0;
+      padding: 0 16px
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .75rem;
+      margin-bottom: 7px
+    }
+
+    .progress-label span:first-child {
+      color: var(--muted)
+    }
+
+    .progress-label span:last-child {
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .07);
+      overflow: hidden
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      transition: width 1.5s cubic-bezier(.22, 1, .36, 1);
+      position: relative;
+      overflow: hidden
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3), transparent);
+      animation: sweep 2.5s ease-in-out infinite
+    }
+
+    @keyframes sweep {
+      0% {
+        transform: translateX(-100%)
+      }
+
+      100% {
+        transform: translateX(300%)
+      }
+    }
+
+    .panel-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 16px 16px;
+      margin-top: 4px
+    }
+
+    .btn-sm {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none
+    }
+
+    .btn-danger-sm {
+      background: rgba(224, 92, 92, .15);
+      color: var(--danger);
+      border: 1px solid rgba(224, 92, 92, .2)
+    }
+
+    .btn-danger-sm:hover {
+      background: rgba(224, 92, 92, .25)
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy)
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px)
+    }
+
+    .no-election {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 20px;
+      text-align: center;
+      gap: 10px;
+      color: var(--muted)
+    }
+
+    .no-election svg {
+      width: 36px;
+      height: 36px;
+      opacity: .3
+    }
+
+    .no-election p {
+      font-size: .82rem;
+      line-height: 1.7
+    }
+
+    .create-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      padding: 8px 16px;
+      border-radius: 9px;
+      background: rgba(201, 168, 76, .1);
+      color: var(--gold);
+      font-size: .8rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid rgba(201, 168, 76, .2);
+      transition: background .2s
+    }
+
+    .create-link:hover {
+      background: rgba(201, 168, 76, .2)
+    }
+
+    /* ── BOTTOM ROW ── */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px
+    }
+
+    .table-wrap {
+      overflow-x: auto
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem
+    }
+
+    thead tr {
+      border-bottom: 1px solid var(--border)
+    }
+
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap
+    }
+
+    td {
+      padding: 11px 14px;
+      color: var(--muted2);
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+      transition: background .15s
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    td:first-child {
+      color: var(--white);
+      font-weight: 500
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: .7rem;
+      font-weight: 600;
+      white-space: nowrap
+    }
+
+    .badge-green {
+      background: rgba(76, 175, 130, .15);
+      color: var(--success)
+    }
+
+    .empty-cell {
+      text-align: center;
+      padding: 32px 0;
+      color: var(--muted);
+      font-size: .82rem
+    }
+
+    .activity-list {
+      padding: 4px 0
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 12px;
+      padding: 13px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+      transition: background .15s;
+      cursor: default
+    }
+
+    .activity-item:hover {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    .activity-item:last-child {
+      border-bottom: none
+    }
+
+    .a-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .a-icon.vote {
+      background: rgba(76, 175, 130, .15)
+    }
+
+    .a-icon.vote svg {
+      color: var(--success)
+    }
+
+    .a-icon.voter {
+      background: rgba(74, 159, 212, .15)
+    }
+
+    .a-icon.voter svg {
+      color: var(--info)
+    }
+
+    .a-icon.warn {
+      background: rgba(224, 160, 48, .15)
+    }
+
+    .a-icon.warn svg {
+      color: var(--warn)
+    }
+
+    .a-icon.sys {
+      background: rgba(201, 168, 76, .15)
+    }
+
+    .a-icon.sys svg {
+      color: var(--gold)
+    }
+
+    .a-icon svg {
+      width: 15px;
+      height: 15px
+    }
+
+    .a-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .a-title {
+      font-size: .82rem;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .a-time {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .empty-feed {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 20px;
+      gap: 10px;
+      color: var(--muted)
+    }
+
+    .empty-feed svg {
+      width: 32px;
+      height: 32px;
+      opacity: .3
+    }
+
+    .empty-feed p {
+      font-size: .8rem
+    }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      z-index: 150;
+      backdrop-filter: blur(4px)
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+      .stats-grid > .stat-card:last-child { grid-column: 1 / -1; }
+    }
+
+    @media(max-width:960px) {
+      .mid-row {
+        grid-template-columns: 1fr
+      }
+
+      .bottom-row {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media(max-width:768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        box-shadow: 8px 0 40px rgba(0, 0, 0, .5)
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .overlay {
+        display: block;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity .3s
+      }
+
+      .overlay.show {
+        pointer-events: all;
+        opacity: 1
+      }
+
+      .hamburger {
+        display: flex
+      }
+
+      .content {
+        padding: 18px
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .header {
+        padding: 0 16px
+      }
+    }
+
+    @media(max-width:480px) {
+      .stats-grid {
+        grid-template-columns: 1fr
+      }
+
+      .stat-value {
+        font-size: 1.7rem
+      }
+
+      .election-status span:not(.status-dot) {
+        display: none
+      }
+    }
+  
+    /* ── Layout fix ──────────────────────────────────────────
+       .content is a flex column, and flex items shrink by default.
+       Once the page grew taller than the viewport every section was
+       squashed, and any card with overflow:hidden clipped its own
+       text (the welcome hero showed the name but hid the meta line).
+       Sections keep their natural height; .content already scrolls. */
+    .content > * { flex-shrink: 0; }
+  </style>
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
+  <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
+  <link rel="stylesheet" href="../assets/css/election-operations.css?v=20260913-clean-reports">
+  <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
+  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+</head>
+
+<body>
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="app">
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <div class="logo-text">Coop<span>Vote</span></div>
+      </div>
+
+      <div class="sidebar-section">Main</div>
+      <a class="nav-item active" href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+        </svg>
+        Dashboard
+      </a>
+
+      <div class="sidebar-section">Management</div>
+      <a class="nav-item" href="voter-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Voter Management
+      </a>
+      <a class="nav-item" href="candidate-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        Candidate Management
+      </a>
+      <a class="nav-item" href="election-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Election Management
+      </a>
+
+      <div class="sidebar-section">Analytics</div>
+      <a class="nav-item" href="vote-monitoring.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        Vote Monitoring
+      </a>
+      <a class="nav-item" href="results.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        Results
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        Reports
+      </a>
+
+      <div class="sidebar-section">System</div>
+      <a class="nav-item" href="security-logs.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        Security &amp; Logs
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="admin-card">
+          <div class="admin-avatar">SA</div>
+          <div class="admin-info">
+            <div class="admin-name">System Admin</div>
+            <div class="admin-role">Super Administrator</div>
+          </div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            style="color:var(--muted);flex-shrink:0">
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="19" cy="12" r="1" />
+            <circle cx="5" cy="12" r="1" />
+          </svg>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══ MAIN ══ -->
+    <div class="main">
+
+      <!-- HEADER -->
+      <header class="header">
+        <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
+        <div class="header-title">
+          <h1>Dashboard</h1>
+          <p id="header-date">Welcome back, System Admin</p>
+        </div>
+
+        <div class="header-actions">
+          <div class="election-status" id="election-badge">
+            <span class="status-dot"></span>
+            <span id="election-badge-text">No Active Election</span>
+          </div>
+
+          <button class="hbtn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </button>
+
+          <button class="hbtn" title="Logout" onclick="CoopVote.logout()"
+            style="border:1px solid rgba(224,92,92,.2);color:var(--danger)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="content">
+
+        <!-- STAT CARDS -->
+        <div class="stats-grid">
+          <!-- Total Voters -->
+          <div class="stat-card gold">
+            <div class="stat-header">
+              <div class="stat-icon gold">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <span class="stat-change neutral" id="trend-voters" hidden></span>
+            </div>
+            <div>
+              <div class="stat-value empty" id="v-total">—</div>
+              <div class="stat-label">Total Registered Voters</div>
+            </div>
+            <div class="stat-bar">
+              <div class="stat-bar-fill gold" id="bar-voters"></div>
+            </div>
+          </div>
+
+          <!-- Total Candidates -->
+          <div class="stat-card blue">
+            <div class="stat-header">
+              <div class="stat-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+              <span class="stat-change neutral" id="trend-cands" hidden></span>
+            </div>
+            <div>
+              <div class="stat-value empty" id="v-cand">—</div>
+              <div class="stat-label">Total Candidates</div>
+            </div>
+            <div class="stat-bar">
+              <div class="stat-bar-fill blue" id="bar-cands"></div>
+            </div>
+          </div>
+
+          <!-- Votes Cast -->
+          <div class="stat-card green">
+            <div class="stat-header">
+              <div class="stat-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="9 11 12 14 22 4" />
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                </svg>
+              </div>
+              <span class="stat-change neutral" id="trend-votes" hidden></span>
+            </div>
+            <div>
+              <div class="stat-value empty" id="v-votes">—</div>
+              <div class="stat-label">Votes Cast</div>
+            </div>
+            <div class="stat-bar">
+              <div class="stat-bar-fill green" id="bar-votes"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- MID ROW -->
+        <div class="mid-row equal-height-grid">
+
+          <!-- VOTING ACTIVITY CHART -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Voting Activity</div>
+                <div class="card-sub" id="chart-sub">No election data available</div>
+              </div>
+              <a href="reports.html" class="chip">Full Report</a>
+            </div>
+            <div class="chart-body">
+              <div class="bar-chart" id="bar-chart">
+                <div class="chart-empty">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                  <span style="font-size:.82rem">Start an election to see activity</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACTIVE ELECTION PANEL -->
+          <div class="card election-card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Active Election</div>
+                <div class="card-sub" id="election-panel-sub">No election running</div>
+              </div>
+            </div>
+            <div id="election-panel-body">
+              <div class="no-election">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="4" width="18" height="18" rx="2" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                </svg>
+                <p>No active election.<br />Go to Election Management<br />to create and start one.</p>
+                <a href="election-management.html" class="create-link">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Create Election
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTTOM ROW -->
+        <div class="bottom-row equal-height-grid">
+
+          <!-- RECENT VOTER ACTIVITY -->
+          <div class="card" style="animation-delay:.35s">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Recent Voter Activity</div>
+                <div class="card-sub">Latest vote submissions</div>
+              </div>
+              <a href="voter-management.html" class="chip">View All</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Voter</th>
+                    <th>Member ID</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="voter-table">
+                  <tr>
+                    <td colspan="4" class="empty-cell">No recent activity to display</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SYSTEM ACTIVITY FEED -->
+          <div class="card" style="animation-delay:.4s">
+            <div class="card-head">
+              <div>
+                <div class="card-title">System Activity</div>
+                <div class="card-sub">Administrator actions</div>
+              </div>
+              <a href="security-logs.html" class="chip">View Logs</a>
+            </div>
+            <div class="activity-list" id="activity-feed">
+              <div class="empty-feed">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                <p>No administrator activity yet</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /content -->
+    </div><!-- /main -->
+  </div><!-- /app -->
+
+  <script src="../assets/js/validation.js?v=20260911-required2"></script>
+  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/election-operations.js?v=20260913-clean-reports"></script>
+  <script>
+    /* ─────────────────────────────────────────
+       SIDEBAR
+    ───────────────────────────────────────── */
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('show');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('overlay').classList.remove('show');
+    }
+
+    /* ─────────────────────────────────────────
+       DATE
+    ───────────────────────────────────────── */
+    function setDate() {
+      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('header-date').textContent =
+        'Welcome back, System Admin · ' + new Date().toLocaleDateString('en-US', opts);
+    }
+
+    /* ─────────────────────────────────────────
+       COUNT-UP ANIMATION
+    ───────────────────────────────────────── */
+    function countUp(elId, target, dur = 1400) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.classList.remove('empty');
+      const start = performance.now();
+      (function tick(now) {
+        const t = Math.min((now - start) / dur, 1);
+        el.textContent = Math.floor((1 - Math.pow(1 - t, 4)) * target).toLocaleString();
+        if (t < 1) requestAnimationFrame(tick);
+      })(start);
+    }
+
+    function animateBar(elId, pct) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      setTimeout(() => {
+        el.style.transition = 'width 1.3s cubic-bezier(.22,1,.36,1)';
+        el.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      }, 350);
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER STATS
+       Call this with real API data:
+       renderStats({
+         totalVoters: 0,
+         totalCandidates: 0,
+         votesCast: 0
+       })
+    ───────────────────────────────────────── */
+    function renderStats(data) {
+      countUp('v-total', data.totalVoters);
+      countUp('v-cand', data.totalCandidates);
+      countUp('v-votes', data.votesCast);
+
+      const totalVoters = data.totalVoters || 1;
+      animateBar('bar-voters', Math.min((data.totalVoters / 1000) * 100, 100));
+      animateBar('bar-cands', Math.min((data.totalCandidates / 50) * 100, 100));
+      animateBar('bar-votes', (data.votesCast / totalVoters) * 100);
+
+      // trend badges (optional fields)
+      setTrend('trend-voters', data.votersTrend);
+      setTrend('trend-cands', data.candidatesTrend);
+      setTrend('trend-votes', data.votesTrend);
+    }
+
+    function setTrend(id, val, inverse = false) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.hidden = !Number.isFinite(val) || val === 0;
+      if (el.hidden) { el.textContent = ''; return; }
+      const up = val > 0;
+      el.textContent = (up ? '+' : '') + val + (Math.abs(val) <= 100 ? '%' : '');
+      el.className = 'stat-change ' + ((inverse ? !up : up) ? 'up' : 'warn');
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER CHART
+       positionVotes: [{ label: 'President', votes: 0 }, ...]
+    ───────────────────────────────────────── */
+    function renderChart(positionVotes) {
+      const wrap = document.getElementById('bar-chart');
+      const sub = document.getElementById('chart-sub');
+      if (!positionVotes || positionVotes.length === 0) {
+        wrap.innerHTML = `<div class="chart-empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span style="font-size:.82rem">Start an election to see activity</span>
+    </div>`;
+        return;
+      }
+      /* Say how many votes the chart is built from, so the headline figure
+         is readable without adding up the bars. */
+      const totalVotes = positionVotes.reduce((n, p) => n + (p.votes || 0), 0);
+      sub.textContent = totalVotes > 0
+        ? `${totalVotes.toLocaleString()} vote${totalVotes !== 1 ? 's' : ''} cast across ${positionVotes.length} position${positionVotes.length !== 1 ? 's' : ''}`
+        : 'No votes cast yet';
+
+      const max = Math.max(...positionVotes.map(p => p.votes), 1);
+
+      /* Position names are cleaned up: a stray line break in a stored name
+         would otherwise break the label, and "Vice Chairperson" and "Vice
+         President" both truncated to the same ambiguous "Vice.". */
+      const shortLabel = name => {
+        const clean = String(name).replace(/\s+/g, ' ').trim();
+        const words = clean.split(' ');
+        return words.length > 1
+          ? words.map(w => w.slice(0, 4)).join(' ')
+          : clean.slice(0, 9);
+      };
+
+      wrap.innerHTML = positionVotes.map((p, i) => `
+    <div class="bar-group">
+      <div class="bar" data-val="${p.votes}" title="${esc(String(p.label).replace(/\s+/g, ' ').trim())}: ${p.votes} vote${p.votes !== 1 ? 's' : ''}"
+        style="height:0%;background:linear-gradient(180deg,${i === 0 ? 'var(--gold)' : 'rgba(201,168,76,.55)'},rgba(201,168,76,.15))">
+      </div>
+      <div class="bar-label" title="${esc(String(p.label).replace(/\s+/g, ' ').trim())}">${esc(shortLabel(p.label))}</div>
+    </div>`).join('');
+      setTimeout(() => {
+        wrap.querySelectorAll('.bar').forEach((b, i) => {
+          b.style.transition = `height 1.1s ${i * 0.08}s cubic-bezier(.22,1,.36,1)`;
+          /* Leave room under the tallest bar for the value above it and
+             the position label below, so nothing spills out of the card. */
+          b.style.height = (positionVotes[i].votes / max * 70 + 5) + '%';
+        });
+      }, 200);
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER ELECTION PANEL
+       election: null  →  shows empty state
+       election: {
+         title, startDate, endDate, positions,
+         turnoutVoted, turnoutTotal
+       }
+    ───────────────────────────────────────── */
+    function renderElectionPanel(election) {
+      const badge = document.getElementById('election-badge');
+      const badgeTxt = document.getElementById('election-badge-text');
+      const panelSub = document.getElementById('election-panel-sub');
+      const panelBody = document.getElementById('election-panel-body');
+
+      if (!election) {
+        badge.className = 'election-status';
+        badgeTxt.textContent = 'No Active Election';
+        panelSub.textContent = 'No election running';
+        panelBody.innerHTML = `<div class="no-election">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+      <p>No active election.<br/>Go to Election Management<br/>to create and start one.</p>
+      <a href="election-management.html" class="create-link">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create Election
+      </a>
+    </div>`;
+        return;
+      }
+
+      const pct = election.turnoutTotal > 0
+        ? Math.round((election.turnoutVoted / election.turnoutTotal) * 100) : 0;
+
+      badge.className = 'election-status live';
+      badgeTxt.textContent = 'Election Live';
+      panelSub.textContent = election.title;
+      panelBody.innerHTML = `
+    <div class="election-info">
+      <div class="election-info-row"><span class="ei-label">Status</span><span class="ei-val green">● Live</span></div>
+      <div class="election-info-row"><span class="ei-label">Start Date</span><span class="ei-val">${election.startDate}</span></div>
+      <div class="election-info-row"><span class="ei-label">End Date</span><span class="ei-val">${election.endDate}</span></div>
+      <div class="election-info-row"><span class="ei-label">Positions</span><span class="ei-val gold">${election.positions} Positions</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Voter Turnout</span>
+        <span>${election.turnoutVoted.toLocaleString()} / ${election.turnoutTotal.toLocaleString()} · ${pct}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="turnout-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="panel-btns">
+      <a href="election-management.html" class="btn-sm btn-danger-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Manage Election
+      </a>
+      <a href="reports.html" class="btn-sm btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        View Live Results
+      </a>
+    </div>`;
+
+      setTimeout(() => {
+        const tb = document.getElementById('turnout-bar');
+        if (tb) { tb.style.transition = 'width 1.5s .5s cubic-bezier(.22,1,.36,1)'; tb.style.width = pct + '%'; }
+      }, 300);
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER VOTER TABLE
+       voters: [{ name, memberId, time, status }]
+    ───────────────────────────────────────── */
+    function renderVoterTable(voters) {
+      const tbody = document.getElementById('voter-table');
+      if (!voters || voters.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-cell">No recent activity to display</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = voters.map(v => `<tr>
+    <td>${esc(v.name)}</td>
+    <td style="color:var(--muted);font-family:monospace;font-size:.78rem">${esc(v.memberId)}</td>
+    <td style="color:var(--muted2)">${v.time}</td>
+    <td><span class="badge badge-green">${v.status}</span></td>
+  </tr>`).join('');
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER ACTIVITY FEED
+       activities: [{ type, title, time }]
+       type: 'vote' | 'voter' | 'warn' | 'sys'
+    ───────────────────────────────────────── */
+    const ICONS = {
+      vote: '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+      voter: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>',
+      warn: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+      sys: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    };
+
+    function renderActivityFeed(activities) {
+      const feed = document.getElementById('activity-feed');
+      if (!activities || activities.length === 0) {
+        feed.innerHTML = `<div class="empty-feed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <p>No administrator activity yet</p>
+    </div>`;
+        return;
+      }
+      feed.innerHTML = activities.map(a => `
+    <div class="activity-item">
+      <div class="a-icon ${a.type}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          ${ICONS[a.type] || ICONS.sys}
+        </svg>
+      </div>
+      <div class="a-info">
+        <div class="a-title">${esc(a.title)}</div>
+        <div class="a-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+    }
+
+    /* ─────────────────────────────────────────
+       LOAD DASHBOARD DATA
+       ─────────────────────────────────────────
+       Replace this function body with a real
+       API call when your backend is ready.
+    
+       Example:
+       fetch('/api/dashboard')
+         .then(r => r.json())
+         .then(data => {
+           renderStats(data);
+           renderChart(data.positionVotes);
+           renderElectionPanel(data.activeElection);
+           renderVoterTable(data.recentVoters);
+           renderActivityFeed(data.recentActivity);
+         });
+    ───────────────────────────────────────── */
+    function loadDashboard() {
+      return CoopVote.api('dashboard')
+        .then(data => {
+          renderStats(data);
+          renderChart(data.positionVotes);
+          renderElectionPanel(data.activeElection);
+          renderVoterTable(data.recentVoters);
+          renderActivityFeed(data.recentActivity);
+        })
+        .catch(err => {
+          /* Leave the empty states in place and say why. */
+          renderChart([]);
+          renderElectionPanel(null);
+          renderVoterTable([]);
+          renderActivityFeed([]);
+          CoopVote.toast(err.message || 'Could not load dashboard data.', 'error');
+        });
+    }
+
+    /* ─────────────────────────────────────────
+       INIT
+    ───────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      setDate();
+      CoopVote.guard('admin').then(() => CoopVote.startLive('dashboard', data => {
+        renderStats(data);
+        renderChart(data.positionVotes);
+        renderElectionPanel(data.activeElection);
+        renderVoterTable(data.recentVoters);
+        renderActivityFeed(data.recentActivity);
+      }));
+    });
+  </script>
+</body>
+
+</html>

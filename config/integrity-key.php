@@ -1,0 +1,1 @@
+<?php /** Private vote integrity key. Preserve with backups. */ return 'af85209047606a50b8912d316d6d561040baa4ece7b5c4deaae3d848db52fe66';

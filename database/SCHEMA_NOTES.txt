@@ -1,0 +1,62 @@
+CoopVote schema
+
+Use schema_only.sql for STRUCTURE ONLY. It contains 25 tables and zero rows:
+no INSERT statements, sample accounts, passwords, photos, votes, or seed data.
+DEFAULT expressions and ENUM choices are column rules, not stored records.
+Import it once into a NEW EMPTY database selected in phpMyAdmin. It does not
+overwrite tables or select a database. The existing live database was not changed.
+
+An empty schema is not a ready-to-login installation. The admin/voter role
+records, first administrator, and governance_config singleton must be initialized
+separately before running the application. They are intentionally omitted here.
+coopvote_full.sql is the separate earlier export WITH data, not this deliverable.
+
+Unused tables excluded
+- password_resets: no self-service password reset implementation uses it.
+- election_controls: retired quorum feature.
+All remaining tables serve current account, voting, security, notification,
+reporting, image-storage, theme, or administrator-approval functions. An empty
+table is not necessarily unused. No candidacy-filing or separate officer-role
+tables are introduced.
+
+Relational organization and constraints
+- roles / users: role definitions are separate from login accounts.
+- members / admin_profiles: profile details reference the existing user.
+- candidates: participation references a member and an election position;
+  it does not create a duplicate candidate account. One nomination per member
+  per election; the same member may participate in different elections.
+- elections / positions: position names are unique within their election.
+- ballots: one participation record per voter per election.
+- member_profile_photo_chunks: image parts have a (member_id, chunk_no) key.
+- user_preferences: one saved theme per account.
+- election_approval_requests / election_admin_decisions: request details are
+  separated from individual administrator decisions; one decision per admin
+  per request. The threshold must be positive, and configuration has one key.
+- notification_reads: one acknowledgement per user and notice.
+- security_alert_reviews: reviewer must reference an existing account.
+- Composite foreign keys additionally enforce that a candidate's position
+  belongs to its election and a vote's candidate, position and election agree.
+
+Normalization limits (intentional compatibility decisions)
+This is an application-compatible relational schema, NOT a claim of strict
+third normal form across every table. candidates.election_id and vote context
+columns repeat values obtainable through relationships. They remain because
+current queries, election uniqueness, and vote signatures use those fields;
+the new composite foreign keys prevent inconsistent combinations.
+Signed report JSON and approval thresholds/fingerprints are historical snapshots,
+not mutable copies of current configuration. Integrity counters and signatures
+are deliberately stored verification state. Removing them or rebuilding them
+from altered source rows would undermine tamper detection.
+vote_integrity intentionally does not cascade from votes: a missing vote must
+leave evidence. Neither votes nor vote_integrity links choices to a voter or
+receipt. ballots records participation separately, preserving ballot secrecy.
+Legacy-compatible columns remain where runtime queries still reference them.
+A strict 3NF conversion of these exceptions requires coordinated API changes
+and versioned integrity/signature migration, not only a schema import.
+
+Validation
+tools/export_schema_only.php reads source DDL only, removes sequence counters,
+and validates all 25 empty tables in a uniquely named disposable database before
+writing schema_only.sql. It never alters the source database.
+tests/schema-only.test.php checks actual constraint enforcement and secrecy.
+tests/run.php exercises the application against coopvote_test, with mail off.

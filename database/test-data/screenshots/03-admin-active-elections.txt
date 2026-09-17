@@ -1,0 +1,204 @@
+Create New Election
+ELECTION TITLE
+DESCRIPTION
+Optional
+START DATE & TIME
+END DATE & TIME
+ELECTION YEAR
+STATUS
+Draft
+Upcoming
+Active / Live
+Closed
+POSITIONS INCLUDED
+PRESIDENT
+VICE PRESIDENT
+SECRETARY
+TREASURER
+AUDITOR
+DIRECTOR
+Allow Results Viewing
+Members can view results after election closes
+Email Notifications
+Send reminders to registered voters
+Cancel
+Save Election
+Add Position
+ELECTION
+POSITION NAME
+DESCRIPTION
+Optional
+Cancel
+Add Position
+Close Voting Period
+Close Voting Now?
+This will immediately end the voting period. Voters who have not yet voted will no longer be able to cast their ballot. This cannot be undone.
+Keep Open
+Yes, Close Voting
+Unpublish Results
+Hide these results again?
+Leave Published
+Unpublish
+Delete Election
+Delete this election?
+All data associated with this election — candidates, votes, and results — will be permanently deleted and cannot be recovered.
+Cancel
+Delete Permanently
+Election is now live! Members can start voting.
+Election is now live! Members can start voting.
+CoopVote
+Santiago City Multi-Purpose Cooperative
+MAIN
+Dashboard
+MANAGEMENT
+Voter Management
+Candidate Management
+Election Management
+ANALYTICS
+Vote Monitoring
+Results
+Reports
+SYSTEM
+Security & Logs
+SA
+System Admin
+Super Administrator
+Election Management
+
+Create, configure, and control cooperative elections
+
+New Election
+ELECTION LIVE
+TEST - 2026 Cooperative Officers Election
+September 10, 2026 · 12:57 PM — October 10, 2026 · 1:02 PM
+110 registered voters
+6 positions
+CLOSES IN
+NaN
+HRS
+:
+NaN
+MIN
+:
+NaN
+SEC
+Edit
+Close Voting
+Voter Turnout
+0 / 110 · 0%
+0
+Votes Cast
+110
+Yet to Vote
+18
+Candidates
+6
+Positions
+All Elections
+4 elections total
+Create Election
+Live
+TEST - 2026 Cooperative Officers Election
+September 10, 2026 · 12:57 PM → October 10, 2026 · 1:02 PM
+Registered Voters
+110
+Votes Cast
+0
+Candidates
+18
+Positions
+6
+Turnout
+0%
+Close
+Edit
+Live
+TEST - 2026 Committee Results Demonstration
+September 10, 2026 · 12:57 PM → October 10, 2026 · 1:02 PM
+Registered Voters
+110
+Votes Cast
+0
+Candidates
+18
+Positions
+6
+Turnout
+0%
+Close
+Edit
+Closed
+2026 Annual General Assembly Election
+August 9, 2026 · 8:36 PM → August 10, 2026 · 8:36 PM
+Registered Voters
+110
+Votes Cast
+3
+Candidates
+7
+Positions
+8
+Results
+Hidden from members
+Turnout
+3%
+Release Results
+Results
+Edit
+Closed
+Audit Committee Special Election
+August 7, 2026 · 2:51 PM → August 7, 2026 · 8:25 PM
+Registered Voters
+110
+Votes Cast
+0
+Candidates
+1
+Positions
+5
+Results
+Hidden from members
+Turnout
+0%
+Release Results
+Results
+Edit
+Position Overview
+TEST - 2026 Cooperative Officers Election — 6 positions
+Add Position
+President
+3 candidates
+A
+B
+C
+0% engagement
+Vice President
+3 candidates
+A
+B
+C
+0% engagement
+Secretary
+3 candidates
+A
+B
+C
+0% engagement
+Treasurer
+3 candidates
+A
+B
+C
+0% engagement
+Auditor
+3 candidates
+A
+B
+C
+0% engagement
+Director
+3 candidates
+A
+B
+C
+0% engagement

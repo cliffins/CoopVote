@@ -1,0 +1,2460 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>CoopVote — Voter Management</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --navy: #0b1931;
+      --navy2: #0f2040;
+      --navy3: #162a52;
+      --navy4: #1e3566;
+      --gold: #c9a84c;
+      --gold2: #e8c96a;
+      --white: #ffffff;
+      --muted: #7a8ba0;
+      --muted2: #a8b8cc;
+      --border: rgba(255, 255, 255, .08);
+      --danger: #e05c5c;
+      --success: #4caf82;
+      --warn: #e0a030;
+      --info: #4a9fd4;
+      --sidebar-w: 260px;
+      --header-h: 64px;
+      --radius: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow: hidden
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .12);
+      border-radius: 99px
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes shimmer {
+
+      0%,
+      100% {
+        left: -70%
+      }
+
+      50% {
+        left: 140%
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(224, 92, 92, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 5px rgba(224, 92, 92, 0)
+      }
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--navy2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+      z-index: 200
+    }
+
+    .sidebar-logo {
+      padding: 28px 22px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3);
+      position: relative;
+      overflow: hidden
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -70%;
+      width: 40%;
+      height: 100%;
+      background: rgba(255, 255, 255, .3);
+      transform: skewX(-20deg);
+      animation: shimmer 4s ease-in-out infinite
+    }
+
+    .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--navy)
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 800
+    }
+
+    .logo-text span {
+      color: var(--gold)
+    }
+
+    .sidebar-section {
+      padding: 20px 14px 8px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--muted2);
+      transition: all .2s;
+      position: relative;
+      white-space: nowrap;
+      overflow: hidden;
+      text-decoration: none
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, .06);
+      color: var(--white)
+    }
+
+    .nav-item.active {
+      background: rgba(201, 168, 76, .14);
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--gold)
+    }
+
+    .nav-item svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: .7
+    }
+
+    .nav-item.active svg {
+      opacity: 1
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 14px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .admin-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .05);
+      cursor: pointer;
+      transition: background .2s
+    }
+
+    .admin-card:hover {
+      background: rgba(255, 255, 255, .09)
+    }
+
+    .admin-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--navy4), var(--navy3));
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0
+    }
+
+    .admin-info {
+      flex: 1;
+      overflow: hidden
+    }
+
+    .admin-name {
+      font-size: .82rem;
+      font-weight: 600
+    }
+
+    .admin-role {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0
+    }
+
+    .header {
+      height: var(--header-h);
+      flex-shrink: 0;
+      background: rgba(11, 25, 49, .85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+      z-index: 100
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted2);
+      padding: 6px;
+      border-radius: 8px;
+      transition: color .2s, background .2s
+    }
+
+    .hamburger:hover {
+      color: var(--white);
+      background: rgba(255, 255, 255, .07)
+    }
+
+    .header-title {
+      flex: 1
+    }
+
+    .header-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700
+    }
+
+    .header-title p {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .hbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      cursor: pointer;
+      transition: all .2s;
+      position: relative
+    }
+
+    .hbtn:hover {
+      background: rgba(255, 255, 255, .12);
+      color: var(--white)
+    }
+
+    .hbtn svg {
+      width: 18px;
+      height: 18px
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px
+    }
+
+    /* ── SUMMARY STRIP ── */
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      animation: fadeUp .5s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .s-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: transform .2s, box-shadow .2s;
+      cursor: default
+    }
+
+    .s-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .3)
+    }
+
+    .s-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .s-icon.gold {
+      background: rgba(201, 168, 76, .15)
+    }
+
+    .s-icon.gold svg {
+      color: var(--gold)
+    }
+
+    .s-icon.green {
+      background: rgba(76, 175, 130, .15)
+    }
+
+    .s-icon.green svg {
+      color: var(--success)
+    }
+
+    .s-icon.warn {
+      background: rgba(224, 160, 48, .15)
+    }
+
+    .s-icon.warn svg {
+      color: var(--warn)
+    }
+
+    .s-icon.red {
+      background: rgba(224, 92, 92, .15)
+    }
+
+    .s-icon.red svg {
+      color: var(--danger)
+    }
+
+    .s-icon svg {
+      width: 20px;
+      height: 20px
+    }
+
+    .s-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--white)
+    }
+
+    .s-val.empty {
+      color: var(--muted);
+      font-size: 1.4rem
+    }
+
+    .s-label {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-top: 3px
+    }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      animation: fadeUp .5s .08s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 200px;
+      position: relative
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      pointer-events: none
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .875rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s
+    }
+
+    .search-wrap input::placeholder {
+      color: var(--muted)
+    }
+
+    .search-wrap input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201, 168, 76, .12)
+    }
+
+    .filter-select {
+      padding: 10px 14px;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .875rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color .2s
+    }
+
+    .filter-select:focus {
+      border-color: var(--gold)
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      text-decoration: none
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy);
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .25)
+    }
+
+    .btn-gold:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px)
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted2)
+    }
+
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(201, 168, 76, .07)
+    }
+
+    /* ── TABLE CARD ── */
+    .table-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp .5s .14s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    /* Keep the footer still while the rows scroll inside the remaining space. */
+    .content > .table-card {
+      display: flex;
+      flex-direction: column;
+      flex: 1 0 280px;
+      min-height: 280px;
+    }
+
+    .table-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow: auto
+    }
+
+    .table-scroll thead { position: sticky; top: 0; z-index: 1; background: var(--navy2); }
+    .row-number { color: var(--muted2); font-variant-numeric: tabular-nums; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .84rem;
+      min-width: 700px
+    }
+
+    thead tr {
+      background: rgba(255, 255, 255, .03);
+      border-bottom: 1px solid var(--border)
+    }
+
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+      user-select: none
+    }
+
+    td {
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+      vertical-align: middle;
+      transition: background .15s
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    tr:last-child td {
+      border-bottom: none
+    }
+
+    .voter-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .v-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      border: 2px solid var(--border)
+    }
+
+    .v-name {
+      font-weight: 600;
+      color: var(--white)
+    }
+
+    .v-sub {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: .7rem;
+      font-weight: 700;
+      white-space: nowrap
+    }
+
+    .badge::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor
+    }
+
+    .badge-green {
+      background: rgba(76, 175, 130, .15);
+      color: var(--success)
+    }
+
+    .badge-red {
+      background: rgba(224, 92, 92, .15);
+      color: var(--danger)
+    }
+
+    .badge-blue {
+      background: rgba(74, 159, 212, .15);
+      color: var(--info)
+    }
+
+    .badge-muted {
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted)
+    }
+
+    .action-btns {
+      display: flex;
+      gap: 6px
+    }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s
+    }
+
+    .icon-btn svg {
+      width: 14px;
+      height: 14px
+    }
+
+    .icon-btn.view {
+      background: rgba(74, 159, 212, .12);
+      color: var(--info)
+    }
+
+    .icon-btn.view:hover {
+      background: rgba(74, 159, 212, .25)
+    }
+
+    .icon-btn.edit {
+      background: rgba(201, 168, 76, .12);
+      color: var(--gold)
+    }
+
+    .icon-btn.edit:hover {
+      background: rgba(201, 168, 76, .25)
+    }
+
+    .icon-btn.del {
+      background: rgba(224, 92, 92, .12);
+      color: var(--danger)
+    }
+
+    .icon-btn.del:hover {
+      background: rgba(224, 92, 92, .25)
+    }
+
+    /* empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 20px;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center
+    }
+
+    .empty-state svg {
+      width: 44px;
+      height: 44px;
+      opacity: .3
+    }
+
+    .empty-state p {
+      font-size: .85rem;
+      line-height: 1.6
+    }
+
+    .empty-state .empty-hint {
+      font-size: .78rem;
+      opacity: .7
+    }
+
+    /* ── PAGINATION ── */
+    .pagination {
+      flex-shrink: 0;
+      margin-top: auto;
+      background: var(--navy2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 10px
+    }
+
+    .pag-info {
+      font-size: .78rem;
+      color: var(--muted)
+    }
+
+    .pag-btns {
+      display: flex;
+      flex-wrap: wrap;
+      min-width: 0;
+      max-width: 100%;
+      gap: 5px
+    }
+
+    .pag-info, .pag-btn { font-variant-numeric: tabular-nums; }
+    .pag-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    @media (max-width: 480px) {
+      .pag-btns { gap: 3px; }
+      .pagination .pag-btn { width: clamp(24px, 6.8vw, 28px); flex-shrink: 0; }
+    }
+
+    .pag-btn {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted2);
+      cursor: pointer;
+      font-size: .8rem;
+      font-family: 'DM Sans', sans-serif;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .pag-btn:hover {
+      border-color: var(--gold);
+      color: var(--gold)
+    }
+
+    .pag-btn.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--navy);
+      font-weight: 700
+    }
+
+    #add-voter-btn:disabled, #save-voter-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .pag-btn:disabled {
+      opacity: .35;
+      cursor: not-allowed
+    }
+
+    /* ── MODALS ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .65);
+      backdrop-filter: blur(6px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s
+    }
+
+    .modal-backdrop.show {
+      opacity: 1;
+      pointer-events: all
+    }
+
+    .modal {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, .6);
+      transform: translateY(30px) scale(.97);
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1), opacity .25s;
+      opacity: 0
+    }
+
+    .modal-backdrop.show .modal {
+      transform: translateY(0) scale(1);
+      opacity: 1
+    }
+
+    .modal.sm {
+      max-width: 380px
+    }
+
+    .modal-head {
+      padding: 24px 26px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      flex-shrink: 0
+    }
+
+    .modal-close:hover {
+      background: rgba(224, 92, 92, .2);
+      color: var(--danger)
+    }
+
+    .modal-body {
+      padding: 24px 26px
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px
+    }
+
+    .form-row.full {
+      grid-template-columns: 1fr
+    }
+
+    .field label {
+      display: block;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255, 255, 255, .06);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .875rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s
+    }
+
+    .field input::placeholder {
+      color: rgba(255, 255, 255, .2)
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201, 168, 76, .12)
+    }
+
+    .field select option {
+      background: var(--navy2)
+    }
+
+    .modal-foot {
+      padding: 16px 26px 24px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      border: 1px solid var(--border)
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, .1)
+    }
+
+    .btn-red {
+      background: rgba(224, 92, 92, .12);
+      color: var(--danger);
+      border: 1px solid rgba(224, 92, 92, .2)
+    }
+
+    .btn-red:hover {
+      background: rgba(224, 92, 92, .25)
+    }
+
+    /* view profile */
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px;
+      background: rgba(255, 255, 255, .04);
+      border-radius: 12px;
+      margin-bottom: 18px
+    }
+
+    .profile-avatar-lg {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      flex-shrink: 0
+    }
+
+    .profile-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700
+    }
+
+    .profile-id {
+      font-size: .72rem;
+      color: var(--muted);
+      font-family: monospace;
+      margin-top: 3px
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px
+    }
+
+    .profile-field {
+      background: rgba(255, 255, 255, .04);
+      border-radius: 10px;
+      padding: 11px 14px
+    }
+
+    .profile-field-label {
+      font-size: .67rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px
+    }
+
+    .profile-field-val {
+      font-size: .84rem;
+      font-weight: 500;
+      word-break: break-word
+    }
+
+    /* confirm */
+    .confirm-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 6px 0 2px
+    }
+
+    .confirm-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px
+    }
+
+    .confirm-icon.danger {
+      background: rgba(224, 92, 92, .12)
+    }
+
+    .confirm-icon.danger svg {
+      color: var(--danger);
+      width: 26px;
+      height: 26px
+    }
+
+    .confirm-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px
+    }
+
+    .confirm-msg {
+      font-size: .83rem;
+      color: var(--muted);
+      line-height: 1.65
+    }
+
+    /* ── TOAST ── */
+    .toast-wrap {
+      position: fixed;
+      top: 78px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none
+    }
+
+    .toast {
+      background: var(--navy3);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: .83rem;
+      min-width: 230px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .4);
+      transform: translateX(130%);
+      transition: transform .35s cubic-bezier(.22, 1, .36, 1)
+    }
+
+    .toast.show {
+      transform: translateX(0)
+    }
+
+    .toast-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .toast.success .toast-dot {
+      background: var(--success)
+    }
+
+    .toast.error .toast-dot {
+      background: var(--danger)
+    }
+
+    .toast.warn .toast-dot {
+      background: var(--warn)
+    }
+
+    .toast.info .toast-dot {
+      background: var(--info)
+    }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      z-index: 150;
+      backdrop-filter: blur(4px)
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        box-shadow: 8px 0 40px rgba(0, 0, 0, .5)
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .overlay {
+        display: block;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity .3s
+      }
+
+      .overlay.show {
+        pointer-events: all;
+        opacity: 1
+      }
+
+      .hamburger {
+        display: flex
+      }
+
+      .content {
+        padding: 16px
+      }
+
+      .summary-strip {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .header {
+        padding: 0 16px
+      }
+
+      .form-row {
+        grid-template-columns: 1fr
+      }
+
+      .profile-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media(max-width:480px) {
+      .s-val {
+        font-size: 1.4rem
+      }
+
+      .toolbar {
+        gap: 8px
+      }
+    }
+  
+    /* ── ID VERIFICATION ─────────────────────────────────────
+       The applicant's uploaded ID, shown inside the profile modal so
+       the reviewer can confirm it belongs to them before approving. */
+    .id-verify {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .id-verify-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .74rem;
+      font-weight: 700;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .id-verify-head svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .id-verify-note {
+      font-size: .78rem;
+      color: var(--muted);
+      margin: 8px 0 14px;
+      line-height: 1.55;
+    }
+
+    .id-shots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .id-shot {
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, .25);
+    }
+
+    .id-shot img {
+      display: block;
+      width: 100%;
+      height: 170px;
+      object-fit: cover;
+      cursor: zoom-in;
+      transition: opacity .2s;
+    }
+
+    .id-shot img:hover {
+      opacity: .85;
+    }
+
+    .id-shot figcaption {
+      padding: 8px 10px;
+      font-size: .74rem;
+      font-weight: 600;
+      color: var(--muted2);
+      border-top: 1px solid var(--border);
+    }
+
+    .id-shot figcaption span {
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    .id-shot-missing .id-missing {
+      height: 170px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    .id-none {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border: 1px dashed rgba(224, 160, 48, .4);
+      border-radius: 10px;
+      background: rgba(224, 160, 48, .07);
+      font-size: .8rem;
+      color: var(--warn);
+      line-height: 1.6;
+    }
+
+    /* full-size ID viewer */
+    #id-zoom {
+      position: fixed;
+      inset: 0;
+      z-index: 4000;
+      background: rgba(3, 8, 18, .9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      cursor: zoom-out;
+    }
+
+    #id-zoom.show {
+      display: flex;
+    }
+
+    .id-zoom-inner {
+      max-width: 900px;
+      width: 100%;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      max-height: 90vh;
+    }
+
+    .id-zoom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      font-size: .85rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .id-zoom-bar button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.4rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .id-zoom-inner img {
+      display: block;
+      width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      background: #000;
+    }
+
+    @media(max-width:560px) {
+      .id-shots {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Layout fix ──────────────────────────────────────────
+       .content is a flex column, and flex items shrink by default.
+       Once the page grew taller than the viewport every section was
+       squashed, and any card with overflow:hidden clipped its own
+       text (the welcome hero showed the name but hid the meta line).
+       Sections keep their natural height; .content already scrolls. */
+    .content > * { flex-shrink: 0; }
+  </style>
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
+  <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
+  <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
+  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+</head>
+
+<body>
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- ── ADD / EDIT MODAL ── -->
+  <div class="modal-backdrop" id="voter-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="modal-title">Edit Voter</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('voter-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-id" />
+        <div class="form-row">
+          <div class="field"><label for="f-first">First Name</label><input type="text" id="f-first" placeholder="e.g. Maria" data-input="name" maxlength="100" title="Use letters, spaces, apostrophes, periods or hyphens; no numbers." required /></div>
+          <div class="field"><label for="f-last">Last Name</label><input type="text" id="f-last" placeholder="e.g. Santos" data-input="name" maxlength="100" title="Use letters, spaces, apostrophes, periods or hyphens; no numbers." required /></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="f-memberid">Member ID</label><input type="text" id="f-memberid" placeholder="e.g. MEM-0001" maxlength="30" />
+          </div>
+          <div class="field"><label for="f-dob">Date of Birth <span id="dob-required" hidden>(Required)</span></label><input type="date" id="f-dob" autocomplete="bday" data-max-today /></div>
+        </div>
+        <div class="form-row full">
+          <div class="field"><label for="f-email">Email Address</label><input type="email" id="f-email"
+              placeholder="e.g. maria@email.com" required /></div>
+        </div>
+        <!-- Only meaningful when opening a new account. -->
+        <div class="form-row" id="row-username" style="display:none">
+          <div class="field"><label for="f-username">Username <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <input type="text" id="f-username" placeholder="left blank, built from the name" maxlength="50" />
+          </div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <div style="font-size:.78rem;color:var(--muted);line-height:1.5">
+              A temporary password is generated and shown once the account is
+              created, and emailed to the member.
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="f-phone">Phone Number <span id="phone-required" hidden>(Required)</span></label><input type="tel" id="f-phone"
+              placeholder="+63 9XX XXX XXXX" data-input="phone" inputmode="tel" maxlength="20" title="Use 7–15 digits. A leading +, spaces, parentheses and hyphens are allowed." /></div>
+          <div class="field" id="field-status"><label for="f-status">Status</label>
+            <select id="f-status">
+              <option value="Active">Active</option>
+              <option value="Suspended">Suspended</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field"><label for="f-address">Address <span id="address-required" hidden>(Required)</span></label><input type="text" id="f-address" placeholder="Full address" /></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('voter-modal')">Cancel</button>
+        <button class="btn btn-gold" id="save-voter-btn" onclick="saveVoter()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span id="save-btn-label">Save Voter</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NEW ACCOUNT CREATED ──
+       The temporary password is stored hashed, so this is the only moment
+       it can ever be read. The administrator needs it on screen to hand over in
+       person, in case the member has no working email. -->
+  <div class="modal-backdrop" id="created-modal">
+    <div class="modal sm">
+      <div class="modal-head">
+        <div class="modal-title">Account Created</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('created-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-center" style="margin-bottom:14px">
+          <div class="confirm-icon" style="background:rgba(76,175,125,.12);color:var(--success)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div class="confirm-title" id="created-name">Member registered</div>
+          <div class="confirm-msg" id="created-mail"></div>
+        </div>
+
+        <div style="background:var(--navy);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+          <div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0">
+            <span style="color:var(--muted);font-size:.8rem">Member number</span>
+            <span id="created-memberno" style="font-family:monospace;font-weight:700"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--border)">
+            <span style="color:var(--muted);font-size:.8rem">Username</span>
+            <span id="created-username" style="font-family:monospace;font-weight:700"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--border)">
+            <span style="color:var(--muted);font-size:.8rem">Temporary password</span>
+            <span id="created-password" style="font-family:monospace;font-weight:700;color:var(--gold)"></span>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;font-size:.78rem;color:var(--muted);line-height:1.55">
+          Write this down now — the password is stored encrypted and cannot be
+          shown again. Ask the member to change it after signing in.
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="copyCredentials()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          Copy
+        </button>
+        <button class="btn btn-gold" onclick="closeModal('created-modal')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VIEW PROFILE MODAL ── -->
+  <div class="modal-backdrop" id="view-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">Voter Profile</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('view-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="view-body"></div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('view-modal')">Close</button>
+        <button class="btn btn-gold" id="view-edit-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          Edit Voter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONFIRM REMOVE MODAL ── -->
+  <div class="modal-backdrop" id="confirm-modal">
+    <div class="modal sm">
+      <div class="modal-head">
+        <div class="modal-title">Remove Voter</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('confirm-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-center">
+          <div class="confirm-icon danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M9 6V4h6v2" />
+            </svg>
+          </div>
+          <div class="confirm-title">Remove this voter?</div>
+          <div class="confirm-msg">This will deactivate the voter's account and revoke their access to the voting
+            system. This action cannot be undone.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">Cancel</button>
+        <button class="btn btn-red" onclick="confirmRemove()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          </svg>
+          Yes, Remove
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark"><svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg></div>
+        <div class="logo-text">Coop<span>Vote</span></div>
+      </div>
+
+      <div class="sidebar-section">Main</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+        </svg>
+        Dashboard
+      </a>
+
+      <div class="sidebar-section">Management</div>
+      <a class="nav-item active" href="voter-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Voter Management
+      </a>
+      <a class="nav-item" href="candidate-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        Candidate Management
+      </a>
+      <a class="nav-item" href="election-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Election Management
+      </a>
+
+      <div class="sidebar-section">Analytics</div>
+      <a class="nav-item" href="vote-monitoring.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        Vote Monitoring
+      </a>
+      <a class="nav-item" href="results.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        Results
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        Reports
+      </a>
+
+      <div class="sidebar-section">System</div>
+      <a class="nav-item" href="security-logs.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        Security &amp; Logs
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="admin-card">
+          <div class="admin-avatar">SA</div>
+          <div class="admin-info">
+            <div class="admin-name">System Admin</div>
+            <div class="admin-role">Super Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="header">
+        <button aria-label="Open the menu" class="hamburger" onclick="toggleSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div class="header-title">
+          <h1>Voter Management</h1>
+          <p>Manage cooperative member accounts and voting access</p>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </button>
+          <button class="hbtn" title="Logout" onclick="CoopVote.logout()"
+            style="border:1px solid rgba(224,92,92,.2);color:var(--danger)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+
+        <!-- SUMMARY STRIP -->
+        <div class="summary-strip">
+          <div class="s-card">
+            <div class="s-icon gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg></div>
+            <div>
+              <div class="s-val empty" id="sc-total">—</div>
+              <div class="s-label">Total Voters</div>
+            </div>
+          </div>
+          <div class="s-card">
+            <div class="s-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 11 12 14 22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg></div>
+            <div>
+              <div class="s-val empty" id="sc-active">—</div>
+              <div class="s-label">Active</div>
+            </div>
+          </div>
+          <div class="s-card">
+            <div class="s-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg></div>
+            <div>
+              <div class="s-val empty" id="sc-inactive">—</div>
+              <div class="s-label">Inactive</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="search-input" placeholder="Search by name, Member ID, or email…"
+              oninput="onSearch()" />
+          </div>
+          <select class="filter-select" id="status-filter" onchange="onFilter()">
+            <option value="">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Suspended">Suspended</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+          <select class="filter-select" id="vote-filter" onchange="onFilter()">
+            <option value="">All Voters</option>
+            <option value="Voted">Voted</option>
+            <option value="Not Voted">Not Yet Voted</option>
+          </select>
+          <button class="btn btn-outline" onclick="exportVoters()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export
+          </button>
+          <!-- The office registers members, so this is where an account
+               begins. There is no public sign-up page. -->
+          <button class="btn btn-gold" id="add-voter-btn" onclick="openAdd()" disabled aria-describedby="voter-registration-status">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="8.5" cy="7" r="4" />
+              <line x1="20" y1="8" x2="20" y2="14" />
+              <line x1="23" y1="11" x2="17" y2="11" />
+            </svg>
+            Add Voter
+          </button>
+        </div>
+
+        <p id="voter-registration-status" role="status" style="min-height:20px;color:var(--muted);font-size:.82rem">Checking voter registration availability...</p>
+
+        <!-- TABLE -->
+        <div class="table-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="check-all" onchange="toggleAll(this)"
+                      style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer" /></th>
+                  <th scope="col">No.</th>
+                  <th>Voter</th>
+                  <th>Member ID</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Vote Status</th>
+                  <th>Registered</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="voter-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <div class="pag-info" id="pag-info">No records found</div>
+            <div class="pag-btns" id="pag-btns"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/validation.js?v=20260911-required2"></script>
+  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/voter-registration.js?v=20260917"></script>
+  <script>
+    /* ─────────────────────────────────────────
+       STATE
+    ───────────────────────────────────────── */
+    let allVoters = [];   // source of truth — populated by loadVoters()
+    let filtered = [];   // current filtered+searched view
+    let deleteTarget = null;
+    const PAGE_SIZE = 10;
+    let currentPage = 1;
+
+    const AVATAR_PALETTE = [
+      { bg: '#1e2d5a', fg: '#7ca4e8' }, { bg: '#1a3a2e', fg: '#5dc99a' },
+      { bg: '#3a1e1e', fg: '#e87c7c' }, { bg: '#3a2e10', fg: '#d4a84c' },
+      { bg: '#2a1e3a', fg: '#b07cd4' }, { bg: '#1a2e3a', fg: '#5cb8d4' },
+    ];
+
+    /* ─────────────────────────────────────────
+       SIDEBAR
+    ───────────────────────────────────────── */
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('show');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('overlay').classList.remove('show');
+    }
+
+    /* ─────────────────────────────────────────
+       HELPERS
+    ───────────────────────────────────────── */
+    function initials(first, last) {
+      return ((first?.[0] || '') + (last?.[0] || '')).toUpperCase() || '?';
+    }
+    function avatarColor(id) {
+      return AVATAR_PALETTE[(typeof id === 'number' ? id : 0) % AVATAR_PALETTE.length];
+    }
+    function statusBadge(s) {
+      const m = {
+        Active: 'badge-green',
+        Suspended: 'badge-red',
+        Inactive: 'badge-muted',
+      };
+      return `<span class="badge ${m[s] || 'badge-muted'}">${s}</span>`;
+    }
+    function voteBadge(v) {
+      return v === 'Voted'
+        ? `<span class="badge badge-blue">Voted</span>`
+        : `<span class="badge badge-muted">Not Voted</span>`;
+    }
+
+    /* ─────────────────────────────────────────
+       LOAD VOTERS
+       ─────────────────────────────────────────
+       Replace with a real API call:
+       fetch('/api/voters')
+         .then(r => r.json())
+         .then(data => initVoters(data))
+         .catch(() => initVoters([]));
+    
+       Each voter object should have:
+       {
+         id, first, last, memberId, email,
+         phone, status, voted, registered, address
+       }
+    ───────────────────────────────────────── */
+    function loadVoters() {
+      CoopVoteVoterRegistration.refresh();
+      CoopVote.api('voters')
+        .then(data => initVoters(data))
+        .catch(err => {
+          /* A failed refresh must not wipe the list the administrator is
+             reading — show the problem and leave the table alone. */
+          if (!allVoters.length) initVoters([]);
+          CoopVote.toast(err.message || 'Could not load data from the server.', 'error');
+        });
+    }
+
+    function initVoters(data) {
+      allVoters = data;
+
+      /* Reloading after an approval used to throw the search and filters
+         away while leaving the boxes filled in, so the table jumped back
+         to everybody and no longer matched the controls above it. Keep
+         whatever the administrator had narrowed down to. */
+      const page = currentPage;
+      applyFilters();
+      const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      if (page > 1) {
+        currentPage = Math.min(page, lastPage);
+        renderTable();
+      }
+      updateSummary();
+    }
+
+    /* ─────────────────────────────────────────
+       SUMMARY COUNTS
+    ───────────────────────────────────────── */
+    function updateSummary() {
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (val === null) { el.textContent = '—'; el.className = 's-val empty'; return; }
+        el.className = 's-val';
+        const s = performance.now();
+        (function t(n) {
+          const p = Math.min((n - s) / 700, 1);
+          el.textContent = Math.floor((1 - Math.pow(1 - p, 3)) * val);
+          if (p < 1) requestAnimationFrame(t);
+        })(s);
+      };
+      if (allVoters.length === 0) {
+        set('sc-total', null);
+        set('sc-active', null);
+        set('sc-inactive', null);
+        return;
+      }
+      set('sc-total', allVoters.length);
+      set('sc-active', allVoters.filter(v => v.status === 'Active').length);
+      /* Everyone who cannot sign in — suspended and deactivated alike. */
+      set('sc-inactive', allVoters.filter(
+        v => v.status === 'Inactive' || v.status === 'Suspended'
+      ).length);
+    }
+
+    /* ─────────────────────────────────────────
+       FILTER + SEARCH
+    ───────────────────────────────────────── */
+    function applyFilters() {
+      const q = document.getElementById('search-input').value.trim().toLowerCase();
+      const st = document.getElementById('status-filter').value;
+      const vt = document.getElementById('vote-filter').value;
+      filtered = allVoters.filter(v => {
+        const hay = `${esc(v.first)} ${esc(v.last)} ${esc(v.memberId)} ${esc(v.email)}`.toLowerCase();
+        return (!q || hay.includes(q)) && (!st || v.status === st) && (!vt || v.voted === vt);
+      });
+      currentPage = 1;
+      renderTable();
+    }
+    const onSearch = applyFilters;
+    const onFilter = applyFilters;
+
+    /* ─────────────────────────────────────────
+       RENDER TABLE
+    ───────────────────────────────────────── */
+    function renderTable() {
+      const tbody = document.getElementById('voter-tbody');
+      const pagInfo = document.getElementById('pag-info');
+      const pagBtns = document.getElementById('pag-btns');
+      document.getElementById('check-all').checked = false;
+
+      if (filtered.length === 0) {
+        currentPage = 1;
+        const isSearching = document.getElementById('search-input').value.trim() ||
+          document.getElementById('status-filter').value ||
+          document.getElementById('vote-filter').value;
+        tbody.innerHTML = `<tr><td colspan="9">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <p>${isSearching ? 'No voters match your search or filters.' : 'No voters registered yet.'}</p>
+        ${!isSearching ? `<span class="empty-hint">Members appear here once they register through the sign-up page.</span>` : ''}
+      </div>
+    </td></tr>`;
+        pagInfo.textContent = '0 records';
+        pagBtns.innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+      currentPage = Math.max(1, Math.min(currentPage, totalPages));
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const slice = filtered.slice(start, start + PAGE_SIZE);
+
+      tbody.innerHTML = slice.map((v, index) => {
+        const { bg, fg } = avatarColor(v.id || 0);
+        const init = initials(v.first, v.last);
+        return `<tr>
+      <td><input type="checkbox" class="row-check" style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer"/></td>
+      <td class="row-number">${start + index + 1}</td>
+      <td>
+        <div class="voter-cell">
+          <div class="v-avatar" style="background:${bg};color:${fg}">${init}</div>
+          <div>
+            <div class="v-name">${esc(v.first)} ${esc(v.last)}</div>
+            <div class="v-sub">${esc(v.phone || '—')}</div>
+          </div>
+        </div>
+      </td>
+      <td style="font-family:monospace;font-size:.78rem;color:var(--muted2)">${esc(v.memberId || '—')}</td>
+      <td style="color:var(--muted2);font-size:.8rem">${esc(v.email || '—')}</td>
+      <td>${statusBadge(v.status)}</td>
+      <td>${voteBadge(v.voted)}</td>
+      <td style="color:var(--muted);font-size:.78rem">${v.registered || '—'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="icon-btn view"    title="View"   onclick="viewVoter(${v.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="icon-btn edit"    title="Edit"   onclick="openEdit(${v.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn del"     title="Remove" onclick="askRemove(${v.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+      }).join('');
+
+      // pagination info
+      const end = Math.min(start + PAGE_SIZE, filtered.length);
+      pagInfo.textContent = `Showing ${start + 1}–${end} of ${filtered.length} voter${filtered.length !== 1 ? 's' : ''}`;
+
+      CoopVote.renderPagination(pagBtns, currentPage, totalPages, goPage);
+    }
+
+    function goPage(p) {
+      const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+      if (p < 1 || p > totalPages) return;
+      currentPage = p;
+      renderTable();
+      document.querySelector('.table-scroll').scrollTop = 0;
+    }
+
+    function toggleAll(cb) {
+      document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+    }
+
+    /* ─────────────────────────────────────────
+       VIEW VOTER
+    ───────────────────────────────────────── */
+    function viewVoter(id) {
+      const v = allVoters.find(x => x.id === id);
+      if (!v) return;
+      const { bg, fg } = avatarColor(v.id || 0);
+      document.getElementById('view-body').innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar-lg" style="background:${bg};color:${fg};border:2px solid ${fg}44">
+        ${initials(v.first, v.last)}
+      </div>
+      <div>
+        <div class="profile-name">${esc(v.first)} ${esc(v.last)}</div>
+        <div class="profile-id">${esc(v.memberId || '—')}</div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${statusBadge(v.status)} ${voteBadge(v.voted)}</div>
+      </div>
+    </div>
+    <div class="profile-grid">
+      ${[
+          ['Email', v.email || '—'],
+          ['Phone', v.phone || '—'],
+          ['Date of Birth', v.dob || '—'],
+          ['Registered', v.registered || '—'],
+          ['Address', v.address || '—'],
+          ['Vote Status', v.voted || '—'],
+        ].map(([l, val]) => `
+        <div class="profile-field">
+          <div class="profile-field-label">${l}</div>
+          <div class="profile-field-val">${val}</div>
+        </div>`).join('')}
+    </div>
+    ${idSection(v)}`;
+      document.getElementById('view-edit-btn').onclick = () => { closeModal('view-modal'); openEdit(id); };
+      openModal('view-modal');
+    }
+
+    /* ─────────────────────────────────────────
+       ID VERIFICATION
+       The photographs the applicant uploaded when registering, so the
+       administrator can check the ID belongs to them before approving.
+    ───────────────────────────────────────── */
+    function idSection(v) {
+      const front = v.idFrontUrl ? CoopVote.ROOT + v.idFrontUrl : null;
+      const back = v.idBackUrl ? CoopVote.ROOT + v.idBackUrl : null;
+
+      if (!front && !back) {
+        return `<div class="id-verify">
+        <div class="id-verify-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h4M14 13h4M4 17h16"/></svg>
+          ID Verification
+        </div>
+        <div class="id-none">
+          This member did not upload an ID when registering, so their identity
+          cannot be confirmed from here.
+        </div>
+      </div>`;
+      }
+
+      const shot = (url, label) => url
+        ? `<figure class="id-shot">
+             <img src="${url}" alt="${label}" loading="lazy" onclick="zoomId('${url}','${label}')"/>
+             <figcaption>${label} <span>· click to enlarge</span></figcaption>
+           </figure>`
+        : `<figure class="id-shot id-shot-missing">
+             <div class="id-missing">Not provided</div>
+             <figcaption>${label}</figcaption>
+           </figure>`;
+
+      return `<div class="id-verify">
+      <div class="id-verify-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M14 9h4M14 13h4M4 17h16"/></svg>
+        ID Verification
+      </div>
+      <p class="id-verify-note">Check that the name and photograph match the details above before approving.</p>
+      <div class="id-shots">
+        ${shot(front, 'ID Front')}
+        ${shot(back, 'ID Back')}
+      </div>
+    </div>`;
+    }
+
+    /* Full-size view of an uploaded ID. */
+    function zoomId(url, label) {
+      let box = document.getElementById('id-zoom');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'id-zoom';
+        box.onclick = () => box.remove();
+        document.body.appendChild(box);
+      }
+      box.innerHTML = `<div class="id-zoom-inner">
+      <div class="id-zoom-bar">${label}<button type="button" aria-label="Close">&times;</button></div>
+      <img src="${url}" alt="${label}"/>
+    </div>`;
+      box.classList.add('show');
+    }
+
+    /* ─────────────────────────────────────────
+       ADD / EDIT VOTER
+    ───────────────────────────────────────── */
+    function clearForm() {
+      ['f-first', 'f-last', 'f-memberid', 'f-email', 'f-phone', 'f-address', 'f-username'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const dob = document.getElementById('f-dob');
+      if (dob) dob.value = '';
+      const st = document.getElementById('f-status');
+      if (st) st.value = 'Active';
+      const eid = document.getElementById('edit-id');
+      if (eid) eid.value = '';
+    }
+
+    function setVoterRequiredFields(required) {
+      ['dob', 'phone', 'address'].forEach(field => {
+        document.getElementById('f-' + field).required = required;
+        document.getElementById(field + '-required').hidden = !required;
+      });
+    }
+
+    /* The office opens accounts, so this modal both creates and edits. */
+    async function openAdd() {
+      if (!await CoopVoteVoterRegistration.check()) return;
+      clearForm();
+      setVoterRequiredFields(true);
+      document.getElementById('modal-title').textContent = 'Add Voter';
+      document.getElementById('edit-id').value = '';
+
+      /* A brand-new account is always active, and its member number is
+         allocated for you unless you type one. */
+      document.getElementById('row-username').style.display = '';
+      document.getElementById('field-status').style.display = 'none';
+      document.getElementById('f-memberid').placeholder = 'left blank, allocated automatically';
+      document.getElementById('f-memberid').required = false;
+      document.getElementById('save-btn-label').textContent = 'Create Account';
+      CoopVoteVoterRegistration.sync();
+      openModal('voter-modal');
+    }
+
+    function openEdit(id) {
+      const v = allVoters.find(x => x.id === id);
+      if (!v) return;
+      setVoterRequiredFields(true);
+      document.getElementById('modal-title').textContent = 'Edit Voter';
+      /* Undo whatever "add" mode changed. */
+      document.getElementById('row-username').style.display = 'none';
+      document.getElementById('field-status').style.display = '';
+      document.getElementById('f-memberid').placeholder = 'e.g. MEM-0001';
+      document.getElementById('f-memberid').required = true;
+      document.getElementById('save-btn-label').textContent = 'Save Voter';
+      document.getElementById('edit-id').value = v.id;
+      CoopVoteVoterRegistration.sync();
+      document.getElementById('f-first').value = v.first || '';
+      document.getElementById('f-last').value = v.last || '';
+      document.getElementById('f-memberid').value = v.memberId || '';
+      document.getElementById('f-email').value = v.email || '';
+      document.getElementById('f-phone').value = v.phone || '';
+      document.getElementById('f-dob').value = v.dobInput || '';
+      document.getElementById('f-address').value = v.address || '';
+      document.getElementById('f-status').value = v.status || 'Active';
+      openModal('voter-modal');
+    }
+
+    async function saveVoter() {
+      if (!document.getElementById('edit-id').value && !await CoopVoteVoterRegistration.check()) return;
+      if (!CoopVoteValidation.validate('#voter-modal')) return;
+      const first = document.getElementById('f-first').value.trim();
+      const last = document.getElementById('f-last').value.trim();
+      const email = document.getElementById('f-email').value.trim();
+
+      if (!first || !last) {
+        showToast("Please enter the voter's first and last name.", 'warn');
+        return;
+      }
+      /* The account is emailed to the member, so the address is not
+         optional the way it was when they typed it in themselves. */
+      if (!email) {
+        showToast('An email address is required — the sign-in details are sent there.', 'warn');
+        return;
+      }
+
+      const editId = document.getElementById('edit-id').value;
+      const phone = document.getElementById('f-phone').value.trim();
+      const address = document.getElementById('f-address').value.trim();
+
+      if (!editId && !phone) {
+        showToast('Please enter a phone number.', 'warn');
+        document.getElementById('f-phone').focus();
+        return;
+      }
+      if (!editId && !address) {
+        showToast('Please enter an address.', 'warn');
+        document.getElementById('f-address').focus();
+        return;
+      }
+
+      const payload = {
+        first, last, email, phone, address,
+        dob:     document.getElementById('f-dob').value,
+        memberId: document.getElementById('f-memberid').value.trim(),
+      };
+
+      if (!editId) {
+        payload.username = document.getElementById('f-username').value.trim();
+        return CoopVote.api('voters', { method: 'POST', body: payload })
+          .then(res => {
+            closeModal('voter-modal');
+            showCredentials(`${first} ${last}`, res);
+            loadVoters();
+          })
+          .catch(err => {
+            CoopVoteVoterRegistration.refresh();
+            showToast(err.message || 'Could not create this account.', 'error');
+          });
+        return;
+      }
+
+      /* The Status field used to be decorative — chosen, saved, ignored.
+         A change now goes through the same audited endpoints the row
+         buttons use, so the record and the log agree. */
+      const before = allVoters.find(x => x.id === Number(editId));
+      const chosen = document.getElementById('f-status').value;
+      const action = { Active: 'activate', Suspended: 'suspend', Inactive: 'deactivate' }[chosen];
+      const statusChanged = before && action && chosen !== before.status;
+
+      return CoopVote.api(`voters/${editId}`, { method: 'PUT', body: payload })
+        .then(() => statusChanged
+          ? CoopVote.api(`voters/${editId}/${action}`, { method: 'PATCH' })
+          : null)
+        .then(() => {
+          closeModal('voter-modal');
+          showToast(statusChanged
+            ? `Member saved — status set to ${chosen}.`
+            : 'Member saved successfully.', 'success');
+          loadVoters();
+        })
+        .catch(err => showToast(err.message || 'Could not save this member.', 'error'));
+    }
+
+    /* Shown once, straight after creating an account. */
+    let lastCredentials = null;
+
+    function showCredentials(name, res) {
+      lastCredentials = {
+        name,
+        memberNo: res.memberNo || '—',
+        username: res.username || '—',
+        password: res.password || '—',
+      };
+      document.getElementById('created-name').textContent = `${name} is registered`;
+      document.getElementById('created-mail').textContent = res.emailing
+        ? 'The sign-in details are on their way by email.'
+        : 'Email is switched off, so hand these details over yourself.';
+      document.getElementById('created-memberno').textContent = lastCredentials.memberNo;
+      document.getElementById('created-username').textContent = lastCredentials.username;
+      document.getElementById('created-password').textContent = lastCredentials.password;
+      openModal('created-modal');
+    }
+
+    function copyCredentials() {
+      if (!lastCredentials) return;
+      const c = lastCredentials;
+      const text = 'CoopVote sign-in for ' + c.name + '\n'
+        + 'Member number: ' + c.memberNo + '\n'
+        + 'Username: ' + c.username + '\n'
+        + 'Temporary password: ' + c.password;
+
+      /* The clipboard API needs a secure context; localhost counts, but
+         fall back rather than fail silently if it is refused. */
+      const done = () => showToast('Sign-in details copied.', 'success');
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done).catch(fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+    }
+
+    function fallbackCopy() {
+      const c = lastCredentials;
+      if (!c) return;
+      const ta = document.createElement('textarea');
+      ta.value = 'Member number: ' + c.memberNo + '\n'
+        + 'Username: ' + c.username + '\n'
+        + 'Temporary password: ' + c.password;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast('Sign-in details copied.', 'success'); }
+      catch (e) { showToast('Could not copy — please write the details down.', 'warn'); }
+      ta.remove();
+    }
+
+    /* ─────────────────────────────────────────
+       REMOVE VOTER
+    ───────────────────────────────────────── */
+    function askRemove(id) {
+      deleteTarget = id;
+      openModal('confirm-modal');
+    }
+
+    function confirmRemove() {
+      const id = deleteTarget;
+      deleteTarget = null;
+
+      CoopVote.api(`voters/${id}`, { method: 'DELETE' })
+        .then(res => {
+          closeModal('confirm-modal');
+          /* A member who has already voted is deactivated, not deleted,
+             so the audit trail stays intact. */
+          showToast(res.message || 'Member removed.', res.deactivated ? 'warn' : 'success');
+          loadVoters();
+        })
+        .catch(err => {
+          closeModal('confirm-modal');
+          showToast(err.message || 'Could not remove this member.', 'error');
+        });
+    }
+
+    /* ─────────────────────────────────────────
+       EXPORT
+    ───────────────────────────────────────── */
+    async function exportVoters() {
+      if (allVoters.length === 0) {
+        showToast('No voter data to export.', 'warn');
+        return;
+      }
+      if (await CoopVote.download('voters/export')) showToast('Your CSV download is starting.', 'success');
+    }
+
+    /* ─────────────────────────────────────────
+       MODAL HELPERS
+    ───────────────────────────────────────── */
+    function openModal(id) { document.getElementById(id).classList.add('show') }
+    function closeModal(id) { document.getElementById(id).classList.remove('show') }
+
+    /* ─────────────────────────────────────────
+       TOAST
+    ───────────────────────────────────────── */
+    function showToast(msg, type = 'success') {
+      const wrap = document.getElementById('toast-wrap');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<div class="toast-dot"></div><span>${msg}</span>`;
+      wrap.appendChild(t);
+      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3400);
+    }
+
+    /* ─────────────────────────────────────────
+       INIT
+    ───────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      CoopVote.guard('admin').then(() => { loadVoters(); CoopVoteVoterRegistration.start(); });
+
+      /*
+       * When your backend is ready, replace loadVoters() with:
+       *
+       * fetch('/api/voters')
+       *   .then(r => r.json())
+       *   .then(data => initVoters(data))
+       *   .catch(() => { initVoters([]); showToast('Failed to load voters.', 'error'); });
+       */
+    });
+  </script>
+</body>
+
+</html>

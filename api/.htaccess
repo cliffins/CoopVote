@@ -1,0 +1,27 @@
+# Pretty API URLs (optional — the app also works without mod_rewrite
+# because the frontend calls api/index.php?r=<route>).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # No RewriteBase: it used to name the /CoopVote/ folder, which broke as
+    # soon as the project was unzipped under a different name. Leaving it
+    # out makes the rule relative to whatever folder this file sits in.
+
+    # Anything that is not a real file or directory goes to the router.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php?r=$1 [QSA,L]
+</IfModule>
+
+# Never serve the route handlers directly.
+# Apache 2.4 and 2.2 spell this differently, and using the wrong one is a
+# fatal config error — which is why both are guarded.
+<FilesMatch "^(auth|voter|admin)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

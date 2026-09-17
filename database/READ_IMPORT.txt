@@ -1,0 +1,24 @@
+CoopVote full database
+
+For the newer STRUCTURE ONLY request, use schema_only.sql instead.
+It has zero records. See SCHEMA_NOTES.txt for import and normalization details.
+
+coopvote_full.sql contains all 25 required tables and the actual data at export
+time, including profile pictures stored as binary data. export_manifest.json
+lists row counts and the file's SHA-256 checksum.
+
+On a new host, create/select an empty database and import coopvote_full.sql.
+Set the database connection in config/config.php. The export does not select,
+drop or recreate a database, and does not overwrite existing tables.
+
+Keep the original config/integrity-key.php (or configured integrity key) with
+the installation so the existing vote and report signatures still verify.
+The private key is not embedded in the SQL export.
+
+election_controls was removed because quorum monitoring was retired. Other
+tables remain because the current application still uses them, even if empty.
+For another existing installation, back up first and apply
+migration_10_remove_quorum.sql to remove that obsolete table only.
+
+The project installer and restore tool import one statement at a time to
+support servers with a small max_allowed_packet setting.

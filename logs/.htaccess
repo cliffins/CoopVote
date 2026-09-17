@@ -1,0 +1,10 @@
+# Mail and error logs: member email addresses and receipt codes.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    # Apache 2.2 syntax — using 2.4 syntax on 2.2 is a fatal error that
+    # takes the whole site down with an Internal Server Error.
+    Order allow,deny
+    Deny from all
+</IfModule>

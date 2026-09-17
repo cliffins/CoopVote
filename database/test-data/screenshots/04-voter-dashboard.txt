@@ -1,0 +1,91 @@
+CoopVote
+Santiago City Multi-Purpose Cooperative
+MEMBER
+Dashboard
+My Profile
+ELECTION
+Active Election
+Live
+View Candidates
+Cast My Vote
+Vote!
+RESULTS
+Election Results
+AA
+Adrian Alvarez
+COOP-0015
+Member Dashboard
+
+Thursday, September 10, 2026
+
+2
+GOOD AFTERNOON, WELCOME BACK
+Adrian Alvarez
+COOP-0015
+Member since September 2026
+Your Vote is Pending
+1 Active
+Active Election
+18
+Candidates Running
+6
+Positions Available
+Active Election
+TEST - 2026 Cooperative Officers Election
+LIVE
+Status
+● Live
+Start
+September 10, 2026 · 12:57 PM
+End
+October 10, 2026 · 1:02 PM
+Positions
+6 positions
+CLOSES IN
+719
+HRS
+:
+58
+MIN
+:
+18
+SEC
+Voter Turnout
+0 / 110 · 0%
+Cast My Vote Now
+Candidates
+18 candidates running
+View All →
+AA
+Adrian Alvarez
+President
+BB
+Bianca Bautista
+President
+CC
+Carlo Castro
+President
+DD
+Diana Domingo
+Vice President
+EE
+Enzo Evangelista
+Vice President
+AA
+Adrian Alvarez
+COOP-0015
+Email
+coopvote.voter001@example.com
+Status
+Active
+Vote Status
+Not yet voted
+Member Since
+September 2026
+Edit Profile
+Election Results
+Not yet published
+View All →
+
+Results will be published
+once the election closes.

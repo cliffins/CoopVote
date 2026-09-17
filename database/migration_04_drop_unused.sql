@@ -1,0 +1,27 @@
+-- ============================================================
+--  CoopVote — Migration 04: drop the one genuinely unused table
+--  ------------------------------------------------------------
+--  `password_resets` is referenced by no code and holds no rows. The
+--  "Forgot password?" link tells members to contact the cooperative
+--  office, which is a deliberate answer rather than a missing feature,
+--  so nothing needs the table.
+--
+--  Every other table earns its place:
+--    users, members, roles      — accounts and who they are
+--    elections, positions,
+--    candidates                 — what is being voted on
+--    votes, ballots             — the secret ballot (kept apart on purpose)
+--    otp_tokens                 — registration email verification
+--    audit_logs, login_attempts,
+--    blocked_ips                — the security trail
+--    announcements              — the notice on the member dashboard
+--    settings                   — cooperative name and support address
+--
+--  DESTRUCTIVE. A full backup is at
+--  database/backups/coopvote_before_normalize.sql — restore from there
+--  if you later want a self-service password reset flow.
+--
+--  Run:  mysql -u root coopvote < migration_04_drop_unused.sql
+-- ============================================================
+
+DROP TABLE IF EXISTS `password_resets`;

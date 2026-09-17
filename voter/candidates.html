@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>CoopVote — View Candidates</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --navy: #0b1931;
+      --navy2: #0f2040;
+      --navy3: #162a52;
+      --navy4: #1e3566;
+      --gold: #c9a84c;
+      --gold2: #e8c96a;
+      --white: #ffffff;
+      --muted: #7a8ba0;
+      --muted2: #a8b8cc;
+      --border: rgba(255, 255, 255, .08);
+      --danger: #e05c5c;
+      --success: #4caf82;
+      --warn: #e0a030;
+      --info: #4a9fd4;
+      --sidebar-w: 260px;
+      --header-h: 64px;
+      --radius: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow: hidden
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .12);
+      border-radius: 99px
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes shimmer {
+
+      0%,
+      100% {
+        left: -70%
+      }
+
+      50% {
+        left: 140%
+      }
+    }
+
+    @keyframes pulseGreen {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 130, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(76, 175, 130, 0)
+      }
+    }
+
+    @keyframes pulseGold {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(201, 168, 76, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(201, 168, 76, 0)
+      }
+    }
+
+    @keyframes cardIn {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(.98)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1)
+      }
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--navy2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+      z-index: 200
+    }
+
+    .sidebar-logo {
+      padding: 28px 22px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3);
+      position: relative;
+      overflow: hidden
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -70%;
+      width: 40%;
+      height: 100%;
+      background: rgba(255, 255, 255, .3);
+      transform: skewX(-20deg);
+      animation: shimmer 4s ease-in-out infinite
+    }
+
+    .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--navy)
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: .3px
+    }
+
+    .logo-text span {
+      color: var(--gold)
+    }
+
+    .sidebar-section {
+      padding: 20px 14px 8px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--muted2);
+      transition: all .2s;
+      position: relative;
+      white-space: nowrap;
+      text-decoration: none;
+      overflow: hidden
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, .06);
+      color: var(--white)
+    }
+
+    .nav-item.active {
+      background: rgba(201, 168, 76, .14);
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--gold)
+    }
+
+    .nav-item svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: .7
+    }
+
+    .nav-item.active svg {
+      opacity: 1
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      font-size: .68rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      color: var(--navy)
+    }
+
+    .nav-badge.green {
+      background: var(--success);
+      animation: pulseGreen 2s ease-in-out infinite
+    }
+
+    .nav-badge.gold {
+      background: var(--gold);
+      animation: pulseGold 2s ease-in-out infinite
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 14px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .member-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .05);
+      cursor: pointer;
+      transition: background .2s
+    }
+
+    .member-card:hover {
+      background: rgba(255, 255, 255, .09)
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--navy4), var(--navy3));
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0
+    }
+
+    .member-info {
+      flex: 1;
+      overflow: hidden
+    }
+
+    .member-name {
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .member-id {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 1px;
+      font-family: monospace
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      border-radius: 6px;
+      transition: color .2s;
+      flex-shrink: 0
+    }
+
+    .logout-btn:hover {
+      color: var(--danger)
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0
+    }
+
+    .header {
+      height: var(--header-h);
+      flex-shrink: 0;
+      background: rgba(11, 25, 49, .85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+      z-index: 100
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted2);
+      padding: 6px;
+      border-radius: 8px;
+      transition: color .2s, background .2s
+    }
+
+    .hamburger:hover {
+      color: var(--white);
+      background: rgba(255, 255, 255, .07)
+    }
+
+    .header-title {
+      flex: 1
+    }
+
+    .header-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700
+    }
+
+    .header-title p {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .hbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .hbtn:hover {
+      background: rgba(255, 255, 255, .12);
+      color: var(--white)
+    }
+
+    .hbtn svg {
+      width: 18px;
+      height: 18px
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px
+    }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 180px;
+      max-width: 320px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--navy2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 0 14px;
+      transition: border-color .2s
+    }
+
+    .search-wrap:focus-within {
+      border-color: var(--gold)
+    }
+
+    .search-wrap svg {
+      width: 15px;
+      height: 15px;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .search-wrap input {
+      background: none;
+      border: none;
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .875rem;
+      outline: none;
+      padding: 10px 0;
+      width: 100%
+    }
+
+    .search-wrap input::placeholder {
+      color: var(--muted)
+    }
+
+    .pos-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap
+    }
+
+    .pos-tab {
+      padding: 8px 16px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted2);
+      transition: all .2s;
+      white-space: nowrap
+    }
+
+    .pos-tab:hover {
+      border-color: rgba(255, 255, 255, .2);
+      color: var(--white)
+    }
+
+    .pos-tab.active {
+      font-weight: 700;
+      color: var(--navy);
+      border-color: transparent
+    }
+
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      font-size: .62rem;
+      font-weight: 700;
+      background: rgba(255, 255, 255, .15);
+      margin-left: 4px
+    }
+
+    .pos-tab.active .count-badge {
+      background: rgba(0, 0, 0, .2)
+    }
+
+    /* ── PAGE EMPTY ── */
+    .page-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+      color: var(--muted);
+      padding: 72px 20px;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      animation: fadeUp .5s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .page-empty svg {
+      width: 52px;
+      height: 52px;
+      opacity: .25
+    }
+
+    .page-empty h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--muted2)
+    }
+
+    .page-empty p {
+      font-size: .84rem;
+      line-height: 1.7;
+      max-width: 360px
+    }
+
+    .page-empty a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      font-size: .84rem;
+      font-weight: 600;
+      text-decoration: none;
+      margin-top: 4px;
+      transition: all .2s
+    }
+
+    .page-empty a:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(201, 168, 76, .07)
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: fadeUp .5s .08s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .sec-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700
+    }
+
+    .sec-sub {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    /* ── CANDIDATE CARDS GRID ── */
+    .cands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px
+    }
+
+    /* ── CANDIDATE CARD ── */
+    .cand-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: transform .22s, box-shadow .22s;
+      cursor: default;
+    }
+
+    .cand-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, .45)
+    }
+
+    .cand-card-top {
+      height: 72px;
+      position: relative;
+      overflow: hidden
+    }
+
+    .cand-card-top::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 60%, var(--navy2))
+    }
+
+    .cand-av-wrap {
+      position: absolute;
+      left: 18px;
+      bottom: -22px;
+      z-index: 2
+    }
+
+    .cand-av {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--gold);
+      border: 3px solid var(--navy2);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .cand-av img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover
+    }
+
+    .cand-pos-pill {
+      position: absolute;
+      right: 14px;
+      top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+      backdrop-filter: blur(8px);
+    }
+
+    .cand-body {
+      padding: 30px 18px 18px
+    }
+
+    .cand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+      line-height: 1.2
+    }
+
+    .cand-occ {
+      font-size: .76rem;
+      color: var(--muted);
+      margin-bottom: 12px
+    }
+
+    .cand-bio {
+      font-size: .8rem;
+      color: var(--muted2);
+      line-height: 1.7;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      overflow: hidden
+    }
+
+    .cand-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, .015)
+    }
+
+    .cand-age {
+      font-size: .73rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .cand-age svg {
+      width: 12px;
+      height: 12px
+    }
+
+    .btn-profile {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 13px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .75rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted2);
+      transition: all .2s;
+      text-decoration: none
+    }
+
+    .btn-profile:hover {
+      background: rgba(255, 255, 255, .13);
+      color: var(--white)
+    }
+
+    /* ── CANDIDATE MODAL ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .7);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s
+    }
+
+    .modal-backdrop.show {
+      opacity: 1;
+      pointer-events: all
+    }
+
+    .modal {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 36px 80px rgba(0, 0, 0, .65);
+      transform: translateY(28px) scale(.97);
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1), opacity .25s;
+      opacity: 0
+    }
+
+    .modal-backdrop.show .modal {
+      transform: translateY(0) scale(1);
+      opacity: 1
+    }
+
+    .modal-top {
+      height: 90px;
+      position: relative;
+      overflow: hidden
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 10;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(0, 0, 0, .3);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s
+    }
+
+    .modal-close:hover {
+      background: rgba(0, 0, 0, .5)
+    }
+
+    .modal-av-wrap {
+      position: absolute;
+      left: 22px;
+      bottom: -30px;
+      z-index: 2
+    }
+
+    .modal-av {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 4px solid var(--navy2);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      overflow: hidden
+    }
+
+    .modal-av img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover
+    }
+
+    .modal-body {
+      padding: 40px 24px 24px
+    }
+
+    .modal-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 4px
+    }
+
+    .modal-pos-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: .74rem;
+      font-weight: 700;
+      margin-bottom: 16px
+    }
+
+    .modal-section {
+      margin-bottom: 18px
+    }
+
+    .modal-section-title {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px
+    }
+
+    .modal-section p {
+      font-size: .84rem;
+      color: var(--muted2);
+      line-height: 1.75
+    }
+
+    .modal-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px
+    }
+
+    .mi-cell {
+      background: rgba(255, 255, 255, .04);
+      border-radius: 10px;
+      padding: 11px 14px
+    }
+
+    .mi-label {
+      font-size: .67rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px
+    }
+
+    .mi-val {
+      font-size: .86rem;
+      font-weight: 600
+    }
+
+    .modal-foot {
+      padding: 16px 24px 22px;
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid var(--border)
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      flex: 1;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, .1)
+    }
+
+    .btn-vote-cta {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      border: none;
+      flex: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(201, 168, 76, .25)
+    }
+
+    .btn-vote-cta:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px)
+    }
+
+    .btn-vote-cta svg,
+    .btn-ghost svg {
+      width: 14px;
+      height: 14px
+    }
+
+    .voted-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px;
+      border-radius: 10px;
+      background: rgba(76, 175, 130, .1);
+      border: 1px solid rgba(76, 175, 130, .2);
+      color: var(--success);
+      font-size: .84rem;
+      font-weight: 600;
+      flex: 1
+    }
+
+    .voted-note svg {
+      width: 15px;
+      height: 15px
+    }
+
+    /* ── EMPTY FILTER STATE ── */
+    .empty-filter {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 20px;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius)
+    }
+
+    .empty-filter svg {
+      width: 36px;
+      height: 36px;
+      opacity: .28
+    }
+
+    .empty-filter p {
+      font-size: .84rem
+    }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      z-index: 150;
+      backdrop-filter: blur(4px)
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        box-shadow: 8px 0 40px rgba(0, 0, 0, .5)
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .overlay {
+        display: block;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity .3s
+      }
+
+      .overlay.show {
+        pointer-events: all;
+        opacity: 1
+      }
+
+      .hamburger {
+        display: flex
+      }
+
+      .content {
+        padding: 16px
+      }
+
+      .header {
+        padding: 0 16px
+      }
+
+      .cands-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media(max-width:480px) {
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch
+      }
+
+      .search-wrap {
+        max-width: 100%
+      }
+    }
+  
+    /* ── Layout fix ──────────────────────────────────────────
+       .content is a flex column, and flex items shrink by default.
+       Once the page grew taller than the viewport every section was
+       squashed, and any card with overflow:hidden clipped its own
+       text (the welcome hero showed the name but hid the meta line).
+       Sections keep their natural height; .content already scrolls. */
+    .content > * { flex-shrink: 0; }
+
+    /* ── Empty-state action icons ────────────────────────────
+       The illustration rule above (.page-empty svg and friends) also
+       matches the icon inside the empty state's button, and a rule
+       beats the svg's own width/height attributes. Keep those icons
+       button-sized so the call to action matches every other button. */
+    .page-empty a svg, .page-empty button svg,
+    .empty-section a svg, .empty-section button svg,
+    .page-state a svg, .page-state button svg,
+    .hero-empty a svg, .hero-empty button svg {
+      width: 14px;
+      height: 14px;
+      opacity: 1;
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
+  <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
+  <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
+  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+</head>
+
+<body>
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- CANDIDATE DETAIL MODAL -->
+  <div class="modal-backdrop" id="cand-modal">
+    <div class="modal">
+      <div class="modal-top" id="modal-top">
+        <button aria-label="Close" class="modal-close" onclick="closeModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        <div class="modal-av-wrap">
+          <div class="modal-av" id="modal-av"></div>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-name" id="modal-name">—</div>
+        <div class="modal-pos-pill" id="modal-pos-pill">—</div>
+        <div class="modal-info-grid" id="modal-info-grid"></div>
+        <div class="modal-section" id="modal-bio-section">
+          <div class="modal-section-title">About</div>
+          <p id="modal-bio">—</p>
+        </div>
+        <div class="modal-section" id="modal-platform-section" style="display:none">
+          <div class="modal-section-title">Platform / Advocacies</div>
+          <p id="modal-platform">—</p>
+        </div>
+      </div>
+      <div class="modal-foot" id="modal-foot"></div>
+    </div>
+  </div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark"><svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg></div>
+        <div class="logo-text">Coop<span>Vote</span></div>
+      </div>
+
+      <div class="sidebar-section">Member</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+        </svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="profile.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        My Profile
+      </a>
+
+      <div class="sidebar-section">Election</div>
+      <a class="nav-item" href="election.html" id="nav-election">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Active Election
+      </a>
+      <a class="nav-item active" href="candidates.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        View Candidates
+      </a>
+      <a class="nav-item" href="ballot.html" id="nav-ballot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 11 12 14 22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        Cast My Vote
+      </a>
+
+      <div class="sidebar-section">Results</div>
+      <a class="nav-item" href="results.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        Election Results
+      </a>
+
+      <a class="nav-item" href="receipts.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h3" /></svg>
+        My Vote Receipts
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="member-card">
+          <div class="member-avatar" id="sidebar-avatar">?</div>
+          <div class="member-info">
+            <div class="member-name" id="sidebar-name">—</div>
+            <div class="member-id" id="sidebar-id">—</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="header">
+        <button aria-label="Open the menu" class="hamburger" onclick="toggleSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div class="header-title">
+          <h1>View Candidates</h1>
+          <p id="header-sub">Browse candidates for the active election</p>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </button>
+          <button class="hbtn" onclick="CoopVote.logout()"
+            style="border:1px solid rgba(224,92,92,.2);color:var(--danger)" title="Logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content" id="main-content">
+        <!-- populated by renderPage() -->
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/validation.js?v=20260911-required2"></script>
+  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script>
+    /* ─────────────────────────────────────────
+       STATE
+    ───────────────────────────────────────── */
+    let allCandidates = [];   // full list from API
+    let filtered = [];   // after filter/search
+    let activePos = 'all';
+    let hasVoted = false;
+    let electionActive = false;
+
+    const POS_COLORS = ['#c9a84c', '#4a9fd4', '#4caf82', '#9b7fd4', '#e0a030', '#e05c5c'];
+    const AV = [
+      { bg: '#1e2d5a', fg: '#7ca4e8' }, { bg: '#1a3a2e', fg: '#5dc99a' },
+      { bg: '#3a1e1e', fg: '#e87c7c' }, { bg: '#3a2e10', fg: '#d4a84c' },
+      { bg: '#2a1e3a', fg: '#b07cd4' }, { bg: '#1a2e3a', fg: '#5cb8d4' },
+    ];
+
+    /* ─────────────────────────────────────────
+       SIDEBAR
+    ───────────────────────────────────────── */
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show') }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show') }
+
+    /* ─────────────────────────────────────────
+       HELPERS
+    ───────────────────────────────────────── */
+    function initials(first, last) { return ((first?.[0] || '') + (last?.[0] || '')).toUpperCase() || '?' }
+    function avStyle(id) { return AV[(id || 0) % AV.length] }
+    function posColor(pos) {
+      const idx = ['President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor', 'Director'].indexOf(pos);
+      return POS_COLORS[idx >= 0 ? idx : Math.abs((pos || '').charCodeAt(0)) % POS_COLORS.length];
+    }
+
+    /* ─────────────────────────────────────────
+       LOAD DATA
+       ─────────────────────────────────────────
+       Replace with real API:
+       fetch('/api/voter/candidates')
+         .then(r => r.json())
+         .then(data => initCandidates(data))
+         .catch(() => initCandidates(null));
+    
+       Expected shape:
+       {
+         member: { name, memberId, hasVoted },
+         election: null | { title, active },
+         candidates: [
+           {
+             id, first, last, position,
+             age, occ, bio, platform,
+             photoUrl,           // optional
+             yearsInCoop         // optional
+           }
+         ]
+       }
+    ───────────────────────────────────────── */
+    function loadData() {
+      CoopVote.api('voter/candidates')
+        .then(data => initCandidates(data))
+        .catch(err => {
+          initCandidates([]);
+          CoopVote.toast(err.message || 'Could not load data from the server.', 'error');
+        });
+    }
+
+    function initCandidates(data) {
+      const member = data?.member || null;
+      const election = data?.election || null;
+      const cands = data?.candidates || [];
+
+      allCandidates = cands;
+      hasVoted = member?.hasVoted || false;
+      electionActive = !!election;
+
+      /* sidebar */
+      const name = member?.name || '—';
+      const mid = member?.memberId || '—';
+      const init = (name.split(' ').map(w => w[0]).join('').substring(0, 2) || '?').toUpperCase();
+      const sa = document.getElementById('sidebar-avatar'); if (sa) sa.textContent = init;
+      const sn = document.getElementById('sidebar-name'); if (sn) sn.textContent = name;
+      const si = document.getElementById('sidebar-id'); if (si) si.textContent = mid;
+
+      /* header subtitle */
+      const hs = document.getElementById('header-sub');
+      if (hs) hs.textContent = election ? election.title : 'No active election';
+
+      /* nav badges */
+      document.querySelectorAll('.nav-badge').forEach(b => b.remove());
+      if (election && election.active) {
+        const nb1 = document.createElement('span'); nb1.className = 'nav-badge green'; nb1.textContent = 'Live';
+        document.getElementById('nav-election')?.appendChild(nb1);
+        if (!hasVoted) {
+          const nb2 = document.createElement('span'); nb2.className = 'nav-badge gold'; nb2.textContent = 'Vote!';
+          document.getElementById('nav-ballot')?.appendChild(nb2);
+        }
+      }
+
+      renderPage();
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER PAGE
+    ───────────────────────────────────────── */
+    function renderPage() {
+      const c = document.getElementById('main-content');
+
+      if (!electionActive) {
+        c.innerHTML = `
+      <div class="page-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <h2>No Candidates Yet</h2>
+        <p>Candidates will be listed here once an election is active. Check back when an election is announced.</p>
+        <a href="dashboard.html">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Back to Dashboard
+        </a>
+      </div>`;
+        return;
+      }
+
+      /* unique positions */
+      const positions = [...new Set(allCandidates.map(c => c.position))];
+
+      /* toolbar */
+      const tabsHTML = `
+    <div class="pos-tabs">
+      <button class="pos-tab active" style="background:var(--muted2);color:var(--navy)" onclick="filterPos('all',this)">
+        All<span class="count-badge">${allCandidates.length}</span>
+      </button>
+      ${positions.map((p, i) => {
+        const col = posColor(p);
+        const cnt = allCandidates.filter(c => c.position === p).length;
+        /*
+         * The position name is never written into the onclick. Escaping
+         * it for HTML is not enough there: the browser decodes the
+         * entities before the JavaScript parser sees them, so a &#39;
+         * becomes a real quote again and closes the string. The button
+         * carries the name in a data attribute and the handler reads it
+         * back from there.
+         */
+        return `<button class="pos-tab" onclick="filterPos(this.dataset.pos, this)" data-pos="${esc(p)}">
+          ${esc(p)}<span class="count-badge">${cnt}</span>
+        </button>`;
+      }).join('')}
+    </div>`;
+
+      c.innerHTML = `
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search by name, position, or occupation…" oninput="searchCandidates(this.value)" id="search-input"/>
+      </div>
+      ${tabsHTML}
+    </div>
+    <div class="section-label">
+      <div>
+        <div class="sec-title" id="sec-title">All Candidates</div>
+        <div class="sec-sub" id="sec-sub">${allCandidates.length} candidate${allCandidates.length !== 1 ? 's' : ''} running</div>
+      </div>
+    </div>
+    <div class="cands-grid" id="cands-grid"></div>`;
+
+      filtered = [...allCandidates];
+      renderGrid();
+    }
+
+    /* ─────────────────────────────────────────
+       FILTER & SEARCH
+    ───────────────────────────────────────── */
+    function filterPos(pos, btn) {
+      activePos = pos;
+      document.querySelectorAll('.pos-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.background = '';
+        t.style.color = '';
+        t.style.borderColor = '';
+      });
+      btn.classList.add('active');
+      if (pos === 'all') {
+        btn.style.background = 'var(--muted2)';
+        btn.style.color = 'var(--navy)';
+      } else {
+        const col = posColor(pos);
+        btn.style.background = col;
+        btn.style.color = 'var(--navy)';
+      }
+      applyFilters();
+    }
+
+    function searchCandidates(q) { applyFilters(q); }
+
+    function applyFilters(q) {
+      const query = (q || document.getElementById('search-input')?.value || '').toLowerCase().trim();
+      filtered = allCandidates.filter(c => {
+        const matchPos = activePos === 'all' || c.position === activePos;
+        const matchQ = !query ||
+          `${esc(c.first)} ${esc(c.last)}`.toLowerCase().includes(query) ||
+          (c.position || '').toLowerCase().includes(query) ||
+          (c.occ || '').toLowerCase().includes(query);
+        return matchPos && matchQ;
+      });
+
+      const secTitle = document.getElementById('sec-title');
+      const secSub = document.getElementById('sec-sub');
+      if (secTitle) secTitle.textContent = activePos === 'all' ? 'All Candidates' : activePos;
+      if (secSub) secSub.textContent = `${filtered.length} candidate${filtered.length !== 1 ? 's' : ''} found`;
+
+      renderGrid();
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER GRID
+    ───────────────────────────────────────── */
+    function renderGrid() {
+      const grid = document.getElementById('cands-grid');
+      if (!grid) return;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-filter" style="grid-column:1/-1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <p>No candidates match your search.<br/>Try adjusting the filter or search term.</p>
+    </div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map((c, i) => {
+        const col = posColor(c.position);
+        const { bg, fg } = avStyle(c.id || i);
+        const avHTML = c.photoUrl
+          ? `<img src="${esc(c.photoUrl)}" alt="${esc(c.first)}" style="width:100%;height:100%;object-fit:cover"/>`
+          : `<span style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:${fg}">${initials(c.first, c.last)}</span>`;
+
+        return `<div class="cand-card" style="animation:cardIn .4s ${i * .05}s both">
+      <div class="cand-card-top" style="background:linear-gradient(135deg,${bg},${bg}cc)">
+        <div class="cand-pos-pill" style="background:${col}22;border:1px solid ${col}44;color:${col}">${esc(c.position)}</div>
+        <div class="cand-av-wrap">
+          <div class="cand-av" style="background:${bg}">${avHTML}</div>
+        </div>
+      </div>
+      <div class="cand-body">
+        <div class="cand-name">${esc(c.first)} ${esc(c.last)}</div>
+        <div class="cand-occ">${esc(c.occ || '—')}</div>
+        <div class="cand-bio">${esc(c.bio || 'No biography provided.')}</div>
+      </div>
+      <div class="cand-footer">
+        <div class="cand-age">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${c.age ? c.age + ' yrs old' : '—'}
+          ${c.yearsInCoop ? ` · ${c.yearsInCoop} yrs member` : ''}
+        </div>
+        <button class="btn-profile" onclick="openModal(${c.id || i})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          View Profile
+        </button>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    /* ─────────────────────────────────────────
+       CANDIDATE MODAL
+    ───────────────────────────────────────── */
+    function openModal(id) {
+      const c = allCandidates.find(x => (x.id || allCandidates.indexOf(x)) === id);
+      if (!c) return;
+
+      const col = posColor(c.position);
+      const { bg, fg } = avStyle(c.id || 0);
+
+      /* top banner */
+      const top = document.getElementById('modal-top');
+      if (top) top.style.background = `linear-gradient(135deg,${bg},${bg}cc)`;
+
+      /* avatar */
+      const av = document.getElementById('modal-av');
+      if (av) {
+        av.style.background = bg;
+        av.innerHTML = c.photoUrl
+          ? `<img src="${esc(c.photoUrl)}" alt="${esc(c.first)}" style="width:100%;height:100%;object-fit:cover"/>`
+          : `<span style="color:${fg};font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700">${initials(c.first, c.last)}</span>`;
+      }
+
+      /* name & position */
+      const mName = document.getElementById('modal-name'); if (mName) mName.textContent = `${esc(c.first)} ${esc(c.last)}`;
+      const mPill = document.getElementById('modal-pos-pill');
+      if (mPill) { mPill.textContent = c.position; mPill.style.background = col + '22'; mPill.style.color = col; mPill.style.border = `1px solid ${col}44` }
+
+      /* info grid */
+      const infoGrid = document.getElementById('modal-info-grid');
+      if (infoGrid) {
+        const cells = [
+          { label: 'Position', val: c.position || '—' },
+          { label: 'Age', val: c.age ? c.age + ' years old' : '—' },
+          { label: 'Occupation', val: c.occ || '—' },
+          { label: 'Yrs in Coop', val: c.yearsInCoop ? c.yearsInCoop + ' years' : '—' },
+        ];
+        infoGrid.innerHTML = cells.map(cell => `
+      <div class="mi-cell">
+        <div class="mi-label">${esc(cell.label)}</div>
+        <div class="mi-val">${esc(cell.val)}</div>
+      </div>`).join('');
+      }
+
+      /* bio */
+      const mBio = document.getElementById('modal-bio'); if (mBio) mBio.textContent = c.bio || 'No biography provided.';
+
+      /* platform */
+      const mPlatformSec = document.getElementById('modal-platform-section');
+      const mPlatform = document.getElementById('modal-platform');
+      if (c.platform) {
+        if (mPlatformSec) mPlatformSec.style.display = 'block';
+        if (mPlatform) mPlatform.textContent = c.platform;
+      } else {
+        if (mPlatformSec) mPlatformSec.style.display = 'none';
+      }
+
+      /* footer */
+      const foot = document.getElementById('modal-foot');
+      if (foot) {
+        foot.innerHTML = hasVoted
+          ? `<div class="voted-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>You have already voted</div>
+        <button class="btn-ghost" onclick="closeModal()">Close</button>`
+          : !electionActive
+            ? `<button class="btn-ghost" onclick="closeModal()" style="flex:1">Close</button>`
+            : `<button class="btn-ghost" onclick="closeModal()">Close</button>
+        <a href="ballot.html" class="btn-vote-cta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Go to Ballot
+        </a>`;
+      }
+
+      document.getElementById('cand-modal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('cand-modal').classList.remove('show');
+    }
+
+    /* close on backdrop click */
+    document.getElementById('cand-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('cand-modal')) closeModal();
+    });
+
+    /* ─────────────────────────────────────────
+       INIT
+    ───────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      CoopVote.guard('member').then(loadData);
+      /*
+       * When your backend is ready:
+       * fetch('/api/voter/candidates')
+       *   .then(r => r.json())
+       *   .then(data => initCandidates(data))
+       *   .catch(() => initCandidates(null));
+       */
+    });
+  </script>
+</body>
+
+</html>

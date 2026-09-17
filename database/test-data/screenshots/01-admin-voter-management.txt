@@ -1,0 +1,137 @@
+Add Voter
+FIRST NAME
+LAST NAME
+MEMBER ID
+DATE OF BIRTH
+EMAIL ADDRESS
+USERNAME (OPTIONAL)
+A temporary password is generated and shown once the account is created, and emailed to the member.
+PHONE NUMBER (REQUIRED)
+ADDRESS (REQUIRED)
+Cancel
+Create Account
+Account Created
+Yvonne Zamora is registered
+Email is switched off, so hand these details over yourself.
+Member number
+COOP-0114
+Username
+voter100
+Temporary password
+fPfUXU3ME4
+Write this down now — the password is stored encrypted and cannot be shown again. Ask the member to change it after signing in.
+Copy
+Done
+Voter Profile
+Close
+Edit Voter
+Remove Voter
+Remove this voter?
+This will deactivate the voter's account and revoke their access to the voting system. This action cannot be undone.
+Cancel
+Yes, Remove
+CoopVote
+Santiago City Multi-Purpose Cooperative
+MAIN
+Dashboard
+MANAGEMENT
+Voter Management
+Candidate Management
+Election Management
+ANALYTICS
+Vote Monitoring
+Results
+Reports
+SYSTEM
+Security & Logs
+SA
+System Admin
+Super Administrator
+Voter Management
+
+Manage cooperative member accounts and voting access
+
+84
+Total Voters
+83
+Active
+0
+Inactive
+All Status
+Active
+Suspended
+Inactive
+All Voters
+Voted
+Not Yet Voted
+Export
+Add Voter
+	VOTER	MEMBER ID	EMAIL	STATUS	VOTE STATUS	REGISTERED	ACTIONS
+	
+AA
+Aaron Aguilar
++63 900 000 0021
+	COOP-0035	coopvote.voter021@example.com	Active	Not Voted	September 10, 2026	
+
+	
+AA
+Adrian Alvarez
++63 900 000 0001
+	COOP-0015	coopvote.voter001@example.com	Active	Not Voted	September 10, 2026	
+
+	
+AA
+Alejandro Abad
++63 900 000 0061
+	COOP-0075	coopvote.voter061@example.com	Active	Not Voted	September 10, 2026	
+
+	
+AA
+Althea Abad
++63 900 000 0046
+	COOP-0060	coopvote.voter046@example.com	Active	Not Voted	September 10, 2026	
+
+	
+AA
+Amelia Aguilar
++63 900 000 0062
+	COOP-0076	coopvote.voter062@example.com	Active	Not Voted	September 10, 2026	
+
+	
+AB
+Andres Balagtas
++63 900 000 0063
+	COOP-0077	coopvote.voter063@example.com	Active	Not Voted	September 10, 2026	
+
+	
+AB
+Angela Bonifacio
++63 900 000 0064
+	COOP-0078	coopvote.voter064@example.com	Active	Not Voted	September 10, 2026	
+
+	
+AC
+Antonio Cabral
++63 900 000 0065
+	COOP-0079	coopvote.voter065@example.com	Active	Not Voted	September 10, 2026	
+
+	
+BB
+Bea Bernardo
++63 900 000 0022
+	COOP-0036	coopvote.voter022@example.com	Active	Not Voted	September 10, 2026	
+
+	
+BC
+Beatriz Cabrera
++63 900 000 0066
+	COOP-0080	coopvote.voter066@example.com	Active	Not Voted	September 10, 2026	
+Showing 1–10 of 111 voters
+‹
+1
+2
+…
+…
+11
+12
+›

@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>CoopVote — Security &amp; Logs</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --navy: #0b1931;
+      --navy2: #0f2040;
+      --navy3: #162a52;
+      --navy4: #1e3566;
+      --gold: #c9a84c;
+      --gold2: #e8c96a;
+      --white: #ffffff;
+      --muted: #7a8ba0;
+      --muted2: #a8b8cc;
+      --border: rgba(255, 255, 255, .08);
+      --danger: #e05c5c;
+      --success: #4caf82;
+      --warn: #e0a030;
+      --info: #4a9fd4;
+      --purple: #9b7fd4;
+      --sidebar-w: 260px;
+      --header-h: 64px;
+      --radius: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow: hidden
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .12);
+      border-radius: 99px
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes shimmer {
+
+      0%,
+      100% {
+        left: -70%
+      }
+
+      50% {
+        left: 140%
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(224, 92, 92, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 5px rgba(224, 92, 92, 0)
+      }
+    }
+
+    @keyframes pulseWarn {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(224, 160, 48, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(224, 160, 48, 0)
+      }
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .25
+      }
+    }
+
+    @keyframes slideRow {
+      from {
+        opacity: 0;
+        transform: translateX(-8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--navy2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+      z-index: 200
+    }
+
+    .sidebar-logo {
+      padding: 28px 22px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3);
+      position: relative;
+      overflow: hidden
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -70%;
+      width: 40%;
+      height: 100%;
+      background: rgba(255, 255, 255, .3);
+      transform: skewX(-20deg);
+      animation: shimmer 4s ease-in-out infinite
+    }
+
+    .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--navy)
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 800
+    }
+
+    .logo-text span {
+      color: var(--gold)
+    }
+
+    .sidebar-section {
+      padding: 20px 14px 8px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--muted2);
+      transition: all .2s;
+      position: relative;
+      white-space: nowrap;
+      text-decoration: none;
+      overflow: hidden
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, .06);
+      color: var(--white)
+    }
+
+    .nav-item.active {
+      background: rgba(201, 168, 76, .14);
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--gold)
+    }
+
+    .nav-item svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: .7
+    }
+
+    .nav-item.active svg {
+      opacity: 1
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 14px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .admin-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .05);
+      cursor: pointer;
+      transition: background .2s
+    }
+
+    .admin-card:hover {
+      background: rgba(255, 255, 255, .09)
+    }
+
+    .admin-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--navy4), var(--navy3));
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0
+    }
+
+    .admin-info {
+      flex: 1;
+      overflow: hidden
+    }
+
+    .admin-name {
+      font-size: .82rem;
+      font-weight: 600
+    }
+
+    .admin-role {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0
+    }
+
+    .header {
+      height: var(--header-h);
+      flex-shrink: 0;
+      background: rgba(11, 25, 49, .85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+      z-index: 100
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted2);
+      padding: 6px;
+      border-radius: 8px;
+      transition: color .2s, background .2s
+    }
+
+    .hamburger:hover {
+      color: var(--white);
+      background: rgba(255, 255, 255, .07)
+    }
+
+    .header-title {
+      flex: 1
+    }
+
+    .header-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700
+    }
+
+    .header-title p {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .hbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .hbtn:hover {
+      background: rgba(255, 255, 255, .12);
+      color: var(--white)
+    }
+
+    .hbtn svg {
+      width: 18px;
+      height: 18px
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      text-decoration: none
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      border: 1px solid var(--border)
+    }
+
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(201, 168, 76, .07)
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px
+    }
+
+    /* ── THREAT BANNER ── */
+    .threat-banner {
+      border-radius: 16px;
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(224, 160, 48, .07);
+      border: 1px solid rgba(224, 160, 48, .22);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .threat-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(224, 160, 48, .5), transparent)
+    }
+
+    .threat-pulse {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(224, 160, 48, .1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative
+    }
+
+    .threat-pulse::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid rgba(224, 160, 48, .35);
+      animation: pulseWarn 2s ease-in-out infinite
+    }
+
+    .threat-pulse svg {
+      width: 20px;
+      height: 20px;
+      color: var(--warn)
+    }
+
+    .threat-content {
+      flex: 1
+    }
+
+    .threat-title {
+      font-size: .92rem;
+      font-weight: 700;
+      color: var(--warn);
+      margin-bottom: 3px
+    }
+
+    .threat-msg {
+      font-size: .78rem;
+      color: rgba(224, 160, 48, .65);
+      line-height: 1.5
+    }
+
+    .threat-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap
+    }
+
+    .btn-warn {
+      background: rgba(224, 160, 48, .12);
+      color: var(--warn);
+      border: 1px solid rgba(224, 160, 48, .2);
+      font-size: .8rem;
+      padding: 7px 13px
+    }
+
+    .btn-warn:hover {
+      background: rgba(224, 160, 48, .22)
+    }
+
+    .threat-dismiss {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      flex-shrink: 0
+    }
+
+    .threat-dismiss:hover {
+      background: rgba(255, 255, 255, .12);
+      color: var(--white)
+    }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      animation: fadeUp .45s .05s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .sc {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 17px 16px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s;
+      cursor: default
+    }
+
+    .sc:hover {
+      transform: translateY(-2px)
+    }
+
+    .sc::after {
+      content: '';
+      position: absolute;
+      top: -18px;
+      right: -18px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      opacity: .1
+    }
+
+    .sc.green::after {
+      background: var(--success)
+    }
+
+    .sc.red::after {
+      background: var(--danger)
+    }
+
+    .sc.warn::after {
+      background: var(--warn)
+    }
+
+    .sc.blue::after {
+      background: var(--info)
+    }
+
+    .sc.purple::after {
+      background: var(--purple)
+    }
+
+    .sc-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px
+    }
+
+    .sc-icon svg {
+      width: 16px;
+      height: 16px
+    }
+
+    .sc-icon.green {
+      background: rgba(76, 175, 130, .15)
+    }
+
+    .sc-icon.green svg {
+      color: var(--success)
+    }
+
+    .sc-icon.red {
+      background: rgba(224, 92, 92, .15)
+    }
+
+    .sc-icon.red svg {
+      color: var(--danger)
+    }
+
+    .sc-icon.warn {
+      background: rgba(224, 160, 48, .15)
+    }
+
+    .sc-icon.warn svg {
+      color: var(--warn)
+    }
+
+    .sc-icon.blue {
+      background: rgba(74, 159, 212, .15)
+    }
+
+    .sc-icon.blue svg {
+      color: var(--info)
+    }
+
+    .sc-icon.purple {
+      background: rgba(155, 127, 212, .15)
+    }
+
+    .sc-icon.purple svg {
+      color: var(--purple)
+    }
+
+    .sc-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.7rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 3px;
+      color: var(--white)
+    }
+
+    .sc-val.empty {
+      color: var(--muted);
+      font-size: 1.2rem
+    }
+
+    .sc-label {
+      font-size: .7rem;
+      color: var(--muted)
+    }
+
+    .sc-note {
+      font-size: .67rem;
+      font-weight: 600;
+      margin-top: 6px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      display: inline-block
+    }
+
+    .sc-note.good {
+      background: rgba(76, 175, 130, .12);
+      color: var(--success)
+    }
+
+    .sc-note.bad {
+      background: rgba(224, 92, 92, .12);
+      color: var(--danger)
+    }
+
+    .sc-note.neutral {
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted)
+    }
+
+    /* ── MAIN GRID ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 16px
+    }
+
+    /* ── LOG TERMINAL ── */
+    .log-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: fadeUp .45s .12s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .log-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap
+    }
+
+    .log-head-left {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .log-title {
+      font-size: .9rem;
+      font-weight: 600
+    }
+
+    .log-subtitle {
+      font-size: .71rem;
+      color: var(--muted);
+      margin-top: 2px;
+      max-width: 46ch;
+      line-height: 1.45
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(76, 175, 130, .12);
+      border: 1px solid rgba(76, 175, 130, .2);
+      font-size: .67rem;
+      font-weight: 700;
+      color: var(--success)
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: blink 1.4s ease-in-out infinite
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap
+    }
+
+    .fchip {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .71rem;
+      font-weight: 600;
+      color: var(--muted2);
+      transition: all .2s;
+      letter-spacing: .2px
+    }
+
+    .fchip:hover {
+      border-color: rgba(255, 255, 255, .2);
+      color: var(--white)
+    }
+
+    .fchip.active {
+      color: var(--navy);
+      font-weight: 700;
+      border-color: transparent
+    }
+
+    .fchip.all.active {
+      background: var(--muted2)
+    }
+
+    .fchip.vote.active {
+      background: var(--success)
+    }
+
+    .fchip.auth.active {
+      background: var(--info)
+    }
+
+    .fchip.warn.active {
+      background: var(--warn)
+    }
+
+    .fchip.admin.active {
+      background: var(--gold)
+    }
+
+    .fchip.error.active {
+      background: var(--danger)
+    }
+
+    /* search */
+    .log-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, .02)
+    }
+
+    .log-search svg {
+      width: 14px;
+      height: 14px;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .log-search input {
+      background: none;
+      border: none;
+      color: var(--muted2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .84rem;
+      outline: none;
+      flex: 1
+    }
+
+    .log-search input::placeholder {
+      color: var(--muted)
+    }
+
+    /* log list */
+    .log-list {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 380px
+    }
+
+    .log-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, .03);
+      transition: background .15s;
+      cursor: default
+    }
+
+    .log-row:hover {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    .log-row.flagged {
+      background: rgba(224, 92, 92, .04);
+      border-left: 2px solid rgba(224, 92, 92, .35)
+    }
+
+    .log-row.flagged:hover {
+      background: rgba(224, 92, 92, .08)
+    }
+
+    .log-type-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px
+    }
+
+    .dot-vote {
+      background: var(--success)
+    }
+
+    .dot-auth {
+      background: var(--info)
+    }
+
+    .dot-warn {
+      background: var(--warn)
+    }
+
+    .dot-admin {
+      background: var(--gold)
+    }
+
+    .dot-error {
+      background: var(--danger)
+    }
+
+    .log-body {
+      flex: 1;
+      min-width: 0
+    }
+
+    .log-event {
+      font-size: .82rem;
+      font-weight: 500;
+      color: var(--white);
+      margin-bottom: 3px;
+      line-height: 1.4
+    }
+
+    .log-event strong {
+      color: var(--gold)
+    }
+
+    .log-meta {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap
+    }
+
+    .log-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .67rem;
+      color: var(--muted)
+    }
+
+    .log-ip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .67rem;
+      color: var(--muted2)
+    }
+
+    /* Who performed the action. Set apart from the monospaced time and IP
+       because it is a person's name, and it is the first thing an
+       administrator reading an audit trail looks for. */
+    .log-actor {
+      font-size: .69rem;
+      font-weight: 600;
+      color: var(--gold);
+      max-width: 190px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .log-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: .63rem;
+      font-weight: 700;
+      letter-spacing: .4px
+    }
+
+    .tag-vote {
+      background: rgba(76, 175, 130, .12);
+      color: var(--success)
+    }
+
+    .tag-auth {
+      background: rgba(74, 159, 212, .12);
+      color: var(--info)
+    }
+
+    .tag-warn {
+      background: rgba(224, 160, 48, .12);
+      color: var(--warn)
+    }
+
+    .tag-admin {
+      background: rgba(201, 168, 76, .12);
+      color: var(--gold)
+    }
+
+    .tag-error {
+      background: rgba(224, 92, 92, .12);
+      color: var(--danger)
+    }
+
+    .flag-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      border: none;
+      background: rgba(224, 92, 92, .08);
+      color: var(--danger);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all .2s;
+      opacity: 0
+    }
+
+    .log-row:hover .flag-btn {
+      opacity: 1
+    }
+
+    .flag-btn:hover {
+      background: rgba(224, 92, 92, .22)
+    }
+
+    .flag-btn svg {
+      width: 11px;
+      height: 11px
+    }
+
+    /* log footer */
+    .log-footer {
+      padding: 11px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap
+    }
+
+    .log-count {
+      font-size: .74rem;
+      color: var(--muted)
+    }
+
+    .log-actions {
+      display: flex;
+      gap: 6px
+    }
+
+    .sm-btn {
+      padding: 6px 11px;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .74rem;
+      font-weight: 600;
+      transition: all .2s
+    }
+
+    .sm-btn.outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted2)
+    }
+
+    .sm-btn.outline:hover {
+      border-color: var(--gold);
+      color: var(--gold)
+    }
+
+    /* ── EMPTY LOG ── */
+    .log-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 20px;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center
+    }
+
+    .log-empty svg {
+      width: 36px;
+      height: 36px;
+      opacity: .28
+    }
+
+    .log-empty p {
+      font-size: .82rem;
+      line-height: 1.6
+    }
+
+    /* ── SIDE PANELS ── */
+    .side-panels {
+      display: flex;
+      flex-direction: column;
+      gap: 14px
+    }
+
+    .panel {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .panel-head {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px
+    }
+
+    .panel-title {
+      font-size: .85rem;
+      font-weight: 600
+    }
+
+    .panel-sub {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .panel-body {
+      padding: 14px 16px
+    }
+
+    /* score gauge */
+    .score-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px
+    }
+
+    .gauge-svg {
+      flex-shrink: 0
+    }
+
+    .score-details {
+      flex: 1
+    }
+
+    .score-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--success);
+      line-height: 1
+    }
+
+    .score-label {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 3px;
+      margin-bottom: 10px
+    }
+
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    .chk {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .74rem;
+      color: var(--muted2)
+    }
+
+    .chk svg {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0
+    }
+
+    .chk.ok svg {
+      color: var(--success)
+    }
+
+    .chk.warn svg {
+      color: var(--warn)
+    }
+
+    /* suspicious IPs */
+    .ip-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .ip-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 11px;
+      background: rgba(224, 92, 92, .05);
+      border: 1px solid rgba(224, 92, 92, .1);
+      border-radius: 9px;
+      transition: background .2s
+    }
+
+    .ip-item:hover {
+      background: rgba(224, 92, 92, .1)
+    }
+
+    .ip-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: rgba(224, 92, 92, .12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .ip-icon svg {
+      width: 13px;
+      height: 13px;
+      color: var(--danger)
+    }
+
+    .ip-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .ip-addr {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .73rem;
+      font-weight: 500
+    }
+
+    .ip-reason {
+      font-size: .67rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .ip-cnt {
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--danger);
+      flex-shrink: 0
+    }
+
+    .ip-block {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: none;
+      background: rgba(224, 92, 92, .1);
+      color: var(--danger);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      flex-shrink: 0
+    }
+
+    .ip-block:hover {
+      background: rgba(224, 92, 92, .3)
+    }
+
+    .ip-block svg {
+      width: 11px;
+      height: 11px
+    }
+
+    /* integrity list */
+    .integrity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    .int-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 11px;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, .03);
+      border: 1px solid var(--border);
+      font-size: .79rem;
+      transition: background .2s
+    }
+
+    .int-item:hover {
+      background: rgba(255, 255, 255, .06)
+    }
+
+    .int-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted2)
+    }
+
+    .int-label svg {
+      width: 12px;
+      height: 12px
+    }
+
+    .int-val {
+      font-weight: 700;
+      font-size: .8rem
+    }
+
+    .int-val.green {
+      color: var(--success)
+    }
+
+    .int-val.warn {
+      color: var(--warn)
+    }
+
+    .int-val.red {
+      color: var(--danger)
+    }
+
+    /* ── MODALS ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .65);
+      backdrop-filter: blur(6px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s
+    }
+
+    .modal-backdrop.show {
+      opacity: 1;
+      pointer-events: all
+    }
+
+    .modal {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, .6);
+      transform: translateY(24px) scale(.97);
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1), opacity .25s;
+      opacity: 0
+    }
+
+    .modal-backdrop.show .modal {
+      transform: translateY(0) scale(1);
+      opacity: 1
+    }
+
+    .modal-head {
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700
+    }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: none;
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s
+    }
+
+    .modal-close:hover {
+      background: rgba(224, 92, 92, .2);
+      color: var(--danger)
+    }
+
+    .modal-body {
+      padding: 18px 22px
+    }
+
+    .modal-foot {
+      padding: 14px 22px 20px;
+      display: flex;
+      gap: 9px;
+      justify-content: flex-end
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      border: 1px solid var(--border)
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, .1)
+    }
+
+    .btn-red {
+      background: rgba(224, 92, 92, .12);
+      color: var(--danger);
+      border: 1px solid rgba(224, 92, 92, .2)
+    }
+
+    .btn-red:hover {
+      background: rgba(224, 92, 92, .25)
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .05);
+      font-size: .8rem
+    }
+
+    .detail-row:last-child {
+      border-bottom: none
+    }
+
+    .detail-label {
+      color: var(--muted);
+      flex-shrink: 0;
+      margin-right: 12px
+    }
+
+    .detail-val {
+      font-weight: 500;
+      text-align: right;
+      word-break: break-all
+    }
+
+    .detail-val.mono-sm {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .72rem;
+      color: var(--muted2)
+    }
+
+    .detail-val.red {
+      color: var(--danger)
+    }
+
+    .detail-val.green {
+      color: var(--success)
+    }
+
+    .confirm-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 4px 0
+    }
+
+    .confirm-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: rgba(224, 92, 92, .12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px
+    }
+
+    .confirm-icon svg {
+      color: var(--danger);
+      width: 24px;
+      height: 24px
+    }
+
+    .confirm-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 8px
+    }
+
+    .confirm-msg {
+      font-size: .81rem;
+      color: var(--muted);
+      line-height: 1.6
+    }
+
+    /* ── TOAST ── */
+    .toast-wrap {
+      position: fixed;
+      top: 78px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none
+    }
+
+    .toast {
+      background: var(--navy3);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 11px 15px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: .82rem;
+      min-width: 220px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .4);
+      transform: translateX(130%);
+      transition: transform .35s cubic-bezier(.22, 1, .36, 1)
+    }
+
+    .toast.show {
+      transform: translateX(0)
+    }
+
+    .toast-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .toast.success .toast-dot {
+      background: var(--success)
+    }
+
+    .toast.error .toast-dot {
+      background: var(--danger)
+    }
+
+    .toast.warn .toast-dot {
+      background: var(--warn)
+    }
+
+    .toast.info .toast-dot {
+      background: var(--info)
+    }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      z-index: 150;
+      backdrop-filter: blur(4px)
+    }
+
+    /* ── EMPTY SECTION ── */
+    .empty-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 10px;
+      color: var(--muted);
+      text-align: center
+    }
+
+    .empty-section svg {
+      width: 34px;
+      height: 34px;
+      opacity: .28
+    }
+
+    .empty-section p {
+      font-size: .81rem;
+      line-height: 1.5
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:1100px) {
+      .main-grid {
+        grid-template-columns: 1fr
+      }
+
+      .stats-strip {
+        grid-template-columns: repeat(3, 1fr)
+      }
+    }
+
+    @media(max-width:768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        box-shadow: 8px 0 40px rgba(0, 0, 0, .5)
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .overlay {
+        display: block;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity .3s
+      }
+
+      .overlay.show {
+        pointer-events: all;
+        opacity: 1
+      }
+
+      .hamburger {
+        display: flex
+      }
+
+      .content {
+        padding: 16px
+      }
+
+      .header {
+        padding: 0 16px
+      }
+
+      .stats-strip {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    @media(max-width:480px) {
+      .stats-strip {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+  
+    /* ── Layout fix ──────────────────────────────────────────
+       .content is a flex column, and flex items shrink by default.
+       Once the page grew taller than the viewport every section was
+       squashed, and any card with overflow:hidden clipped its own
+       text (the welcome hero showed the name but hid the meta line).
+       Sections keep their natural height; .content already scrolls. */
+    .content > * { flex-shrink: 0; }
+
+    /* ── Empty-state action icons ────────────────────────────
+       The illustration rule above (.page-empty svg and friends) also
+       matches the icon inside the empty state's button, and a rule
+       beats the svg's own width/height attributes. Keep those icons
+       button-sized so the call to action matches every other button. */
+    .page-empty a svg, .page-empty button svg,
+    .empty-section a svg, .empty-section button svg,
+    .page-state a svg, .page-state button svg,
+    .hero-empty a svg, .hero-empty button svg {
+      width: 14px;
+      height: 14px;
+      opacity: 1;
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
+  <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
+  <link rel="stylesheet" href="../assets/css/election-operations.css?v=20260913-clean-reports">
+  <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
+  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+</head>
+
+<body>
+
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- LOG DETAIL MODAL -->
+  <div class="modal-backdrop" id="log-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">Log Entry Detail</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('log-modal')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="log-detail-body"></div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('log-modal')">Close</button>
+        <button class="btn btn-red" id="log-block-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+          </svg>
+          Block IP
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK IP CONFIRM -->
+  <div class="modal-backdrop" id="block-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">Block IP Address</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('block-modal')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-center">
+          <div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+            </svg></div>
+          <div class="confirm-title">Block this IP?</div>
+          <div class="confirm-msg" id="block-ip-msg">This IP will be permanently blocked from accessing the voting
+            system.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('block-modal')">Cancel</button>
+        <button class="btn btn-red" onclick="confirmBlock()">Block IP Address</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark"><svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg></div>
+        <div class="logo-text">Coop<span>Vote</span></div>
+      </div>
+
+      <div class="sidebar-section">Main</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+        </svg>
+        Dashboard
+      </a>
+
+      <div class="sidebar-section">Management</div>
+      <a class="nav-item" href="voter-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Voter Management
+      </a>
+      <a class="nav-item" href="candidate-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        Candidate Management
+      </a>
+      <a class="nav-item" href="election-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Election Management
+      </a>
+
+      <div class="sidebar-section">Analytics</div>
+      <a class="nav-item" href="vote-monitoring.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        Vote Monitoring
+      </a>
+      <a class="nav-item" href="results.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        Results
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        Reports
+      </a>
+
+      <div class="sidebar-section">System</div>
+      <a class="nav-item active" href="security-logs.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        Security &amp; Logs
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="admin-card">
+          <div class="admin-avatar">SA</div>
+          <div class="admin-info">
+            <div class="admin-name">System Admin</div>
+            <div class="admin-role">Super Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="header">
+        <button aria-label="Open the menu" class="hamburger" onclick="toggleSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div class="header-title">
+          <h1>Security &amp; Logs</h1>
+          <p>Audit administrative actions, review refused sign-ins, and block addresses</p>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </button>
+
+          <button class="hbtn" title="Logout" onclick="CoopVote.logout()"
+            style="border:1px solid rgba(224,92,92,.2);color:var(--danger)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content" id="main-content">
+        <!-- populated by renderPage() -->
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/validation.js?v=20260911-required2"></script>
+  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/election-operations.js?v=20260913-clean-reports"></script>
+  <script>
+    /* ─────────────────────────────────────────
+       STATE
+    ───────────────────────────────────────── */
+    let secData = null;    // set by initSecurity(data)
+    let activeFilter = 'all';
+    let currentLogs = [];
+    let blockTarget = '';
+    let liveInterval = null;
+
+    const TAG_MAP = { vote: 'tag-vote', auth: 'tag-auth', warn: 'tag-warn', admin: 'tag-admin', error: 'tag-error' };
+    const DOT_MAP = { vote: 'dot-vote', auth: 'dot-auth', warn: 'dot-warn', admin: 'dot-admin', error: 'dot-error' };
+    const LABEL_MAP = { vote: 'VOTE', auth: 'AUTH', warn: 'WARNING', admin: 'ADMIN', error: 'ERROR' };
+
+    /* ─────────────────────────────────────────
+       SIDEBAR
+    ───────────────────────────────────────── */
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show') }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show') }
+
+    /* ─────────────────────────────────────────
+       LOAD DATA
+       ─────────────────────────────────────────
+       Replace with real API:
+       fetch('/api/security')
+         .then(r => r.json())
+         .then(data => initSecurity(data))
+         .catch(() => initSecurity(null));
+    
+       Expected shape:
+       {
+         stats: {
+           votesVerified, blockedIPs, flaggedEvents,
+           loginAttempts, totalLogs, securityScore
+         },
+         threats: [                          // threat banner items (optional)
+           { ip, message }
+         ],
+         suspiciousIPs: [
+           { ip, reason, attempts }
+         ],
+         integrity: {
+           duplicateVotes, votesVerified, sessionHijacks,
+           failedLogins, blockedIPs
+         },
+         logs: [
+           { type, event, time, ip, flagged }
+           // type: vote | auth | warn | admin | error
+         ]
+       }
+    ───────────────────────────────────────── */
+    function loadSecurityData() {
+      CoopVote.api('security')
+        .then(data => initSecurity(data))
+        .catch(err => {
+          initSecurity(null);
+          CoopVote.toast(err.message || 'Could not load data from the server.', 'error');
+        });
+    }
+
+    function initSecurity(data) {
+      secData = data;
+      activeFilter = 'all';
+      renderPage();
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER PAGE
+    ───────────────────────────────────────── */
+    function renderPage() {
+      const c = document.getElementById('main-content');
+      const d = secData;
+
+      /* ── Threat Banner ── */
+      const threats = d?.threats || [];
+      const threatHTML = threats.length > 0 ? threats.map(t => `
+    <div class="threat-banner" id="threat-${t.ip.replace(/\./g, '-')}">
+      <div class="threat-pulse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="threat-content">
+        <div class="threat-title">⚠ Suspicious Activity Detected</div>
+        <div class="threat-msg">${esc(t.message)}</div>
+      </div>
+      <div class="threat-actions">
+        <button class="btn btn-warn" onclick="openBlock('${t.ip}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Block IP
+        </button>
+      </div>
+      <button class="threat-dismiss" onclick="dismissBanner(this)" title="Dismiss">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('') : '';
+
+      /* ── Stats ── */
+      const s = d?.stats || {};
+      const hasStats = d && d.stats;
+      const statsHTML = `
+    <div class="stats-strip">
+      <div class="sc green">
+        <div class="sc-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div class="sc-val ${!hasStats ? 'empty' : ''}">${hasStats ? (s.votesVerified || 0).toLocaleString() : '—'}</div>
+        <div class="sc-label">Ballots Recorded</div>
+        <div class="sc-note ${hasStats ? 'good' : 'neutral'}">${hasStats ? 'No duplicates' : '—'}</div>
+      </div>
+      <div class="sc red">
+        <div class="sc-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div>
+        <div class="sc-val ${!hasStats ? 'empty' : ''}">${hasStats ? (s.blockedIPs || 0) : '—'}</div>
+        <div class="sc-label">Blocked IPs</div>
+        <div class="sc-note ${hasStats && s.blockedIPs > 0 ? 'bad' : 'neutral'}">${hasStats ? (s.blockedIPs > 0 ? '+' + s.blockedIPs + ' today' : 'None today') : '—'}</div>
+      </div>
+      <div class="sc warn">
+        <div class="sc-icon warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="sc-val ${!hasStats ? 'empty' : ''}">${hasStats ? (s.flaggedEvents || 0) : '—'}</div>
+        <div class="sc-label">Flagged Events</div>
+        <div class="sc-note ${hasStats && s.flaggedEvents > 0 ? 'bad' : 'neutral'}">${hasStats ? (s.flaggedEvents > 0 ? 'Review needed' : 'Clear') : '—'}</div>
+      </div>
+      <div class="sc blue">
+        <div class="sc-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="sc-val ${!hasStats ? 'empty' : ''}">${hasStats ? (s.loginAttempts || 0).toLocaleString() : '—'}</div>
+        <div class="sc-label">Login Attempts</div>
+        <div class="sc-note neutral">${hasStats ? 'Total today' : '—'}</div>
+      </div>
+      <div class="sc purple">
+        <div class="sc-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="sc-val ${!hasStats ? 'empty' : ''}">${hasStats ? (s.totalLogs || 0).toLocaleString() : '—'}</div>
+        <div class="sc-label">Total Log Entries</div>
+        <div class="sc-note neutral">${hasStats ? 'Last 24 hrs' : '—'}</div>
+      </div>
+    </div>`;
+
+      c.innerHTML = threatHTML + statsHTML + `
+    <div class="main-grid equal-height-grid">
+      <div class="log-card" id="log-card-wrap">
+        ${renderLogCardHTML()}
+      </div>
+      <div class="side-panels">
+        ${renderScoreHTML()}
+        ${renderIPListHTML()}
+        ${renderIntegrityHTML()}
+      </div>
+    </div>`;
+
+      // init logs state
+      currentLogs = d?.logs ? [...d.logs] : [];
+      attachLogEvents();
+    }
+
+    /* ─────────────────────────────────────────
+       LOG CARD HTML
+    ───────────────────────────────────────── */
+    function renderLogCardHTML() {
+      return `
+    <div class="log-head">
+      <div class="log-head-left">
+        <div>
+          <div class="log-title">Administrative Activity Log</div>
+          <div class="log-subtitle">What administrators did. No member activity is listed
+            here — not their sign-ins, and not their ballots.</div>
+        </div>
+        <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+      </div>
+      <div class="filter-chips">
+        <!-- Vote and Error are gone: ballots are members' activity and no
+             longer listed here, and nothing ever produced an "error" entry. -->
+        <button class="fchip all active" onclick="filterLogs('all',this)">All</button>
+        <button class="fchip admin" onclick="filterLogs('admin',this)">Admin</button>
+        <button class="fchip auth" onclick="filterLogs('auth',this)">Sign-in</button>
+        <button class="fchip warn" onclick="filterLogs('warn',this)">Refused</button>
+      </div>
+    </div>
+    <div class="log-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search by event, administrator, or IP address…" oninput="searchLogs(this.value)" id="log-search-input"/>
+    </div>
+    <div class="log-list" id="log-list"></div>
+    <div class="log-footer">
+      <div class="log-count" id="log-count">No entries</div>
+      <div class="log-actions">
+        <!-- There is deliberately no "Clear Logs" button. An audit trail
+             an administrator can erase is not an audit trail, and the one
+             that used to sit here erased nothing anyway: it emptied the
+             list in the browser, said "Logs cleared.", and every entry came
+             back on the next refresh. -->
+        <button class="sm-btn outline" onclick="exportLogs()">Export</button>
+        <button class="sm-btn outline" onclick="loadSecurityData()">Refresh</button>
+      </div>
+    </div>`;
+    }
+
+    function attachLogEvents() {
+      renderLogList();
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER LOG LIST
+    ───────────────────────────────────────── */
+    function renderLogList() {
+      const list = document.getElementById('log-list');
+      const count = document.getElementById('log-count');
+      if (!list) return;
+
+      if (currentLogs.length === 0) {
+        const isFiltering = activeFilter !== 'all' || (document.getElementById('log-search-input')?.value || '').trim();
+        list.innerHTML = `<div class="log-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <p>${isFiltering ? 'No entries match your filter.' : 'No log entries yet.<br/>Entries will appear here once the system is active.'}</p>
+    </div>`;
+        if (count) count.textContent = '0 entries';
+        return;
+      }
+
+      if (count) count.textContent = `Showing ${currentLogs.length} entr${currentLogs.length !== 1 ? 'ies' : 'y'}`;
+      list.innerHTML = currentLogs.map((l, i) => `
+    <div class="log-row${l.flagged ? ' flagged' : ''}" onclick="showLogDetail(${i})" style="animation:slideRow .2s ${i * .02}s both">
+      <div class="log-type-dot ${DOT_MAP[l.type] || 'dot-auth'}"></div>
+      <div class="log-body">
+        <div class="log-event">${esc(l.event)}</div>
+        <div class="log-meta">
+          <span class="log-time">${l.time}</span>
+          <span class="log-actor">${esc(l.actor || '—')}</span>
+          <span class="log-ip">${esc(l.ip)}</span>
+          <span class="log-tag ${TAG_MAP[l.type] || 'tag-auth'}">${LABEL_MAP[l.type] || 'LOG'}</span>
+          ${l.flagged ? `<span class="log-tag tag-error">FLAGGED</span>` : ''}
+        </div>
+      </div>
+      <button class="flag-btn" title="${l.flagged ? 'Unflag' : 'Flag'}" onclick="event.stopPropagation();toggleFlag(${i})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      </button>
+    </div>`).join('');
+    }
+
+    /* ─────────────────────────────────────────
+       FILTER & SEARCH
+    ───────────────────────────────────────── */
+    function filterLogs(type, btn) {
+      activeFilter = type;
+      document.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      const base = secData?.logs || [];
+      const q = (document.getElementById('log-search-input')?.value || '').toLowerCase();
+      currentLogs = applySearch(type === 'all' ? base : base.filter(l => l.type === type), q);
+      renderLogList();
+    }
+
+    function searchLogs(q) {
+      const base = secData?.logs || [];
+      const filtered = activeFilter === 'all' ? base : base.filter(l => l.type === activeFilter);
+      currentLogs = applySearch(filtered, q.toLowerCase());
+      renderLogList();
+    }
+
+    function applySearch(logs, q) {
+      if (!q) return [...logs];
+      return logs.filter(l =>
+        (l.event || '').toLowerCase().includes(q)
+        || (l.actor || '').toLowerCase().includes(q)
+        || (l.ip || '').includes(q)
+        || (l.time || '').includes(q));
+    }
+
+    /* ─────────────────────────────────────────
+       FLAG / UNFLAG
+    ───────────────────────────────────────── */
+    function toggleFlag(i) {
+      if (!currentLogs[i]) return;
+      currentLogs[i].flagged = !currentLogs[i].flagged;
+      // also update in source
+      const srcIdx = secData?.logs?.indexOf(currentLogs[i]);
+      if (srcIdx > -1 && secData.logs[srcIdx]) secData.logs[srcIdx].flagged = currentLogs[i].flagged;
+      renderLogList();
+      showToast(currentLogs[i].flagged ? 'Entry flagged for review.' : 'Flag removed.', currentLogs[i].flagged ? 'warn' : 'info');
+    }
+
+    /* ─────────────────────────────────────────
+       LOG DETAIL MODAL
+    ───────────────────────────────────────── */
+    function showLogDetail(i) {
+      const l = currentLogs[i]; if (!l) return;
+      blockTarget = l.ip;
+      document.getElementById('log-detail-body').innerHTML = `
+    <div class="detail-row"><span class="detail-label">Event</span><span class="detail-val">${(l.event || '').replace(/<[^>]+>/g, '')}</span></div>
+    <div class="detail-row"><span class="detail-label">Type</span><span class="detail-val"><span class="log-tag ${TAG_MAP[l.type] || 'tag-auth'}">${LABEL_MAP[l.type] || 'LOG'}</span></span></div>
+    <div class="detail-row"><span class="detail-label">Performed by</span><span class="detail-val">${esc(l.actor || '—')}</span></div>
+    <div class="detail-row"><span class="detail-label">Role</span><span class="detail-val">${esc(l.role || '—')}</span></div>
+    <div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-val mono-sm">${l.time}</span></div>
+    <div class="detail-row"><span class="detail-label">IP Address</span><span class="detail-val mono-sm">${esc(l.ip)}</span></div>
+    <div class="detail-row"><span class="detail-label">Flagged</span><span class="detail-val ${l.flagged ? 'red' : 'green'}">${l.flagged ? 'Yes — Under Review' : 'No'}</span></div>
+    <div class="detail-row"><span class="detail-label">User Agent</span><span class="detail-val mono-sm" style="font-size:.68rem">${esc(l.userAgent || 'Not recorded for this activity')}</span></div>`;
+      document.getElementById('log-block-btn').onclick = () => { closeModal('log-modal'); openBlock(blockTarget); };
+      openModal('log-modal');
+    }
+
+    /* ─────────────────────────────────────────
+       SIDE PANEL RENDERS
+    ───────────────────────────────────────── */
+    function renderScoreHTML() {
+      const score = secData?.stats?.securityScore;
+      const hasScore = typeof score === 'number';
+      const arc = 201;
+      const fill = hasScore ? arc * (1 - score / 100) : arc;
+      const col = !hasScore ? 'var(--muted)' : score >= 80 ? 'var(--success)' : score >= 60 ? 'var(--warn)' : 'var(--danger)';
+      return `
+    <div class="panel" style="animation-delay:.16s">
+      <div class="panel-head"><div><div class="panel-title">Security Score</div><div class="panel-sub">Overall system health</div></div></div>
+      <div class="panel-body">
+        <div class="score-wrap">
+          <svg width="76" height="76" viewBox="0 0 80 80" class="gauge-svg">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="9"/>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="${col}" stroke-width="9"
+              stroke-dasharray="${arc}" stroke-dashoffset="${fill}"
+              stroke-linecap="round" transform="rotate(-90 40 40)"
+              style="transition:stroke-dashoffset 1.3s .3s cubic-bezier(.22,1,.36,1)"/>
+          </svg>
+          <div class="score-details">
+            <div class="score-val" style="color:${col}">${hasScore ? score : '—'}</div>
+            <div class="score-label">${hasScore ? '/ 100' : 'No data yet'}</div>
+            <div class="check-list" id="score-checks">
+              ${hasScore
+          ? `<div class="chk ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>No duplicate votes</div>
+                   <div class="chk ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>SSL encryption active</div>
+                   <div class="chk ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Vote integrity verified</div>`
+          : `<div class="chk" style="color:var(--muted)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>No data connected</div>`}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    }
+
+    function renderIPListHTML() {
+      const ips = secData?.suspiciousIPs || [];
+      return `
+    <div class="panel" style="animation-delay:.2s">
+      <div class="panel-head">
+        <div><div class="panel-title">Suspicious IPs</div><div class="panel-sub">Flagged for review</div></div>
+        ${ips.length > 0 ? `<span style="font-size:.68rem;color:var(--danger);font-weight:700;background:rgba(224,92,92,.1);padding:2px 7px;border-radius:5px">${ips.filter(ip => !ip.reviewed).length} need review</span>` : ''}
+      </div>
+      <div class="panel-body">
+        ${ips.length > 0
+          ? `<div class="ip-list">${ips.map(ip => `
+              <div class="ip-item">
+                <div class="ip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div>
+                <div class="ip-info">
+                  <div class="ip-addr">${esc(ip.ip)}</div>
+                  <div class="ip-reason">${esc(ip.severity)} severity · ${esc(ip.reason)}</div>
+                  <div class="ip-reason">Last detected: ${esc(ip.lastSeen)} · ${ip.reviewed ? 'Reviewed' : 'Needs review'}</div>
+                </div>
+                <div class="ip-cnt">${ip.attempts}x</div>
+                <button class="btn" onclick="reviewAlert('${ip.id}', this)" ${ip.reviewed ? 'disabled' : ''}>${ip.reviewed ? 'Reviewed' : 'Mark reviewed'}</button>
+                <button class="ip-block" onclick="openBlock('${ip.ip}')" title="Block IP">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                </button>
+              </div>`).join('')}
+            </div>`
+          : `<div class="empty-section" style="padding:24px 12px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <p>No suspicious IPs detected.</p>
+            </div>`}
+      </div>
+    </div>`;
+    }
+
+    async function reviewAlert(id, button) {
+      button.disabled = true;
+      try {
+        await CoopVote.api('security/review-alert', { method: 'POST', body: { id } });
+        button.textContent = 'Reviewed';
+        CoopVote.toast('Alert marked as reviewed.', 'success');
+      } catch (error) { button.disabled = false; CoopVote.toast(error.message, 'error'); }
+    }
+
+    function renderIntegrityHTML() {
+      const ig = secData?.integrity;
+      const rows = [
+        { label: 'Duplicate votes', val: ig ? ig.duplicateVotes ?? '0' : '—', cls: ig && ig.duplicateVotes > 0 ? 'red' : 'green', icon: 'ok' },
+        { label: 'Ballots recorded', val: ig ? ig.votesVerified || '0' : '—', cls: 'green', icon: 'ok' },
+        { label: 'Failed logins', val: ig ? ig.failedLogins || '0' : '—', cls: ig && ig.failedLogins > 5 ? 'warn' : 'green', icon: ig && ig.failedLogins > 5 ? 'warn' : 'ok' },
+        { label: 'Blocked IPs', val: ig ? ig.blockedIPs || '0' : '—', cls: ig && ig.blockedIPs > 0 ? 'red' : 'green', icon: ig && ig.blockedIPs > 0 ? 'warn' : 'ok' },
+      ];
+      const okIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+      const warnIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>`;
+      return `
+    <div class="panel" style="animation-delay:.24s">
+      <div class="panel-head"><div><div class="panel-title">Vote Integrity</div><div class="panel-sub">Anti-fraud checks</div></div></div>
+      <div class="panel-body">
+        <div class="integrity-list">
+          ${rows.map(r => `
+            <div class="int-item">
+              <div class="int-label" style="color:${r.cls === 'red' || r.cls === 'warn' ? `var(--${r.cls})` : 'var(--muted2)'}">
+                <span style="color:${r.cls === 'red' || r.cls === 'warn' ? `var(--${r.cls})` : 'var(--success)'}">
+                  ${r.icon === 'warn' ? warnIcon : okIcon}
+                </span>${r.label}
+              </div>
+              <div class="int-val ${r.cls}">${r.val}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+    }
+
+    /* ─────────────────────────────────────────
+       BLOCK IP
+    ───────────────────────────────────────── */
+    function openBlock(ip) {
+      blockTarget = ip;
+      document.getElementById('block-ip-msg').textContent = `IP address ${ip} will be permanently blocked from accessing the voting system.`;
+      openModal('block-modal');
+    }
+
+    function confirmBlock() {
+      const ip = blockTarget;
+      blockTarget = '';
+
+      CoopVote.api('security/block-ip', { method: 'POST', body: { ip } })
+        .then(() => {
+          closeModal('block-modal');
+          showToast(`IP ${ip} has been blocked.`, 'error');
+          loadSecurityData();
+        })
+        .catch(err => {
+          closeModal('block-modal');
+          showToast(err.message || 'Could not block that address.', 'error');
+        });
+    }
+
+    /* ─────────────────────────────────────────
+       DISMISS THREAT BANNER
+    ───────────────────────────────────────── */
+    function dismissBanner(btn) {
+      const banner = btn.closest('.threat-banner');
+      if (!banner) return;
+      banner.style.transition = 'opacity .3s,transform .3s,max-height .4s';
+      banner.style.opacity = '0';
+      banner.style.transform = 'translateY(-6px)';
+      banner.style.maxHeight = '0';
+      banner.style.padding = '0';
+      banner.style.margin = '0';
+      banner.style.border = 'none';
+      setTimeout(() => banner.remove(), 400);
+    }
+
+    /* ─────────────────────────────────────────
+       EXPORT LOGS
+    ───────────────────────────────────────── */
+    async function exportLogs() {
+      if (!secData || !secData.logs?.length) {
+        showToast('No log data to export.', 'warn'); return;
+      }
+      if (await CoopVote.download('security/logs/export')) showToast('Your CSV download is starting.', 'success');
+    }
+
+    /* ─────────────────────────────────────────
+       MODALS
+    ───────────────────────────────────────── */
+    function openModal(id) { document.getElementById(id).classList.add('show') }
+    function closeModal(id) { document.getElementById(id).classList.remove('show') }
+
+    /* ─────────────────────────────────────────
+       TOAST
+    ───────────────────────────────────────── */
+    function showToast(msg, type = 'info') {
+      const wrap = document.getElementById('toast-wrap');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<div class="toast-dot"></div><span>${msg}</span>`;
+      wrap.appendChild(t);
+      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400) }, 3400);
+    }
+
+    /* ─────────────────────────────────────────
+       INIT
+    ───────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      CoopVote.guard('admin').then(() => CoopVote.startLive('security', data => {
+        const query = document.getElementById('log-search-input')?.value || '';
+        secData = data;
+        renderPage();
+        document.getElementById('log-search-input').value = query;
+        searchLogs(query);
+      }));
+
+      /*
+       * When your backend is ready, replace loadSecurityData() with:
+       *
+       * fetch('/api/security')
+       *   .then(r => r.json())
+       *   .then(data => initSecurity(data))
+       *   .catch(() => initSecurity(null));
+       *
+       * Then add live polling:
+       * liveInterval = setInterval(() => {
+       *   fetch('/api/security/logs/latest')
+       *     .then(r => r.json())
+       *     .then(newLogs => {
+       *       if(secData) { secData.logs = [...newLogs, ...(secData.logs||[])].slice(0,100); }
+       *       const base = activeFilter==='all'?secData.logs:secData.logs.filter(l=>l.type===activeFilter);
+       *       currentLogs = applySearch(base, document.getElementById('log-search-input')?.value||'');
+       *       renderLogList();
+       *     });
+       * }, 10000);
+       */
+    });
+  </script>
+</body>
+
+</html>

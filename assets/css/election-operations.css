@@ -1,0 +1,2 @@
+/* Shared refresh status uses the existing page palette. */
+.cv-live-status { display:block; color:var(--muted2); font-size:.75rem; }

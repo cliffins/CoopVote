@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>CoopVote — Active Election</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --navy: #0b1931;
+      --navy2: #0f2040;
+      --navy3: #162a52;
+      --navy4: #1e3566;
+      --gold: #c9a84c;
+      --gold2: #e8c96a;
+      --white: #ffffff;
+      --muted: #7a8ba0;
+      --muted2: #a8b8cc;
+      --border: rgba(255, 255, 255, .08);
+      --danger: #e05c5c;
+      --success: #4caf82;
+      --warn: #e0a030;
+      --info: #4a9fd4;
+      --sidebar-w: 260px;
+      --header-h: 64px;
+      --radius: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow: hidden
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .12);
+      border-radius: 99px
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes shimmer {
+
+      0%,
+      100% {
+        left: -70%
+      }
+
+      50% {
+        left: 140%
+      }
+    }
+
+    @keyframes pulseGreen {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 130, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(76, 175, 130, 0)
+      }
+    }
+
+    @keyframes pulseGold {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(201, 168, 76, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(201, 168, 76, 0)
+      }
+    }
+
+    @keyframes pulseLive {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 130, .5)
+      }
+
+      50% {
+        box-shadow: 0 0 0 8px rgba(76, 175, 130, 0)
+      }
+    }
+
+    @keyframes sweep {
+      0% {
+        transform: translateX(-100%)
+      }
+
+      100% {
+        transform: translateX(300%)
+      }
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--navy2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+      z-index: 200
+    }
+
+    .sidebar-logo {
+      padding: 28px 22px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3);
+      position: relative;
+      overflow: hidden
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -70%;
+      width: 40%;
+      height: 100%;
+      background: rgba(255, 255, 255, .3);
+      transform: skewX(-20deg);
+      animation: shimmer 4s ease-in-out infinite
+    }
+
+    .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--navy)
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: .3px
+    }
+
+    .logo-text span {
+      color: var(--gold)
+    }
+
+    .sidebar-section {
+      padding: 20px 14px 8px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--muted2);
+      transition: all .2s;
+      position: relative;
+      white-space: nowrap;
+      text-decoration: none;
+      overflow: hidden
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, .06);
+      color: var(--white)
+    }
+
+    .nav-item.active {
+      background: rgba(201, 168, 76, .14);
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--gold)
+    }
+
+    .nav-item svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: .7
+    }
+
+    .nav-item.active svg {
+      opacity: 1
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      font-size: .68rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      color: var(--navy)
+    }
+
+    .nav-badge.green {
+      background: var(--success);
+      animation: pulseGreen 2s ease-in-out infinite
+    }
+
+    .nav-badge.gold {
+      background: var(--gold);
+      animation: pulseGold 2s ease-in-out infinite
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 14px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .member-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .05);
+      cursor: pointer;
+      transition: background .2s
+    }
+
+    .member-card:hover {
+      background: rgba(255, 255, 255, .09)
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--navy4), var(--navy3));
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0
+    }
+
+    .member-info {
+      flex: 1;
+      overflow: hidden
+    }
+
+    .member-name {
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .member-id {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 1px;
+      font-family: monospace
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      border-radius: 6px;
+      transition: color .2s;
+      flex-shrink: 0
+    }
+
+    .logout-btn:hover {
+      color: var(--danger)
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0
+    }
+
+    .header {
+      height: var(--header-h);
+      flex-shrink: 0;
+      background: rgba(11, 25, 49, .85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+      z-index: 100
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted2);
+      padding: 6px;
+      border-radius: 8px;
+      transition: color .2s, background .2s
+    }
+
+    .hamburger:hover {
+      color: var(--white);
+      background: rgba(255, 255, 255, .07)
+    }
+
+    .header-title {
+      flex: 1
+    }
+
+    .header-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700
+    }
+
+    .header-title p {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .hbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .hbtn:hover {
+      background: rgba(255, 255, 255, .12);
+      color: var(--white)
+    }
+
+    .hbtn svg {
+      width: 18px;
+      height: 18px
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px
+    }
+
+    /* ── NO ELECTION ── */
+    .page-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+      color: var(--muted);
+      padding: 72px 20px;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      animation: fadeUp .5s cubic-bezier(.22, 1, .36, 1) both;
+      flex: 1
+    }
+
+    .page-empty svg {
+      width: 52px;
+      height: 52px;
+      opacity: .25
+    }
+
+    .page-empty h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--muted2)
+    }
+
+    .page-empty p {
+      font-size: .84rem;
+      line-height: 1.7;
+      max-width: 360px
+    }
+
+    .page-empty a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      font-size: .84rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      margin-top: 4px;
+      transition: all .2s
+    }
+
+    .page-empty a:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(201, 168, 76, .07)
+    }
+
+    /* ── ELECTION HERO ── */
+    .election-hero {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 32px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp .5s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    .election-hero::before {
+      content: '';
+      position: absolute;
+      top: -70px;
+      right: -60px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201, 168, 76, .1), transparent 70%);
+      pointer-events: none
+    }
+
+    .election-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -60px;
+      left: 10%;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76, 175, 130, .07), transparent 70%);
+      pointer-events: none
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(76, 175, 130, .15);
+      border: 1px solid rgba(76, 175, 130, .3);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      color: var(--success);
+      margin-bottom: 12px
+    }
+
+    .live-badge.upcoming {
+      background: rgba(201, 168, 76, .15);
+      border-color: rgba(201, 168, 76, .3);
+      color: var(--gold)
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulseLive 1.5s ease-in-out infinite
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 22px
+    }
+
+    .hero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 6px
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: .8rem;
+      color: var(--muted)
+    }
+
+    .hero-meta span {
+      display: flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .hero-meta svg {
+      width: 13px;
+      height: 13px
+    }
+
+    .hero-right {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0
+    }
+
+    /* countdown */
+    .countdown-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap
+    }
+
+    .cd-label {
+      font-size: .7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .cd-items {
+      display: flex;
+      gap: 6px;
+      align-items: center
+    }
+
+    .cd-block {
+      background: rgba(255, 255, 255, .07);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      text-align: center;
+      min-width: 48px
+    }
+
+    .cd-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1
+    }
+
+    .cd-unit {
+      font-size: .58rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 2px
+    }
+
+    .cd-sep {
+      font-size: .9rem;
+      color: var(--muted)
+    }
+
+    /* hero stats */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      margin-top: 20px
+    }
+
+    .hs {
+      text-align: center;
+      padding: 0 12px;
+      border-right: 1px solid var(--border)
+    }
+
+    .hs:last-child {
+      border-right: none
+    }
+
+    .hs-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--white)
+    }
+
+    .hs-val.empty {
+      color: var(--muted);
+      font-size: 1.1rem
+    }
+
+    .hs-label {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 4px
+    }
+
+    .hs-bar {
+      height: 3px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .07);
+      margin-top: 8px;
+      overflow: hidden
+    }
+
+    .hs-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1.2s .4s cubic-bezier(.22, 1, .36, 1);
+      position: relative;
+      overflow: hidden
+    }
+
+    .hs-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .25), transparent);
+      animation: sweep 2.5s ease-in-out infinite
+    }
+
+    /* progress */
+    .prog-wrap {
+      margin-bottom: 20px
+    }
+
+    .prog-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .75rem;
+      margin-bottom: 7px
+    }
+
+    .prog-label span:first-child {
+      color: var(--muted)
+    }
+
+    .prog-label span:last-child {
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .prog-track {
+      height: 10px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .07);
+      overflow: hidden
+    }
+
+    .prog-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--success), #7be8b4);
+      transition: width 1.5s .3s cubic-bezier(.22, 1, .36, 1);
+      position: relative;
+      overflow: hidden
+    }
+
+    .prog-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3), transparent);
+      animation: sweep 2.5s ease-in-out infinite
+    }
+
+    /* hero vote btn */
+    .btn-vote-hero {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none;
+      border: none;
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3);
+      white-space: nowrap
+    }
+
+    .btn-vote-hero:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px)
+    }
+
+    .btn-vote-hero svg {
+      width: 16px;
+      height: 16px
+    }
+
+    .btn-voted-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: 12px;
+      background: rgba(76, 175, 130, .1);
+      border: 1px solid rgba(76, 175, 130, .25);
+      color: var(--success);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: default;
+      white-space: nowrap
+    }
+
+    .btn-voted-hero svg {
+      width: 16px;
+      height: 16px
+    }
+
+    /* ── MAIN GRID ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 16px
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp .5s .12s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .card-head {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      flex-wrap: wrap
+    }
+
+    .card-title {
+      font-size: .9rem;
+      font-weight: 600
+    }
+
+    .card-sub {
+      font-size: .74rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .card-body {
+      padding: 20px
+    }
+
+    .view-link {
+      font-size: .78rem;
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 600;
+      white-space: nowrap
+    }
+
+    .view-link:hover {
+      opacity: .8
+    }
+
+    /* ── POSITIONS GRID ── */
+    .positions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px
+    }
+
+    .pos-card {
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all .2s;
+      cursor: default
+    }
+
+    .pos-card:hover {
+      background: rgba(255, 255, 255, .07);
+      border-color: rgba(255, 255, 255, .14)
+    }
+
+    .pos-color-bar {
+      width: 28px;
+      height: 4px;
+      border-radius: 99px;
+      margin-bottom: 10px
+    }
+
+    .pos-name {
+      font-size: .9rem;
+      font-weight: 700;
+      margin-bottom: 4px
+    }
+
+    .pos-count {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: 10px
+    }
+
+    .pos-avatars {
+      display: flex;
+      margin-bottom: 2px
+    }
+
+    .pos-av {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .6rem;
+      font-weight: 700;
+      margin-left: -6px;
+      border: 2px solid var(--navy2)
+    }
+
+    .pos-av:first-child {
+      margin-left: 0
+    }
+
+    /* ── INFO PANEL ── */
+    .info-rows {
+      padding: 4px 0
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+      font-size: .82rem
+    }
+
+    .info-row:last-child {
+      border-bottom: none
+    }
+
+    .info-label {
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .info-label svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0
+    }
+
+    .info-val {
+      font-weight: 500;
+      color: var(--muted2);
+      text-align: right
+    }
+
+    .info-val.green {
+      color: var(--success)
+    }
+
+    .info-val.gold {
+      color: var(--gold)
+    }
+
+    .info-val.muted {
+      color: var(--muted)
+    }
+
+    /* ── VOTE STATUS PANEL ── */
+    .vs-panel {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp .5s .18s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .vs-inner {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px
+    }
+
+    .vs-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .vs-icon.voted {
+      background: rgba(76, 175, 130, .12);
+      border: 1px solid rgba(76, 175, 130, .2)
+    }
+
+    .vs-icon.voted svg {
+      color: var(--success);
+      width: 26px;
+      height: 26px
+    }
+
+    .vs-icon.pending {
+      background: rgba(201, 168, 76, .1);
+      border: 1px solid rgba(201, 168, 76, .2)
+    }
+
+    .vs-icon.pending svg {
+      color: var(--gold);
+      width: 26px;
+      height: 26px
+    }
+
+    .vs-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700
+    }
+
+    .vs-msg {
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.6
+    }
+
+    .vs-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(201, 168, 76, .3)
+    }
+
+    .vs-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px)
+    }
+
+    .vs-btn svg {
+      width: 15px;
+      height: 15px
+    }
+
+    /* ── TIMELINE ── */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 4px 0
+    }
+
+    .tl-item {
+      display: flex;
+      gap: 14px;
+      padding: 14px 18px;
+      position: relative
+    }
+
+    .tl-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 25px;
+      top: 42px;
+      bottom: 0;
+      width: 1px;
+      background: var(--border)
+    }
+
+    .tl-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 3px;
+      position: relative;
+      z-index: 1
+    }
+
+    .tl-dot.done {
+      background: var(--success)
+    }
+
+    .tl-dot.active {
+      background: var(--gold);
+      box-shadow: 0 0 0 4px rgba(201, 168, 76, .2)
+    }
+
+    .tl-dot.upcoming {
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid var(--border)
+    }
+
+    .tl-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .tl-label {
+      font-size: .85rem;
+      font-weight: 600;
+      margin-bottom: 3px
+    }
+
+    .tl-sub {
+      font-size: .74rem;
+      color: var(--muted)
+    }
+
+    .tl-date {
+      font-size: .74rem;
+      color: var(--muted);
+      margin-top: 3px;
+      font-family: monospace
+    }
+
+    /* ── EMPTY SECTION ── */
+    .empty-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 10px;
+      color: var(--muted);
+      text-align: center
+    }
+
+    .empty-section svg {
+      width: 34px;
+      height: 34px;
+      opacity: .28
+    }
+
+    .empty-section p {
+      font-size: .82rem;
+      line-height: 1.6
+    }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      z-index: 150;
+      backdrop-filter: blur(4px)
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:960px) {
+      .main-grid {
+        grid-template-columns: 1fr
+      }
+
+      .hero-stats {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .hs:nth-child(2) {
+        border-right: none
+      }
+
+      .hs:nth-child(3) {
+        border-top: 1px solid var(--border);
+        padding-top: 16px;
+        margin-top: 8px
+      }
+    }
+
+    @media(max-width:768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        box-shadow: 8px 0 40px rgba(0, 0, 0, .5)
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .overlay {
+        display: block;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity .3s
+      }
+
+      .overlay.show {
+        pointer-events: all;
+        opacity: 1
+      }
+
+      .hamburger {
+        display: flex
+      }
+
+      .content {
+        padding: 16px
+      }
+
+      .header {
+        padding: 0 16px
+      }
+
+      .election-hero {
+        padding: 20px
+      }
+
+      .positions-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media(max-width:480px) {
+      .hero-stats {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .hero-title {
+        font-size: 1.2rem
+      }
+
+      .hero-right {
+        width: 100%;
+        align-items: stretch
+      }
+
+      .btn-vote-hero,
+      .btn-voted-hero {
+        justify-content: center
+      }
+    }
+
+    /* ── Layout fix ──────────────────────────────────────────
+       .content is a flex column, and flex items shrink by default.
+       Once the page grew taller than the viewport every section was
+       squashed, and any card with overflow:hidden clipped its own
+       text (the welcome hero showed the name but hid the meta line).
+       Sections keep their natural height; .content already scrolls. */
+    .content>* {
+      flex-shrink: 0;
+    }
+
+    /* ── Empty-state action icons ────────────────────────────
+       The illustration rule above (.page-empty svg and friends) also
+       matches the icon inside the empty state's button, and a rule
+       beats the svg's own width/height attributes. Keep those icons
+       button-sized so the call to action matches every other button. */
+    .page-empty a svg,
+    .page-empty button svg,
+    .empty-section a svg,
+    .empty-section button svg,
+    .page-state a svg,
+    .page-state button svg,
+    .hero-empty a svg,
+    .hero-empty button svg {
+      width: 14px;
+      height: 14px;
+      opacity: 1;
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
+  <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
+  <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
+  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+</head>
+
+<body>
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark"><svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg></div>
+        <div class="logo-text">Coop<span>Vote</span></div>
+      </div>
+
+      <div class="sidebar-section">Member</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+        </svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="profile.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        My Profile
+      </a>
+
+      <div class="sidebar-section">Election</div>
+      <a class="nav-item active" href="election.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Active Election
+      </a>
+      <a class="nav-item" href="candidates.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        View Candidates
+      </a>
+      <a class="nav-item" href="ballot.html" id="nav-ballot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 11 12 14 22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        Cast My Vote
+      </a>
+
+      <div class="sidebar-section">Results</div>
+      <a class="nav-item" href="results.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        Election Results
+      </a>
+
+      <a class="nav-item" href="receipts.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h3" /></svg>
+        My Vote Receipts
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="member-card">
+          <div class="member-avatar" id="sidebar-avatar">?</div>
+          <div class="member-info">
+            <div class="member-name" id="sidebar-name">—</div>
+            <div class="member-id" id="sidebar-id">—</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="header">
+        <button aria-label="Open the menu" class="hamburger" onclick="toggleSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div class="header-title">
+          <h1>Active Election</h1>
+          <p>Election details, positions, and voting status</p>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </button>
+          <button class="hbtn" onclick="CoopVote.logout()"
+            style="border:1px solid rgba(224,92,92,.2);color:var(--danger)" title="Logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content" id="main-content">
+        <!-- populated by renderPage() -->
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/validation.js?v=20260911-required2"></script>
+  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script>
+    /* ─────────────────────────────────────────
+       SIDEBAR
+    ───────────────────────────────────────── */
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show') }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show') }
+
+    /* ─────────────────────────────────────────
+       HELPERS
+    ───────────────────────────────────────── */
+    function initials(name) { return (name || '').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || '?' }
+    const POS_COLORS = ['#c9a84c', '#4a9fd4', '#4caf82', '#9b7fd4', '#e0a030', '#e05c5c'];
+    const AV = [{ bg: '#1e2d5a', fg: '#7ca4e8' }, { bg: '#1a3a2e', fg: '#5dc99a' }, { bg: '#3a1e1e', fg: '#e87c7c' }, { bg: '#3a2e10', fg: '#d4a84c' }, { bg: '#2a1e3a', fg: '#b07cd4' }, { bg: '#1a2e3a', fg: '#5cb8d4' }];
+
+    let cdInterval = null;
+
+    /* ─────────────────────────────────────────
+       LOAD DATA
+       ─────────────────────────────────────────
+       Replace with real API:
+       fetch('/api/voter/election')
+         .then(r => r.json())
+         .then(data => initPage(data))
+         .catch(() => initPage(null));
+    
+       Expected shape:
+       {
+         member: { name, memberId, hasVoted },
+         election: null | {
+           id, title, description,
+           startDate, endDate, endDateISO,
+           totalVoters, votesCast, candidates,
+           positions: [
+             {
+               name,
+               candidates: [{ id, first, last }]
+             }
+           ]
+         }
+       }
+    ───────────────────────────────────────── */
+    function loadData() {
+      CoopVote.api('voter/election')
+        .then(data => initPage(data))
+        .catch(err => {
+          initPage(null);
+          CoopVote.toast(err.message || 'Could not load data from the server.', 'error');
+        });
+    }
+
+    function initPage(data) {
+      const member = data?.member || null;
+      const election = data?.election || null;
+
+      /* sidebar footer */
+      const name = member?.name || '—';
+      const mid = member?.memberId || '—';
+      const init = initials(name);
+      const sa = document.getElementById('sidebar-avatar'); if (sa) sa.textContent = init;
+      const sn = document.getElementById('sidebar-name'); if (sn) sn.textContent = name;
+      const si = document.getElementById('sidebar-id'); if (si) si.textContent = mid;
+
+      /* nav badges */
+      document.querySelectorAll('.nav-badge').forEach(b => b.remove());
+      if (election && election.live) {
+        const navEl = document.getElementById('nav-ballot');
+        const nb1 = document.createElement('span'); nb1.className = 'nav-badge green'; nb1.textContent = 'Live';
+        document.querySelector('[href="election.html"]')?.appendChild(nb1);
+        if (navEl && member && !member.hasVoted) {
+          const nb2 = document.createElement('span'); nb2.className = 'nav-badge gold'; nb2.textContent = 'Vote!';
+          navEl.appendChild(nb2);
+        }
+      }
+
+      if (cdInterval) { clearInterval(cdInterval); cdInterval = null; }
+      renderPage(election, member);
+    }
+
+    /* ─────────────────────────────────────────
+       RENDER PAGE
+    ───────────────────────────────────────── */
+    function renderPage(election, member) {
+      const c = document.getElementById('main-content');
+
+      if (!election) {
+        c.innerHTML = `
+      <div class="page-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+        </svg>
+        <h2>No Active Election</h2>
+        <p>There is no election currently running. Check back later or contact your cooperative administrator.</p>
+        <a href="dashboard.html">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Back to Dashboard
+        </a>
+      </div>`;
+        return;
+      }
+
+      const pct = election.totalVoters > 0 ? Math.round((election.votesCast / election.totalVoters) * 100) : 0;
+      const remaining = Math.max(0, election.totalVoters - election.votesCast);
+      const hasVoted = member?.hasVoted || false;
+      const positions = election.positions || [];
+
+      const voteBtn = hasVoted
+        ? `<div class="btn-voted-hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Vote Already Submitted</div>`
+        : `<a href="ballot.html" class="btn-vote-hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cast My Vote</a>`;
+
+      /* positions grid HTML */
+      const posGridHTML = positions.length > 0
+        ? `<div class="positions-grid">
+        ${positions.map((p, i) => {
+          const col = POS_COLORS[i % POS_COLORS.length];
+          const cands = (p.candidates || []).slice(0, 4);
+          const avHTML = cands.map((c, j) => {
+            const { bg, fg } = AV[(c.id || j) % AV.length];
+            return `<div class="pos-av" style="background:${bg};color:${fg}">${(c.first?.[0] || '') + (c.last?.[0] || '')}</div>`;
+          }).join('') + ((p.candidates || []).length > 4 ? `<div class="pos-av" style="background:rgba(255,255,255,.08);color:var(--muted)">+${(p.candidates || []).length - 4}</div>` : '');
+          return `<div class="pos-card">
+            <div class="pos-color-bar" style="background:${col}"></div>
+            <div class="pos-name" style="color:${col}">${esc(p.name)}</div>
+            <div class="pos-count">${(p.candidates || []).length} candidate${(p.candidates || []).length !== 1 ? 's' : ''}</div>
+            <div class="pos-avatars">${avHTML}</div>
+          </div>`;
+        }).join('')}
+      </div>`
+        : `<div class="empty-section">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <p>No positions configured yet.</p>
+      </div>`;
+
+      c.innerHTML = `
+    <!-- ELECTION HERO -->
+    <div class="election-hero">
+      <div class="hero-top">
+        <div>
+          ${election.live
+            ? `<div class="live-badge"><span class="live-dot"></span>ELECTION LIVE</div>`
+            : `<div class="live-badge upcoming">OPENS SOON</div>`}
+          <div class="hero-title">${esc(election.title)}</div>
+          <div class="hero-meta">
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${election.startDate || '—'} — ${election.endDate || '—'}</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>${(election.totalVoters || 0).toLocaleString()} registered voters</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>${positions.length} position${positions.length !== 1 ? 's' : ''}</span>
+          </div>
+          ${election.endDateISO ? `
+          <div class="countdown-wrap">
+            <span class="cd-label">Closes In</span>
+            <div class="cd-items">
+              <div class="cd-block"><div class="cd-num" id="cd-h">--</div><div class="cd-unit">Hrs</div></div>
+              <span class="cd-sep">:</span>
+              <div class="cd-block"><div class="cd-num" id="cd-m">--</div><div class="cd-unit">Min</div></div>
+              <span class="cd-sep">:</span>
+              <div class="cd-block"><div class="cd-num" id="cd-s">--</div><div class="cd-unit">Sec</div></div>
+            </div>
+          </div>` : ''}
+        </div>
+        <div class="hero-right">${voteBtn}</div>
+      </div>
+
+      <div class="prog-wrap">
+        <div class="prog-label">
+          <span>Overall Turnout</span>
+          <span>${(election.votesCast || 0).toLocaleString()} / ${(election.totalVoters || 0).toLocaleString()} voted · ${pct}%</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="hero-stats">
+        <div class="hs">
+          <div class="hs-val" style="color:var(--success)">${(election.votesCast || 0).toLocaleString()}</div>
+          <div class="hs-label">Votes Cast</div>
+          <div class="hs-bar"><div class="hs-fill" data-w="${pct}%" style="width:0%;background:linear-gradient(90deg,var(--success),#7be8b4)"></div></div>
+        </div>
+        <div class="hs">
+          <div class="hs-val" style="color:var(--info)">${remaining.toLocaleString()}</div>
+          <div class="hs-label">Yet to Vote</div>
+          <div class="hs-bar"><div class="hs-fill" data-w="${100 - pct}%" style="width:0%;background:linear-gradient(90deg,var(--info),#7ac8e8)"></div></div>
+        </div>
+        <div class="hs">
+          <div class="hs-val" style="color:var(--gold)">${election.candidates || 0}</div>
+          <div class="hs-label">Candidates</div>
+          <div class="hs-bar"><div class="hs-fill" data-w="70%" style="width:0%;background:linear-gradient(90deg,var(--gold),var(--gold2))"></div></div>
+        </div>
+        <div class="hs">
+          <div class="hs-val" style="color:#9b7fd4">${positions.length}</div>
+          <div class="hs-label">Positions</div>
+          <div class="hs-bar"><div class="hs-fill" data-w="100%" style="width:0%;background:linear-gradient(90deg,#7c5cbf,#9b7fd4)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+
+      <!-- LEFT: POSITIONS + DESCRIPTION -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- POSITIONS -->
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Positions &amp; Candidates</div>
+              <div class="card-sub">${positions.length} position${positions.length !== 1 ? 's' : ''} open for election</div>
+            </div>
+            <a href="candidates.html" class="view-link">View Candidates →</a>
+          </div>
+          <div class="card-body">${posGridHTML}</div>
+        </div>
+
+        <!-- DESCRIPTION -->
+        ${election.description ? `
+        <div class="card" style="animation-delay:.14s">
+          <div class="card-head">
+            <div><div class="card-title">About this Election</div></div>
+          </div>
+          <div class="card-body">
+            <p style="font-size:.85rem;color:var(--muted2);line-height:1.75">${esc(election.description)}</p>
+          </div>
+        </div>` : ''}
+
+      </div>
+
+      <!-- RIGHT: VOTE STATUS + DETAILS + TIMELINE -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- VOTE STATUS -->
+        <div class="vs-panel">
+          <div class="card-head" style="padding:14px 18px">
+            <div class="card-title">Your Voting Status</div>
+          </div>
+          <div class="vs-inner">
+            ${hasVoted
+          ? `<div class="vs-icon voted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+                 <div class="vs-title" style="color:var(--success)">Vote Submitted!</div>
+                 <div class="vs-msg">Your vote has been securely recorded and cannot be changed. Please wait for the admin to publish the election results.</div>`
+          : `<div class="vs-icon pending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+                 <div class="vs-title" style="color:var(--gold)">Your Vote is Pending</div>
+                 <div class="vs-msg">You have not yet cast your vote. Please vote before the election closes.</div>
+                 <a href="ballot.html" class="vs-btn">
+                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                   Cast My Vote Now
+                 </a>`}
+          </div>
+        </div>
+
+        <!-- ELECTION DETAILS -->
+        <div class="card" style="animation-delay:.16s">
+          <div class="card-head" style="padding:14px 18px">
+            <div><div class="card-title">Election Details</div></div>
+          </div>
+          <div class="info-rows">
+            <div class="info-row">
+              <div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Status</div>
+              <div class="info-val green">● Live</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Start Date</div>
+              <div class="info-val">${election.startDate || '—'}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>End Date</div>
+              <div class="info-val">${election.endDate || '—'}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Positions</div>
+              <div class="info-val gold">${positions.length} open</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Registered Voters</div>
+              <div class="info-val">${(election.totalVoters || 0).toLocaleString()}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Current Turnout</div>
+              <div class="info-val" style="color:var(--success)">${pct}%</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+
+      /* animations */
+      setTimeout(() => {
+        const pf = document.getElementById('prog-fill');
+        if (pf) { pf.style.transition = 'width 1.5s .3s cubic-bezier(.22,1,.36,1)'; pf.style.width = pct + '%' }
+        document.querySelectorAll('.hs-fill[data-w]').forEach(b => {
+          b.style.transition = 'width 1.2s .4s cubic-bezier(.22,1,.36,1)';
+          b.style.width = b.dataset.w;
+        });
+      }, 200);
+
+      if (election.endDateISO) startCountdown(election.endDateISO);
+    }
+
+    /* ─────────────────────────────────────────
+       COUNTDOWN
+    ───────────────────────────────────────── */
+    function startCountdown(iso) {
+      function tick() {
+        const diff = Math.max(0, Math.floor((new Date(iso) - Date.now()) / 1000));
+        const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
+        const hEl = document.getElementById('cd-h'), mEl = document.getElementById('cd-m'), sEl = document.getElementById('cd-s');
+        if (hEl) hEl.textContent = String(h).padStart(2, '0');
+        if (mEl) mEl.textContent = String(m).padStart(2, '0');
+        if (sEl) sEl.textContent = String(s).padStart(2, '0');
+      }
+      tick();
+      cdInterval = setInterval(tick, 1000);
+    }
+
+    /* ─────────────────────────────────────────
+       INIT
+    ───────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      CoopVote.guard('member').then(loadData);
+      /*
+       * When your backend is ready, replace loadData() with:
+       * fetch('/api/voter/election')
+       *   .then(r => r.json())
+       *   .then(data => initPage(data))
+       *   .catch(() => initPage(null));
+       */
+    });
+  </script>
+</body>
+
+</html>

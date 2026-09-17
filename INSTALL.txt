@@ -1,0 +1,305 @@
+CoopVote — setting it up on another computer
+============================================
+
+Do this when you have copied or unzipped the project onto a new Windows PC.
+
+
+What the computer needs
+-----------------------
+    XAMPP 8.2 or newer, which provides all of the following:
+
+    PHP 8.1 or newer          (built and tested on PHP 8.2)
+    MariaDB 10.4 or newer     (or MySQL 5.7+)
+    Apache 2.4                (2.2 also works)
+
+    PHP extensions: pdo_mysql, mbstring, fileinfo, json, session, openssl.
+    These are all switched on in a standard XAMPP; setup.php checks them
+    and tells you if one is missing.
+
+    Nothing is downloaded from the internet at runtime, so the system works
+    on a machine with no connection. Sending email is the one exception,
+    and it is optional.
+
+
+1. Put the folder in the right place
+------------------------------------
+Extract it so the path looks like:
+
+    C:\xampp\htdocs\CoopVote
+
+If you unzip it somewhere else, or under a different name, that is fine —
+the app works out its own address. It must be under htdocs, though, or
+Apache will not serve it.
+
+Do NOT open the pages by double-clicking them, and do NOT use VS Code's
+"Live Server" / "Open with Live Server" / Go Live button.
+
+Both of those only hand the browser the files. Neither can run PHP, so the
+app cannot reach its database and every sign-in fails. You can tell by the
+address bar:
+
+    file:///C:/xampp/htdocs/CoopVote/login.html    will not work
+    http://127.0.0.1:5500/login.html               will not work (Live Server)
+    http://localhost/CoopVote/                     correct
+
+The app notices and puts a red bar at the top of the page telling you the
+same thing. Note that when Live Server is serving the project folder
+itself, it cannot tell you the folder's name -- the browser is never told
+what the folder is called on disk -- so it asks you to fill that part in.
+
+
+2. Start Apache and MySQL
+-------------------------
+Open the XAMPP Control Panel and press Start next to both.
+
+Both must show a green "Running". If Apache refuses to start, something
+else on the PC is using port 80 — usually Skype or IIS. Change Apache's
+port in the control panel (Config → httpd.conf → Listen 80) or stop the
+other program.
+
+
+3. Create the database
+----------------------
+This is the step people miss, and it is what makes sign-in fail on a new
+computer with no obvious reason. The project folder carries the data, but
+MySQL on the new PC starts out empty.
+
+Easy way — open this in a browser:
+
+    http://localhost/CoopVote/setup.php
+
+It checks everything and shows an "Import the database now" button. Press
+it, reload the page, and you are done.
+
+Manual way, if you prefer phpMyAdmin:
+
+    a. Open http://localhost/phpmyadmin
+    b. Create a database called "coopvote" if it is not there already
+    c. SELECT that database in the left-hand list -- this matters, see below
+    d. Click the Import tab
+    e. Choose the file:  database\coopvote_full.sql
+    f. Press Go
+
+From the command line, name the database explicitly:
+
+    C:\xampp\mysql\bin\mysql -u root coopvote < database\coopvote_full.sql
+
+Either way you end up with a database called "coopvote" holding 25 tables.
+
+Why the database has to be selected first
+-----------------------------------------
+The dump files deliberately do NOT contain "CREATE DATABASE" or "USE"
+lines. Those are what mysqldump normally writes, and they quietly override
+whichever database you selected -- so the import lands where the dump was
+taken from rather than where you meant to put it, dropping whatever tables
+it finds there on the way. Taking them out means an import can only ever
+affect the database you chose. The cost is this one extra step.
+
+
+4. Sign in
+----------
+The quickest way in is to double-click, in this folder:
+
+    Open CoopVote.bat
+
+It works out the address from its own folder name, checks that Apache is
+actually answering, and opens your browser at the sign-in page. If Apache
+is not running it says so and offers to open the XAMPP Control Panel; if
+the project is not under htdocs it says that instead. Right-click it and
+"Send to > Desktop (create shortcut)" if you want it to hand.
+
+    Open CoopVote.url  does the same in one step, with no checks.
+
+Or type the address yourself:
+
+    http://localhost/CoopVote/
+
+    Administrator   admin     Admin@123
+    Member          voter1    Voter@123
+
+Change the administrator password once it is working.
+
+
+5. Email (optional)
+-------------------
+Registration codes and approval notices are sent through Gmail. They are
+already configured in config\config.php. If you want to use a different
+Gmail account:
+
+    a. Turn on 2-Step Verification on that Google account
+    b. Go to https://myaccount.google.com/apppasswords
+    c. Create an App Password (16 letters, no spaces)
+    d. Put the address and that password into config\config.php as
+       MAIL_USERNAME and MAIL_PASSWORD
+
+A normal Gmail password will not work — it must be an App Password.
+
+To turn email off entirely, set MAIL_ENABLED to false. Everything else
+still works; members just will not receive their codes, so nobody new can
+finish registering.
+
+
+6. Delete setup.php
+-------------------
+Once the system runs, delete setup.php. It reports details about the
+computer that no voter needs to see.
+
+
+Profile pictures on a live host
+------------------------------
+Voters can choose, preview and upload a picture from My Profile. JPG, PNG
+and WebP files up to 2 MB are supported. The server checks actual image
+type and dimensions, then stores the verified bytes and MIME type directly
+in MariaDB. This feature needs PHP Fileinfo, but does not require GD or a
+writable profile-photo folder.
+
+Before deploying this update to an existing database, take a full database
+backup and run database/migration_05_profile_photos.sql once. Fresh installs
+made from database/coopvote_full.sql already include the same columns.
+
+Back up the database with binary/blob data enabled (`mysqldump --hex-blob`). The database backup now
+contains voter profile pictures. Pictures are delivered through CoopVote's
+authenticated API, and the generated URL automatically supports either a
+domain root or a project subfolder. Existing photo_url values remain usable
+as legacy fallbacks until each voter uploads a new picture.
+
+Set PHP file_uploads=On, upload_max_filesize to at least 2M, and post_max_size
+to at least 4M. Set the reverse proxy/web-server body limit to at least 4 MB
+as well. Oversized requests rejected before PHP can only show the host's error.
+Profile pictures are visible only to signed-in CoopVote users. Serve the
+application over HTTPS on the live host.
+After deployment, test a voter upload, reload My Profile, and check the
+picture in Candidate Management for a linked candidate. Test an invalid
+file and a file larger than 2 MB. Actual hosting validation must happen on
+the chosen server; local checks alone do not verify its configuration.
+
+
+Election analytics, notifications and integrity
+-----------------------------------------------
+After importing a database on a new host, or before upgrading an existing
+installation, take a database backup with mysqldump --single-transaction
+--hex-blob. Keep the backup outside the public web directory on the host.
+From the project directory run:
+
+  php tools/upgrade_assurance.php --backup-confirmed
+
+This additive upgrade installs migration_06_election_assurance.sql and
+migration_07_election_reopening.sql. It
+explicitly baselines existing votes; their earlier history is not verified.
+New elections start with a signed zero count. New anonymous selections and
+the signed count commit in the same transaction as the ballot claim.
+
+For an already upgraded installation, enable election reopening with:
+
+  php tools/upgrade_reopening.php
+
+Reopen Election requires a new future deadline. Votes, ballot receipts and
+one-vote eligibility remain unchanged. Published results are hidden until
+the next closure and explicit publication. Earlier signed closing reports
+are retained in election_reports.history; the next closure creates a fresh
+current report. The upgrade adds fields only and does not reopen elections.
+
+Keep config/integrity-key.php private and back it up securely with the
+database. Restore the ORIGINAL key when moving an already signed database.
+Never regenerate it to resolve a mismatch. Alternatively supply a private
+COOPVOTE_INTEGRITY_KEY environment value of at least 32 characters; preserve
+that exact value across restarts and deployments. The key must not be served
+by the host. On non-Apache hosting, configure equivalent access restrictions
+for config/, includes/, database/, tests/ and tools/.
+
+In the hosting control panel, schedule this command every minute (replace
+the PHP executable and absolute project path with the host's actual paths):
+
+  /usr/bin/php /absolute/path/to/CoopVote/tools/election_jobs.php
+
+On Windows use Task Scheduler with php.exe and the absolute script path.
+This captures scheduled closing reports without anyone opening the website.
+Closing an election manually or opening Reports also captures missing reports.
+Existing historical reports are generated at installation, using the totals
+available at that time. Their generation time is shown. Closed snapshots are
+preserved; an election with a saved closing report cannot be edited.
+
+Admin pages refresh about every 10 seconds while visible, online and not
+editing. Notifications refresh every 30 seconds and remain unread until
+clicked. Each new notice produces one toast per account in that browser;
+clearing browser storage or using another browser can announce it again.
+Read status is stored in the database and follows the account across devices.
+These are in-app reminders, not background email, SMS or push delivery.
+
+Turnout uses the eligible member count recorded when the report snapshot
+is generated. Saved reports retain that denominator for historical accuracy.
+Print / PDF opens a printable HTML report; use the browser's Save as PDF.
+Summary CSV includes turnout, integrity and candidate totals.
+
+Integrity checks detect altered selections, missing signatures, and vote
+deletions against the signed count. They keep identity out of vote signatures.
+They do not prove who voted for whom, verify pre-installation history, prevent
+all tampering, detect restoration of an entire older valid database, or
+protect against an attacker who controls both database and private key.
+Keep separate trusted backups. This feature is not a hash-chained audit log.
+
+Before opening voting on the live host: verify setup checks, confirm a valid
+signature result in Reports, test report generation in a separate test
+election, and check the scheduler's output. Local automated tests do not
+validate the hosting provider's PHP, scheduler, mail or access configuration.
+
+If something is still wrong
+---------------------------
+Themes, officers and election approvals
+  On an existing installation run: php tools/upgrade_management.php
+  This first saves a SQL backup under logs, then creates the new tables.
+  Fresh imports of coopvote_full.sql already contain the management tables.
+  On hosting without CLI, back up first and import migration_08_governance.sql
+  followed by migration_09_admin_approvals.sql through the host database tool.
+
+  Admin sidebar > Officer Management: add, edit, activate or deactivate admins.
+  Officer accounts use the Administrator role; members keep the Voter role.
+  Generated officer passwords are shown once. Give them to the intended
+  officer securely; they can change their own password on that page.
+
+  Admin sidebar > Election Approvals: set the required number, select an
+  election, and submit it. Each distinct active Admin account decides once.
+  After enough approvals, an admin opens voting explicitly. Reopening needs
+  a new approved deadline. Edits before opening invalidate that request.
+  Existing running/scheduled elections are preserved by this upgrade.
+
+  Themes is available to both roles. Six choices are saved per account in
+  the database; a local cache keeps the selected appearance during reloads.
+
+Open http://localhost/CoopVote/setup.php — it names the problem and the
+exact step that fixes it. The usual ones:
+
+  "The coopvote database has not been created on this computer yet"
+        Step 3 above was skipped.
+
+  "Could not reach MySQL"
+        MySQL is not started in the XAMPP Control Panel.
+
+  "MySQL refused the username and password"
+        This PC has a MySQL root password set. Put it in config\config.php
+        as DB_PASS.
+
+  Pages load but every button says the server cannot be reached
+        You opened the files directly instead of through
+        http://localhost/. Go back to step 1.
+
+Login fails after moving to another computer
+--------------------------------------------
+Open http://localhost/<your-folder>/setup.php on that computer. It checks
+session storage, extensions, all required tables, and required columns.
+Use the folder and database/coopvote_full.sql from the SAME release.
+schema_only.sql contains no accounts and is not a data backup.
+
+If setup reports supported missing login/profile/candidate columns, open
+a terminal in the project folder and run:
+
+    C:\xampp\php\php.exe tools\repair_login_schema.php
+
+The command saves a backup in logs/ before adding missing columns. It does
+not replace existing records. Incomplete imports with missing tables must
+be imported into a NEW EMPTY database; keep the old database and configure
+DB_NAME in config/config.php to use the complete import.
+
+If login still fails after setup checks pass, inspect the newest [CoopVote]
+entry in the PHP/Apache error log (XAMPP: apache/logs/error.log). Do not turn
+on public debug output. Copy config/integrity-key.php with signed vote data.

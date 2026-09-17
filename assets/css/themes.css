@@ -1,0 +1,26 @@
+/* Shared palettes preserve the existing CoopVote component vocabulary. */
+:root[data-cv-theme] { --on-accent:#101c2e; color-scheme:dark; }
+:root[data-cv-theme="navy"] { --navy:#0b1931;--navy2:#0f2040;--navy3:#162a52;--navy4:#1e3566;--gold:#c9a84c;--gold2:#e8c96a;--white:#ffffff;--muted:#92a4bc;--muted2:#b6c4d6;--border:#ffffff20;--success:#66c99c;--danger:#ff9292;--warn:#f1bb5b;--info:#7ec8f5; }
+:root[data-cv-theme="light"] { color-scheme:light;--navy:#f2f5fa;--navy2:#ffffff;--navy3:#e5ecf5;--navy4:#d6e1f0;--gold:#735615;--gold2:#65480e;--white:#14263e;--muted:#53677e;--muted2:#43586f;--border:#193b612e;--success:#176542;--danger:#aa2638;--warn:#835711;--info:#1c608a;--on-accent:#ffffff; }
+:root[data-cv-theme="forest"] { --navy:#102820;--navy2:#17352b;--navy3:#20483a;--navy4:#2c5e4d;--gold:#c8c879;--gold2:#e1dd9e;--white:#f2f8f2;--muted:#a1b6a7;--muted2:#bed0c1;--border:#e0f5e524;--success:#86dba5;--danger:#ffa5a5;--warn:#f1c979;--info:#97d4e6; }
+:root[data-cv-theme="ocean"] { --navy:#102b38;--navy2:#153746;--navy3:#1d4b5d;--navy4:#286376;--gold:#84d2de;--gold2:#b5e8ed;--white:#f1f8fc;--muted:#a2bbc8;--muted2:#c0d5df;--border:#d8f3ff26;--success:#85dbac;--danger:#ffa1a5;--warn:#efcc84;--info:#98ccff; }
+:root[data-cv-theme="plum"] { --navy:#291f35;--navy2:#352942;--navy3:#493856;--navy4:#614970;--gold:#d5b1cd;--gold2:#ecd1e5;--white:#faf4fa;--muted:#bcaac6;--muted2:#d6c5dd;--border:#f2e3fa26;--success:#8ed8b4;--danger:#ffa0a9;--warn:#efca87;--info:#a4d3f4; }
+:root[data-cv-theme="slate"] { --navy:#242b34;--navy2:#2c3540;--navy3:#394652;--navy4:#4a5968;--gold:#b7c9df;--gold2:#dce8f4;--white:#f5f7fa;--muted:#aebaca;--muted2:#cad4df;--border:#edf3fa26;--success:#89d6b1;--danger:#ffa7ad;--warn:#eecb8b;--info:#a1d4ff; }
+html[data-cv-theme] body { background:var(--navy);color:var(--white); }
+html[data-cv-theme] .login-card { background:var(--navy2);border-color:var(--border); }
+html[data-cv-theme] .notice.show-error { background:var(--navy2);color:var(--danger);border-color:var(--danger); }
+html[data-cv-theme] .notice.show-success { background:var(--navy2);color:var(--success);border-color:var(--success); }
+html[data-cv-theme] :is(.header,.sidebar,.modal,.modal-content,.modal-box,.dropdown-menu,.cv-picker-menu,.notice-panel,.toast,.toast-container .toast) { background:var(--navy2);color:var(--white);border-color:var(--border); }
+html[data-cv-theme] :is(input,textarea,select) { color:var(--white);background-color:var(--navy);border-color:var(--border); }
+html[data-cv-theme] option { background:var(--navy2);color:var(--white); }
+html[data-cv-theme] :is(.btn-primary,.btn-gold,.submit-btn,.login-btn) { background:var(--gold);color:var(--on-accent); }
+html[data-cv-theme] :is(.card,.stat-card,.panel,.summary-card,.position-card,.candidate-card,.receipt-card,.result-card,.form-card) { background-color:var(--navy2);border-color:var(--border); }
+html[data-cv-theme] :is(.filter-select,.el-select,.search-box,.cv-picker-btn,.btn-outline,.btn-secondary) { color:var(--white);background-color:var(--navy2);border-color:var(--border); }
+html[data-cv-theme] :is(th,td) { border-color:var(--border); }
+html[data-cv-theme] :is(th,.table-head) { background-color:var(--navy3);color:var(--muted2); }
+html[data-cv-theme] :is(.cv-picker-menu,.cv-picker-option,.cv-picker-title,.cv-picker-name) { color:var(--white); }
+html[data-cv-theme] .cv-picker-option:hover { background:var(--navy3); }
+html[data-cv-theme] :is(button,a,input,select,textarea):focus-visible { outline:2px solid var(--gold);outline-offset:3px; }
+html[data-cv-theme] ::placeholder { color:var(--muted);opacity:1; }
+html[data-cv-theme] ::-webkit-scrollbar-thumb { background:var(--muted); }
+@media(prefers-reduced-motion:reduce){html[data-cv-theme] *,html[data-cv-theme] *::before,html[data-cv-theme] *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important;}}

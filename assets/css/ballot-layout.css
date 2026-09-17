@@ -1,0 +1,115 @@
+/* Candidate choices scroll independently so the review and submit controls stay put. */
+.app .content:has(> .ballot-wrap) {
+  overflow: hidden;
+}
+.app .content > .ballot-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  animation: none;
+}
+#ballot-sections {
+  /* Fill the bounded grid row so overflow becomes scrollable content. */
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 8px;
+  padding: 2px;
+}
+.ballot-wrap .review-panel {
+  position: static;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+.review-panel .review-head,
+.review-panel .review-foot {
+  flex: 0 0 auto;
+}
+.review-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.review-panel .review-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.review-panel .review-pos,
+.review-panel .review-sel {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.review-toggle {
+  display: none;
+  background: var(--navy3);
+  color: var(--gold2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 6px 12px;
+  font: 600 .75rem 'DM Sans', sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.review-toggle:focus-visible,
+#ballot-sections:focus-visible,
+.review-list:focus-visible,
+.btn-submit:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+.review-prog-label { font-variant-numeric: tabular-nums; }
+.content:has(> .ballot-wrap) > .stepper { overflow-x: auto; }
+.stepper .step { flex-shrink: 0; }
+
+@media (max-width: 1100px) {
+  .app .content > .ballot-wrap {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .ballot-wrap .review-panel { align-self: stretch; }
+  .review-panel .review-head { padding: 6px 12px; }
+  .review-panel .review-foot { padding: 8px 12px; }
+  .review-toggle { display: inline-flex; align-items: center; }
+  .review-panel .review-list { display: none; }
+  .review-panel.review-expanded .review-list {
+    display: block;
+    max-height: min(160px, calc(var(--cv-visible-height, var(--cv-screen-height)) * .2));
+  }
+  .review-panel .review-progress,
+  .review-panel .submit-note { display: none; }
+  .review-panel .btn-submit { min-height: 44px; padding: 10px; }
+  .app .content:has(> .ballot-wrap) {
+    gap: 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-height: 600px) {
+  .content:has(> .ballot-wrap) > .stepper { display: none; }
+  .app .content:has(> .ballot-wrap) { padding-top: 10px; }
+  .review-panel .review-progress,
+  .review-panel .submit-note { display: none; }
+  .review-panel .review-head,
+  .review-panel .review-foot { padding-block: 6px; }
+}
+
+/* On short landscape screens allow the outer page to scroll as well, so the
+   review controls cannot consume all the room available for candidates. */
+@media (max-height: 400px) {
+  .app .content:has(> .ballot-wrap) { overflow-y: auto; }
+  .app .content > .ballot-wrap { flex: 1 0 300px; }
+}
+:root[data-cv-compact-viewport] .app .content:has(> .ballot-wrap) { overflow-y: auto; }
+:root[data-cv-compact-viewport] .app .content > .ballot-wrap { flex: 1 0 300px; }

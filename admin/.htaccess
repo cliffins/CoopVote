@@ -1,0 +1,19 @@
+# Back-office pages must never be served from the browser cache.
+#
+# Without this, pressing Back after signing out re-displays the last
+# dashboard straight from the back/forward cache — no request reaches the
+# server and no JavaScript re-runs, so the page looks like a live session.
+# "no-store" both forbids caching and disables the bfcache in Chrome and
+# Firefox, which is what actually stops the page coming back.
+<IfModule mod_headers.c>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+        # A validator would let the browser reuse the entity; drop them.
+        Header unset ETag
+        Header unset Last-Modified
+    </FilesMatch>
+</IfModule>
+
+FileETag None

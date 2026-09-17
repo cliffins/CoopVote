@@ -1,0 +1,56 @@
+/* Shared navigation geometry for the existing admin, voter and settings pages. */
+.sidebar,
+.settings-shell .sidebar {
+  width: var(--sidebar-w, 260px);
+  min-width: var(--sidebar-w, 260px);
+  height: var(--cv-visible-height, 100dvh);
+  min-height: 0;
+  box-sizing: border-box;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  scrollbar-gutter: stable;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sidebar .sidebar-logo { padding: 28px 22px 22px; gap: 12px; flex-shrink: 0; }
+.sidebar .logo-mark { width: 40px; height: 40px; flex: 0 0 40px; }
+.sidebar .logo-text { font: 800 20px/26px 'Playfair Display', Georgia, serif; }
+.sidebar .sidebar-section { padding: 20px 14px 8px; font-size: 10.88px; line-height: 14px; flex-shrink: 0; }
+.sidebar .nav-item {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 11px 14px;
+  margin: 2px 8px;
+  gap: 11px;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.sidebar .nav-item svg { width: 17px; height: 17px; flex: 0 0 17px; }
+.sidebar .nav-badge { line-height: 14px; }
+.sidebar .sidebar-footer { margin-top: auto; padding: 16px 14px; flex-shrink: 0; }
+.sidebar::-webkit-scrollbar { width: 5px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
+
+/* Give the picker its own row on phones without squeezing the module title. */
+@media (max-width: 600px) {
+  .app .header:has(#cv-election-picker) {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    height: auto;
+    min-height: 64px;
+    padding-block: 8px;
+    gap: 8px;
+  }
+  .app .header:has(#cv-election-picker) .header-title { min-width: 0; }
+  .app .header:has(#cv-election-picker) .header-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+  .app #cv-election-picker { flex: 1 1 0; width: auto; min-width: 0; margin-right: 0; }
+  .app #cv-election-picker .cv-picker-btn { max-width: none; }
+}

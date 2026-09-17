@@ -1,0 +1,2945 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>CoopVote — Election Management</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --navy: #0b1931;
+      --navy2: #0f2040;
+      --navy3: #162a52;
+      --navy4: #1e3566;
+      --gold: #c9a84c;
+      --gold2: #e8c96a;
+      --white: #ffffff;
+      --muted: #7a8ba0;
+      --muted2: #a8b8cc;
+      --border: rgba(255, 255, 255, .08);
+      --danger: #e05c5c;
+      --success: #4caf82;
+      --warn: #e0a030;
+      --info: #4a9fd4;
+      --sidebar-w: 260px;
+      --header-h: 64px;
+      --radius: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow: hidden
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .12);
+      border-radius: 99px
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes shimmer {
+
+      0%,
+      100% {
+        left: -70%
+      }
+
+      50% {
+        left: 140%
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(224, 92, 92, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 5px rgba(224, 92, 92, 0)
+      }
+    }
+
+    @keyframes pulseLive {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 130, .5)
+      }
+
+      50% {
+        box-shadow: 0 0 0 8px rgba(76, 175, 130, 0)
+      }
+    }
+
+    @keyframes sweep {
+      0% {
+        transform: translateX(-100%)
+      }
+
+      100% {
+        transform: translateX(300%)
+      }
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--navy2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+      z-index: 200
+    }
+
+    .sidebar-logo {
+      padding: 28px 22px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3);
+      position: relative;
+      overflow: hidden
+    }
+
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -70%;
+      width: 40%;
+      height: 100%;
+      background: rgba(255, 255, 255, .3);
+      transform: skewX(-20deg);
+      animation: shimmer 4s ease-in-out infinite
+    }
+
+    .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--navy)
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 800
+    }
+
+    .logo-text span {
+      color: var(--gold)
+    }
+
+    .sidebar-section {
+      padding: 20px 14px 8px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--muted2);
+      transition: all .2s;
+      position: relative;
+      white-space: nowrap;
+      text-decoration: none;
+      overflow: hidden
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, .06);
+      color: var(--white)
+    }
+
+    .nav-item.active {
+      background: rgba(201, 168, 76, .14);
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--gold)
+    }
+
+    .nav-item svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+      opacity: .7
+    }
+
+    .nav-item.active svg {
+      opacity: 1
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 14px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0
+    }
+
+    .admin-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .05);
+      cursor: pointer;
+      transition: background .2s
+    }
+
+    .admin-card:hover {
+      background: rgba(255, 255, 255, .09)
+    }
+
+    .admin-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--navy4), var(--navy3));
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0
+    }
+
+    .admin-info {
+      flex: 1;
+      overflow: hidden
+    }
+
+    .admin-name {
+      font-size: .82rem;
+      font-weight: 600
+    }
+
+    .admin-role {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0
+    }
+
+    .header {
+      height: var(--header-h);
+      flex-shrink: 0;
+      background: rgba(11, 25, 49, .85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+      z-index: 100
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted2);
+      padding: 6px;
+      border-radius: 8px;
+      transition: color .2s, background .2s
+    }
+
+    .hamburger:hover {
+      color: var(--white);
+      background: rgba(255, 255, 255, .07)
+    }
+
+    .header-title {
+      flex: 1
+    }
+
+    .header-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      font-weight: 700
+    }
+
+    .header-title p {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 1px
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .hbtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      cursor: pointer;
+      transition: all .2s;
+      position: relative
+    }
+
+    .hbtn:hover {
+      background: rgba(255, 255, 255, .12);
+      color: var(--white)
+    }
+
+    .hbtn svg {
+      width: 18px;
+      height: 18px
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      text-decoration: none
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy);
+      box-shadow: 0 4px 16px rgba(201, 168, 76, .3)
+    }
+
+    .btn-gold:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px)
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      border: 1px solid var(--border)
+    }
+
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(201, 168, 76, .07)
+    }
+
+    .btn-danger {
+      background: rgba(224, 92, 92, .12);
+      color: var(--danger);
+      border: 1px solid rgba(224, 92, 92, .2)
+    }
+
+    .btn-danger:hover {
+      background: rgba(224, 92, 92, .22)
+    }
+
+    .btn-success {
+      background: rgba(76, 175, 130, .12);
+      color: var(--success);
+      border: 1px solid rgba(76, 175, 130, .2)
+    }
+
+    .btn-success:hover {
+      background: rgba(76, 175, 130, .22)
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      border: 1px solid var(--border)
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, .1)
+    }
+
+    .btn-red {
+      background: rgba(224, 92, 92, .12);
+      color: var(--danger);
+      border: 1px solid rgba(224, 92, 92, .2)
+    }
+
+    .btn-red:hover {
+      background: rgba(224, 92, 92, .25)
+    }
+
+    /* ── ACTIVE ELECTION HERO ── */
+    .hero-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 32px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp .5s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201, 168, 76, .1), transparent 70%);
+      pointer-events: none
+    }
+
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      bottom: -80px;
+      left: 20%;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76, 175, 130, .07), transparent 70%);
+      pointer-events: none
+    }
+
+    /* live state */
+    .hero-card.live-state {
+      border-color: rgba(76, 175, 130, .2)
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(76, 175, 130, .15);
+      border: 1px solid rgba(76, 175, 130, .3);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      color: var(--success);
+      margin-bottom: 10px
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulseLive 1.5s ease-in-out infinite
+    }
+
+    /* no-active state */
+    .hero-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 20px;
+      gap: 14px;
+      text-align: center;
+      color: var(--muted)
+    }
+
+    .hero-empty svg {
+      width: 52px;
+      height: 52px;
+      opacity: .25
+    }
+
+    .hero-empty h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--muted2)
+    }
+
+    .hero-empty p {
+      font-size: .84rem;
+      line-height: 1.7;
+      max-width: 360px
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 22px
+    }
+
+    .hero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 6px
+    }
+
+    .hero-meta {
+      font-size: .82rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap
+    }
+
+    .hero-meta span {
+      display: flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .hero-meta svg {
+      width: 13px;
+      height: 13px
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      flex-shrink: 0
+    }
+
+    /* countdown */
+    .countdown-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap
+    }
+
+    .cd-label {
+      font-size: .72rem;
+      color: var(--muted);
+      letter-spacing: .5px;
+      text-transform: uppercase
+    }
+
+    .cd-items {
+      display: flex;
+      gap: 6px;
+      align-items: center
+    }
+
+    .cd-block {
+      background: rgba(255, 255, 255, .07);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      text-align: center;
+      min-width: 48px
+    }
+
+    .cd-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1
+    }
+
+    .cd-unit {
+      font-size: .58rem;
+      color: var(--muted);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      margin-top: 2px
+    }
+
+    .cd-sep {
+      font-size: 1rem;
+      color: var(--muted)
+    }
+
+    /* progress */
+    .progress-section {
+      margin-top: 20px
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: .76rem;
+      margin-bottom: 7px
+    }
+
+    .progress-row span:first-child {
+      color: var(--muted)
+    }
+
+    .progress-row span:last-child {
+      color: var(--gold);
+      font-weight: 600
+    }
+
+    .progress-track {
+      height: 10px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .07);
+      overflow: hidden
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--success), #7be8b4);
+      transition: width 1.5s .2s cubic-bezier(.22, 1, .36, 1);
+      position: relative;
+      overflow: hidden
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3), transparent);
+      animation: sweep 2.5s ease-in-out infinite
+    }
+
+    /* hero stats strip */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--border);
+      margin-top: 22px;
+      padding-top: 20px
+    }
+
+    .hs {
+      text-align: center;
+      padding: 0 12px;
+      border-right: 1px solid var(--border)
+    }
+
+    .hs:last-child {
+      border-right: none
+    }
+
+    .hs-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1
+    }
+
+    .hs-label {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: 4px
+    }
+
+    .hs-bar {
+      height: 3px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .07);
+      margin-top: 8px;
+      overflow: hidden
+    }
+
+    .hs-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1.2s .5s cubic-bezier(.22, 1, .36, 1)
+    }
+
+    /* ── SECTION HEADER ── */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      animation: fadeUp .5s .16s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700
+    }
+
+    .section-sub {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    /* ── ELECTIONS GRID ── */
+    .elections-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 16px;
+      animation: fadeUp .5s .22s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .ec {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform .22s, box-shadow .22s
+    }
+
+    .ec:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 42px rgba(0, 0, 0, .4)
+    }
+
+    .ec-head {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px
+    }
+
+    .ec-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: .68rem;
+      font-weight: 700;
+      margin-bottom: 7px
+    }
+
+    .ec-status::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor
+    }
+
+    .ec-status.live {
+      background: rgba(76, 175, 130, .15);
+      color: var(--success)
+    }
+
+    .ec-status.upcoming {
+      background: rgba(74, 159, 212, .15);
+      color: var(--info)
+    }
+
+    .ec-status.closed {
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted)
+    }
+
+    .ec-status.draft {
+      background: rgba(224, 160, 48, .15);
+      color: var(--warn)
+    }
+
+    .ec-title {
+      font-weight: 600;
+      font-size: .9rem;
+      line-height: 1.35;
+      margin-bottom: 3px
+    }
+
+    .ec-date {
+      font-size: .72rem;
+      color: var(--muted)
+    }
+
+    .ec-edit-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: none;
+      background: rgba(255, 255, 255, .06);
+      color: var(--muted2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background .2s
+    }
+
+    .ec-edit-btn:hover {
+      background: rgba(255, 255, 255, .12)
+    }
+
+    .ec-body {
+      padding: 12px 18px
+    }
+
+    .ec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: .8rem;
+      border-bottom: 1px solid rgba(255, 255, 255, .04)
+    }
+
+    .ec-row:last-of-type {
+      border-bottom: none
+    }
+
+    .ec-label {
+      color: var(--muted)
+    }
+
+    .ec-val {
+      font-weight: 500;
+      color: var(--muted2)
+    }
+
+    .ec-val.live {
+      color: var(--success)
+    }
+
+    .ec-mini-bar {
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .06);
+      margin: 8px 0;
+      overflow: hidden
+    }
+
+    .ec-mini-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1.2s cubic-bezier(.22, 1, .36, 1)
+    }
+
+    .ec-turnout {
+      display: flex;
+      justify-content: space-between;
+      font-size: .7rem;
+      color: var(--muted);
+      margin-bottom: 10px
+    }
+
+    .ec-footer {
+      padding: 10px 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      background: rgba(255, 255, 255, .015)
+    }
+
+    .ec-footer .btn {
+      justify-content: center;
+      padding: 7px 8px;
+      font-size: .76rem;
+      min-width: 0;
+      width: 100%;
+      min-height: 40px;
+      height: auto;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      text-align: center;
+      line-height: 1.4
+    }
+
+    .ec-footer .btn svg { flex-shrink: 0; }
+    .ec [aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+    .ec [aria-disabled="true"]:hover { transform: none; }
+    @media (max-width: 380px) {
+      .ec-footer { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .active-election-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .active-election-controls label { color: var(--muted2); font-size: .82rem; font-weight: 600; }
+    .active-election-controls select { min-width: 0; width: min(100%, 460px); min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--navy2); color: var(--white); font: inherit; color-scheme: dark; }
+    .active-election-controls select:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+    /* ── POSITIONS CARD ── */
+    .positions-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp .5s .3s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .card-head {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      gap: 10px
+    }
+
+    .card-title {
+      font-size: .9rem;
+      font-weight: 600
+    }
+
+    .card-sub {
+      font-size: .74rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .positions-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr)
+    }
+
+    .pos-item {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      transition: background .2s
+    }
+
+    .pos-item:hover {
+      background: rgba(255, 255, 255, .03)
+    }
+
+    .pos-item:nth-child(3n) {
+      border-right: none
+    }
+
+    .pos-item:nth-last-child(-n+3) {
+      border-bottom: none
+    }
+
+    .pos-name {
+      font-size: .85rem;
+      font-weight: 600;
+      margin-bottom: 3px
+    }
+
+    .pos-count {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-bottom: 9px
+    }
+
+    .pos-avatars {
+      display: flex;
+      margin-bottom: 8px
+    }
+
+    .pos-av {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .58rem;
+      font-weight: 700;
+      margin-left: -5px;
+      border: 2px solid var(--navy2)
+    }
+
+    .pos-av:first-child {
+      margin-left: 0
+    }
+
+    .pos-bar {
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .06);
+      overflow: hidden
+    }
+
+    .pos-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1.3s .5s cubic-bezier(.22, 1, .36, 1)
+    }
+
+    .pos-pct {
+      font-size: .68rem;
+      color: var(--muted);
+      margin-top: 3px;
+      text-align: right
+    }
+
+    .positions-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: .84rem
+    }
+
+    .positions-empty svg {
+      width: 32px;
+      height: 32px;
+      opacity: .28;
+      display: block;
+      margin: 0 auto 10px
+    }
+
+    /* ── MODALS ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .65);
+      backdrop-filter: blur(6px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s
+    }
+
+    .modal-backdrop.show {
+      opacity: 1;
+      pointer-events: all
+    }
+
+    .modal {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 580px;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, .6);
+      transform: translateY(28px) scale(.97);
+      transition: transform .3s cubic-bezier(.22, 1, .36, 1), opacity .25s;
+      opacity: 0
+    }
+
+    .modal-backdrop.show .modal {
+      transform: translateY(0) scale(1);
+      opacity: 1
+    }
+
+    .modal.sm {
+      max-width: 390px
+    }
+
+    .modal-head {
+      padding: 22px 26px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px
+    }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700
+    }
+
+    .modal-close {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255, 255, 255, .07);
+      color: var(--muted2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      flex-shrink: 0
+    }
+
+    .modal-close:hover {
+      background: rgba(224, 92, 92, .2);
+      color: var(--danger)
+    }
+
+    .modal-body {
+      padding: 22px 26px
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px
+    }
+
+    .form-row.full {
+      grid-template-columns: 1fr
+    }
+
+    .form-row.tri {
+      grid-template-columns: 1fr 1fr 1fr
+    }
+
+    .field label {
+      display: block;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px
+    }
+
+    /* Marks a field the form will accept blank. */
+    .field label .opt {
+      float: right;
+      font-size: .66rem;
+      font-weight: 600;
+      letter-spacing: .3px;
+      text-transform: none;
+      color: rgba(255, 255, 255, .32)
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255, 255, 255, .06);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .875rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      resize: none
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: rgba(255, 255, 255, .2)
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201, 168, 76, .12)
+    }
+
+    .field select option {
+      background: var(--navy2)
+    }
+
+    .modal-foot {
+      padding: 14px 26px 22px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end
+    }
+
+    /* positions checklist */
+    .pos-checklist {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px
+    }
+
+    .position-choice { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .position-choice .pos-check { flex: 1; min-width: 0; }
+    .position-choice .pos-check span { overflow-wrap: anywhere; }
+    .position-delete { flex-shrink: 0; padding: 7px 9px; font-size: .72rem; }
+    .pos-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .pos-heading .pos-name { min-width: 0; overflow-wrap: anywhere; }
+    .position-delete:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+    .pos-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      background: rgba(255, 255, 255, .04);
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all .2s;
+      user-select: none
+    }
+
+    .pos-check:hover {
+      border-color: rgba(201, 168, 76, .3);
+      background: rgba(201, 168, 76, .06)
+    }
+
+    .pos-check.checked {
+      border-color: var(--gold);
+      background: rgba(201, 168, 76, .1)
+    }
+
+    .pos-check input {
+      accent-color: var(--gold);
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      cursor: pointer
+    }
+
+    .pos-check span {
+      font-size: .82rem;
+      font-weight: 500
+    }
+
+    /* toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 13px;
+      background: rgba(255, 255, 255, .04);
+      border-radius: 10px;
+      margin-bottom: 10px
+    }
+
+
+    .toggle-label {
+      font-size: .84rem;
+      font-weight: 500
+    }
+
+    .toggle-sub {
+      font-size: .71rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .sw {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0
+    }
+
+    .sw input {
+      opacity: 0;
+      width: 0;
+      height: 0
+    }
+
+    .sw-slider {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, .12);
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background .25s
+    }
+
+    .sw-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .25s
+    }
+
+    .sw input:checked+.sw-slider {
+      background: var(--success)
+    }
+
+    .sw input:checked+.sw-slider::before {
+      transform: translateX(18px)
+    }
+
+    /* confirm */
+    .confirm-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 4px 0
+    }
+
+    .confirm-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px
+    }
+
+    .confirm-icon.danger {
+      background: rgba(224, 92, 92, .12)
+    }
+
+    .confirm-icon.danger svg {
+      color: var(--danger);
+      width: 26px;
+      height: 26px
+    }
+
+    .confirm-icon.warn {
+      background: rgba(224, 160, 48, .12)
+    }
+
+    .confirm-icon.warn svg {
+      color: var(--warn);
+      width: 26px;
+      height: 26px
+    }
+
+    .confirm-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px
+    }
+
+    .confirm-msg {
+      font-size: .83rem;
+      color: var(--muted);
+      line-height: 1.65
+    }
+
+    /* ── TOAST ── */
+    .toast-wrap {
+      position: fixed;
+      top: 78px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none
+    }
+
+    .toast {
+      background: var(--navy3);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: .83rem;
+      min-width: 230px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .4);
+      transform: translateX(130%);
+      transition: transform .35s cubic-bezier(.22, 1, .36, 1)
+    }
+
+    .toast.show {
+      transform: translateX(0)
+    }
+
+    .toast-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .toast.success .toast-dot {
+      background: var(--success)
+    }
+
+    .toast.error .toast-dot {
+      background: var(--danger)
+    }
+
+    .toast.warn .toast-dot {
+      background: var(--warn)
+    }
+
+    .toast.info .toast-dot {
+      background: var(--info)
+    }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      z-index: 150;
+      backdrop-filter: blur(4px)
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:960px) {
+      .hero-stats {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .hs:nth-child(2) {
+        border-right: none
+      }
+
+      .hs:nth-child(3) {
+        border-top: 1px solid var(--border);
+        padding-top: 16px;
+        margin-top: 4px
+      }
+
+      .positions-grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .pos-item:nth-child(2n) {
+        border-right: none
+      }
+
+      .pos-item:nth-child(3n) {
+        border-right: 1px solid var(--border)
+      }
+    }
+
+    @media(max-width:768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        box-shadow: 8px 0 40px rgba(0, 0, 0, .5)
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .overlay {
+        display: block;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity .3s
+      }
+
+      .overlay.show {
+        pointer-events: all;
+        opacity: 1
+      }
+
+      .hamburger {
+        display: flex
+      }
+
+      .content {
+        padding: 16px
+      }
+
+      .header {
+        padding: 0 16px
+      }
+
+      .hero-card {
+        padding: 20px
+      }
+
+      .hero-stats {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .elections-grid {
+        grid-template-columns: 1fr
+      }
+
+      .positions-grid {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .form-row,
+      .form-row.tri {
+        grid-template-columns: 1fr
+      }
+
+      .pos-checklist {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media(max-width:480px) {
+      .positions-grid {
+        grid-template-columns: 1fr
+      }
+
+      .pos-item {
+        border-right: none !important
+      }
+
+      .hero-btns {
+        width: 100%
+      }
+
+      .hero-btns .btn {
+        flex: 1;
+        justify-content: center
+      }
+    }
+  
+    /* ── Layout fix ──────────────────────────────────────────
+       .content is a flex column, and flex items shrink by default.
+       Once the page grew taller than the viewport every section was
+       squashed, and any card with overflow:hidden clipped its own
+       text (the welcome hero showed the name but hid the meta line).
+       Sections keep their natural height; .content already scrolls. */
+    .content > * { flex-shrink: 0; }
+
+    /* ── Empty-state action icons ────────────────────────────
+       The illustration rule above (.page-empty svg and friends) also
+       matches the icon inside the empty state's button, and a rule
+       beats the svg's own width/height attributes. Keep those icons
+       button-sized so the call to action matches every other button. */
+    .page-empty a svg, .page-empty button svg,
+    .empty-section a svg, .empty-section button svg,
+    .page-state a svg, .page-state button svg,
+    .hero-empty a svg, .hero-empty button svg {
+      width: 14px;
+      height: 14px;
+      opacity: 1;
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
+  <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
+  <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
+  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+</head>
+
+<body>
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- ── CREATE / EDIT ELECTION MODAL ── -->
+  <div class="modal-backdrop" id="election-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="modal-title">Create New Election</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('election-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-id" />
+        <p class="field-hint" id="election-edit-note" style="display:none">This election is closed. Use Reopen Election and choose a new deadline before editing.</p>
+        <div class="form-row full">
+          <div class="field"><label for="f-title">Election Title</label><input type="text" id="f-title"
+              placeholder="e.g. 2026 Annual Cooperative Election" required maxlength="150" /></div>
+        </div>
+        <div class="form-row full">
+          <div class="field"><label for="f-desc">Description <span class="opt">Optional</span></label><textarea id="f-desc" rows="2"
+              placeholder="Brief description of this election — you can leave this blank"></textarea></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="f-start">Start Date &amp; Time</label><input type="datetime-local" id="f-start" required oninput="document.getElementById('f-year').value = this.value.slice(0, 4)" /></div>
+          <div class="field"><label for="f-end">End Date &amp; Time</label><input type="datetime-local" id="f-end" required /></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label for="f-year">Election Year</label><input type="number" id="f-year" placeholder="e.g. 2026"
+              min="2020" max="2099" data-input="integer" step="1" readonly title="Calculated from the start date." /></div>
+          <div class="field"><label for="f-status">Status</label>
+            <select id="f-status" disabled title="Use the election Start and Close actions to change status.">
+              <option value="Draft">Draft</option>
+              <option value="Upcoming">Upcoming</option>
+              <option value="Active">Active / Live</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label>Add Positions</label>
+          <div class="pos-checklist" id="pos-checklist">
+            <label class="pos-check checked" onchange="togglePosCheck(this)"><input type="checkbox"
+                checked /><span>President</span></label>
+            <label class="pos-check checked" onchange="togglePosCheck(this)"><input type="checkbox" checked /><span>Vice
+                President</span></label>
+            <label class="pos-check checked" onchange="togglePosCheck(this)"><input type="checkbox"
+                checked /><span>Secretary</span></label>
+            <label class="pos-check checked" onchange="togglePosCheck(this)"><input type="checkbox"
+                checked /><span>Treasurer</span></label>
+            <label class="pos-check checked" onchange="togglePosCheck(this)"><input type="checkbox"
+                checked /><span>Auditor</span></label>
+            <label class="pos-check checked" onchange="togglePosCheck(this)"><input type="checkbox"
+                checked /><span>Director</span></label>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Results Publication</div>
+            <div class="toggle-sub">Publish results after closing the election. Only members who voted can view them.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('election-modal')">Cancel</button>
+        <button class="btn btn-gold" id="election-save" onclick="saveElection()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Save Election
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD POSITION ── -->
+  <div class="modal-backdrop" id="position-modal">
+    <div class="modal sm">
+      <div class="modal-head">
+        <div class="modal-title">Add Position</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('position-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row full">
+          <div class="field"><label>Election</label>
+            <select id="p-election" required></select>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field"><label for="p-name">Position Name</label>
+            <input type="text" id="p-name" placeholder="e.g. Chairperson" required maxlength="100" />
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field"><label for="p-desc">Description <span class="opt">Optional</span></label>
+            <textarea id="p-desc" rows="2" placeholder="What this position is responsible for — you can leave this blank"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('position-modal')">Cancel</button>
+        <button class="btn btn-gold" onclick="savePosition()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Add Position
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONFIRM CLOSE VOTING ── -->
+  <div class="modal-backdrop" id="close-modal">
+    <div class="modal sm">
+      <div class="modal-head">
+        <div class="modal-title">Close Voting Period</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('close-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-center">
+          <div class="confirm-icon danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <div class="confirm-title" id="close-title">Close Voting Now?</div>
+          <div class="confirm-msg" id="close-msg">This will immediately end the voting period. Voters who have not yet
+            voted will no longer be able to cast their ballot. You can reopen voting with a new deadline.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('close-modal')">Keep Open</button>
+        <button class="btn btn-red" onclick="confirmCloseVoting()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
+          Yes, Close Voting
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="reopen-modal" role="dialog" aria-modal="true" aria-labelledby="reopen-title">
+    <div class="modal sm">
+      <div class="modal-head">
+        <div class="modal-title" id="reopen-title">Reopen Election</div>
+        <button type="button" class="modal-close" aria-label="Close" onclick="closeModal('reopen-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="field-hint" id="reopen-election-name"></p>
+        <div class="form-row full">
+          <div class="field"><label for="reopen-end">New Closing Date &amp; Time</label>
+            <input type="datetime-local" id="reopen-end" required />
+          </div>
+        </div>
+        <p class="field-hint">Existing votes and receipts stay saved. Members who already voted cannot vote again. Published results will be hidden until you close voting and publish them again. The previous closing report will be retained.</p>
+        <p class="field-hint" id="reopen-error" role="alert"></p>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('reopen-modal')">Cancel</button>
+        <button type="button" class="btn btn-gold" id="reopen-save" onclick="confirmReopen()">Reopen Election</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UNPUBLISH RESULTS ──
+       Reversible, so this warns rather than alarms: the gold icon, not the
+       red one the irreversible actions use. -->
+  <div class="modal-backdrop" id="unpublish-modal">
+    <div class="modal sm">
+      <div class="modal-head">
+        <div class="modal-title">Unpublish Results</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('unpublish-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-center">
+          <div class="confirm-icon warn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          </div>
+          <div class="confirm-title" id="unpublish-title">Hide these results again?</div>
+          <div class="confirm-msg" id="unpublish-msg"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('unpublish-modal')">Leave Published</button>
+        <button class="btn btn-gold" onclick="confirmUnpublish()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+          </svg>
+          Unpublish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONFIRM DELETE ── -->
+  <div class="modal-backdrop" id="confirm-modal">
+    <div class="modal sm">
+      <div class="modal-head">
+        <div class="modal-title">Delete Election</div>
+        <button aria-label="Close" class="modal-close" onclick="closeModal('confirm-modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="confirm-center">
+          <div class="confirm-icon danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+            </svg>
+          </div>
+          <div class="confirm-title">Delete this election?</div>
+          <div class="confirm-msg">All data associated with this election — candidates, votes, and results — will be
+            permanently deleted and cannot be recovered.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">Cancel</button>
+        <button class="btn btn-red" onclick="confirmDelete()">Delete Permanently</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="delete-position-modal">
+    <div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="delete-position-title">
+      <div class="modal-head"><div class="modal-title" id="delete-position-title">Delete Position</div></div>
+      <div class="modal-body"><p id="delete-position-message"></p></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" id="delete-position-cancel" onclick="closeModal('delete-position-modal')">Cancel</button>
+        <button type="button" class="btn btn-red" id="delete-position-save" onclick="confirmDeletePosition()">Delete Position</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark"><svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg></div>
+        <div class="logo-text">Coop<span>Vote</span></div>
+      </div>
+
+      <div class="sidebar-section">Main</div>
+      <a class="nav-item" href="dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+        </svg>
+        Dashboard
+      </a>
+
+      <div class="sidebar-section">Management</div>
+      <a class="nav-item" href="voter-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Voter Management
+      </a>
+      <a class="nav-item" href="candidate-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        Candidate Management
+      </a>
+      <a class="nav-item active" href="election-management.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Election Management
+      </a>
+
+      <div class="sidebar-section">Analytics</div>
+      <a class="nav-item" href="vote-monitoring.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        Vote Monitoring
+      </a>
+      <a class="nav-item" href="results.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        Results
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        Reports
+      </a>
+
+      <div class="sidebar-section">System</div>
+      <a class="nav-item" href="security-logs.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        Security &amp; Logs
+      </a>
+
+      <div class="sidebar-footer">
+        <div class="admin-card">
+          <div class="admin-avatar">SA</div>
+          <div class="admin-info">
+            <div class="admin-name">System Admin</div>
+            <div class="admin-role">Super Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="header">
+        <button aria-label="Open the menu" class="hamburger" onclick="toggleSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div class="header-title">
+          <h1>Election Management</h1>
+          <p>Create, configure, and control cooperative elections</p>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn" title="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </button>
+          <button class="btn btn-gold" onclick="openCreate()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Election
+          </button>
+          <button class="hbtn" title="Logout" onclick="CoopVote.logout()"
+            style="border:1px solid rgba(224,92,92,.2);color:var(--danger)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+
+        <!-- ACTIVE ELECTION HERO -->
+        <div class="active-election-controls" id="active-election-controls" style="display:none">
+          <label for="active-election-select">Active election</label>
+          <select id="active-election-select" onchange="selectActiveElection(this.value)"></select>
+        </div>
+        <div class="hero-card" id="hero-card">
+          <!-- rendered by renderHero() -->
+          <div class="hero-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+            </svg>
+            <h2>No Active Election</h2>
+            <p>There is no election currently running. Use <strong>New Election</strong> at the top of the page, or activate an existing one below.</p>
+          </div>
+        </div>
+
+        <!-- ALL ELECTIONS -->
+        <div class="section-head">
+          <div>
+            <div class="section-title">All Elections</div>
+            <div class="section-sub" id="elections-sub">No elections found</div>
+          </div>
+        </div>
+
+        <div class="elections-grid" id="elections-grid">
+          <!-- empty state -->
+          <div
+            style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 20px;gap:10px;color:var(--muted);text-align:center;background:var(--navy2);border:1px solid var(--border);border-radius:var(--radius)">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+              style="opacity:.28">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <p style="font-size:.85rem">No elections yet. Click <strong style="color:var(--gold)">Create
+                Election</strong> to add the first one.</p>
+          </div>
+        </div>
+
+        <!-- POSITIONS OVERVIEW -->
+        <div class="positions-card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Position Overview</div>
+              <div class="card-sub" id="positions-sub">Select an election</div>
+            </div>
+            <button class="btn btn-outline" style="padding:7px 13px;font-size:.78rem" onclick="openAddPosition()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add Position
+            </button>
+          </div>
+          <div class="active-election-controls" style="padding:0 20px 16px">
+            <label for="positions-election-select">Election</label>
+            <select id="positions-election-select" onchange="selectPositionsElection(this.value)"></select>
+          </div>
+          <div id="positions-grid">
+            <div class="positions-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="8" r="6" />
+                <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
+              </svg>
+              Select an election to see its positions.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/validation.js?v=20260911-required2"></script>
+  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script>
+    /* ─────────────────────────────────────────
+       STATE
+    ───────────────────────────────────────── */
+    let allElections = [];   // populated by loadElections()
+    let deleteTarget = null;
+    let cdInterval = null;
+    let activeElectionId = null;
+    let positionsElectionId = null;
+
+    function selectedPositionsElection() {
+      return allElections.find(e => Number(e.id) === positionsElectionId) || allElections[0] || null;
+    }
+
+    function syncPositionsElectionSelector() {
+      positionsElectionId = Number(selectedPositionsElection()?.id) || null;
+      const selector = document.getElementById('positions-election-select');
+      selector.innerHTML = allElections.length ? allElections.map(e => `<option value="${Number(e.id)}">${esc(e.title)} — ${esc(e.status)}</option>`).join('') : '<option value="">No elections available</option>';
+      selector.value = positionsElectionId ? String(positionsElectionId) : '';
+      selector.disabled = allElections.length === 0;
+    }
+
+    function selectPositionsElection(value) {
+      if (!allElections.some(e => Number(e.id) === Number(value))) return;
+      positionsElectionId = Number(value);
+      syncPositionsElectionSelector();
+      renderPositions();
+    }
+    try { activeElectionId = Number(sessionStorage.getItem('cv:admin-active-election')) || null; } catch (e) { /* Selection still works without storage. */ }
+
+    function selectedActiveElection() {
+      const active = allElections.filter(e => e.status === 'Active');
+      return active.find(e => e.id === activeElectionId) || active[0] || null;
+    }
+
+    function syncActiveElectionSelector() {
+      const active = allElections.filter(e => e.status === 'Active');
+      activeElectionId = selectedActiveElection()?.id || null;
+      const selector = document.getElementById('active-election-select');
+      selector.innerHTML = active.map(e => `<option value="${Number(e.id)}">${esc(e.title)}</option>`).join('');
+      selector.value = activeElectionId ? String(activeElectionId) : '';
+      selector.disabled = active.length < 2;
+      document.getElementById('active-election-controls').style.display = active.length ? 'flex' : 'none';
+      try {
+        if (activeElectionId) sessionStorage.setItem('cv:admin-active-election', String(activeElectionId));
+        else sessionStorage.removeItem('cv:admin-active-election');
+      } catch (e) { /* Optional selection persistence. */ }
+    }
+
+    function selectActiveElection(value) {
+      if (!allElections.some(e => e.id === Number(value) && e.status === 'Active')) return;
+      activeElectionId = Number(value);
+      syncActiveElectionSelector();
+      renderHero();
+      selectPositionsElection(value);
+    }
+
+    const POS_COLORS = ['#c9a84c', '#4a9fd4', '#4caf82', '#9b7fd4', '#e0a030', '#e05c5c'];
+    const POS_AVATARS = [
+      { bg: '#1e2d5a', fg: '#7ca4e8' }, { bg: '#1a3a2e', fg: '#5dc99a' },
+      { bg: '#3a1e1e', fg: '#e87c7c' }, { bg: '#3a2e10', fg: '#d4a84c' },
+      { bg: '#2a1e3a', fg: '#b07cd4' }, { bg: '#1a2e3a', fg: '#5cb8d4' },
+    ];
+
+    /* ─────────────────────────────────────────
+       SIDEBAR
+    ───────────────────────────────────────── */
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('show');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('overlay').classList.remove('show');
+    }
+
+    /* ─────────────────────────────────────────
+       LOAD ELECTIONS
+       ─────────────────────────────────────────
+       Replace with real API:
+       fetch('/api/elections')
+         .then(r => r.json())
+         .then(data => initElections(data))
+         .catch(() => initElections([]));
+    
+       Each election object:
+       {
+         id, title, description, startDate, endDate,
+         year, status,           // Draft | Upcoming | Active | Closed
+         voters, voted,          // totals for turnout
+         candidates, positions,  // counts
+         positionList: [{ name, candidateCount, topVotes, maxVotes }]
+       }
+    ───────────────────────────────────────── */
+    function loadElections() {
+      CoopVote.api('elections')
+        .then(data => initElections(data))
+        .catch(err => {
+          CoopVote.toast(err.message || 'Could not load data from the server.', 'error');
+        });
+    }
+
+    function initElections(data) {
+      allElections = data;
+      syncActiveElectionSelector();
+      syncPositionsElectionSelector();
+      renderHero();
+      renderElectionsGrid();
+      renderPositions();
+    }
+
+    /* ─────────────────────────────────────────
+       HERO — ACTIVE ELECTION
+    ───────────────────────────────────────── */
+    function renderHero() {
+      const hero = document.getElementById('hero-card');
+      const active = selectedActiveElection();
+
+      if (cdInterval) { clearInterval(cdInterval); cdInterval = null; }
+
+      if (!active) {
+        hero.className = 'hero-card';
+        hero.innerHTML = `
+      <div class="hero-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+        <h2>No Active Election</h2>
+        <p>There is no election currently running. Use <strong>New Election</strong> at the top of the page, or activate an existing one below.</p>
+      </div>`;
+        return;
+      }
+
+      const pct = active.voters > 0 ? Math.round((active.voted / active.voters) * 100) : 0;
+      hero.className = 'hero-card live-state';
+      hero.innerHTML = `
+    <div class="hero-top">
+      <div>
+        <div class="live-badge"><span class="live-dot"></span>ELECTION LIVE</div>
+        <div class="hero-title">${esc(active.title)}</div>
+        <div class="hero-meta">
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${active.startDate} — ${active.endDate}</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>${(active.voters || 0).toLocaleString()} registered voters</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${active.positions || 0} positions</span>
+        </div>
+        <div class="countdown-row">
+          <span class="cd-label">CLOSES IN</span>
+          <div class="cd-items">
+            <div class="cd-block"><div class="cd-num" id="cd-h">--</div><div class="cd-unit">Hrs</div></div>
+            <span class="cd-sep">:</span>
+            <div class="cd-block"><div class="cd-num" id="cd-m">--</div><div class="cd-unit">Min</div></div>
+            <span class="cd-sep">:</span>
+            <div class="cd-block"><div class="cd-num" id="cd-s">--</div><div class="cd-unit">Sec</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-btns">
+        <button class="btn btn-outline" onclick="openEditId(${active.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+        </button>
+        <button class="btn btn-danger" onclick="askCloseVoting(${active.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Close Voting
+        </button>
+      </div>
+    </div>
+    <div class="progress-section">
+      <div class="progress-row">
+        <span>Voter Turnout</span>
+        <span>${(active.voted || 0).toLocaleString()} / ${(active.voters || 0).toLocaleString()} · ${pct}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="hero-prog" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hs">
+        <div class="hs-val" style="color:var(--success)">${(active.voted || 0).toLocaleString()}</div>
+        <div class="hs-label">Votes Cast</div>
+        <div class="hs-bar"><div class="hs-fill" style="width:0%;background:linear-gradient(90deg,var(--success),#7be8b4)" data-w="${pct}%"></div></div>
+      </div>
+      <div class="hs">
+        <div class="hs-val" style="color:var(--info)">${((active.voters || 0) - (active.voted || 0)).toLocaleString()}</div>
+        <div class="hs-label">Yet to Vote</div>
+        <div class="hs-bar"><div class="hs-fill" style="width:0%;background:linear-gradient(90deg,var(--info),#7ac8e8)" data-w="${100 - pct}%"></div></div>
+      </div>
+      <div class="hs">
+        <div class="hs-val" style="color:var(--gold)">${(active.candidates || 0)}</div>
+        <div class="hs-label">Candidates</div>
+        <div class="hs-bar"><div class="hs-fill" style="width:0%;background:linear-gradient(90deg,var(--gold),var(--gold2))" data-w="75%"></div></div>
+      </div>
+      <div class="hs">
+        <div class="hs-val" style="color:#9b7fd4">${(active.positions || 0)}</div>
+        <div class="hs-label">Positions</div>
+        <div class="hs-bar"><div class="hs-fill" style="width:0%;background:linear-gradient(90deg,#7c5cbf,#9b7fd4)" data-w="100%"></div></div>
+      </div>
+    </div>`;
+
+      // animate progress and bars
+      setTimeout(() => {
+        const p = document.getElementById('hero-prog');
+        if (p) { p.style.transition = 'width 1.5s .2s cubic-bezier(.22,1,.36,1)'; p.style.width = pct + '%'; }
+        document.querySelectorAll('.hs-fill').forEach(b => {
+          b.style.transition = 'width 1.2s .4s cubic-bezier(.22,1,.36,1)';
+          b.style.width = b.dataset.w;
+        });
+      }, 100);
+
+      // countdown from endDate
+      startCountdown(active.endISO || active.endDate);
+    }
+
+    function startCountdown(endDateStr) {
+      function tick() {
+        const end = new Date(endDateStr).getTime();
+        const now = Date.now();
+        const diff = Math.max(0, Math.floor((end - now) / 1000));
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        const hEl = document.getElementById('cd-h'), mEl = document.getElementById('cd-m'), sEl = document.getElementById('cd-s');
+        if (hEl) hEl.textContent = String(h).padStart(2, '0');
+        if (mEl) mEl.textContent = String(m).padStart(2, '0');
+        if (sEl) sEl.textContent = String(s).padStart(2, '0');
+      }
+      tick();
+      cdInterval = setInterval(tick, 1000);
+    }
+
+    /* ─────────────────────────────────────────
+       ELECTIONS GRID
+    ───────────────────────────────────────── */
+    function renderElectionsGrid() {
+      const grid = document.getElementById('elections-grid');
+      const sub = document.getElementById('elections-sub');
+
+      if (allElections.length === 0) {
+        sub.textContent = 'No elections found';
+        grid.innerHTML = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 20px;gap:10px;color:var(--muted);text-align:center;background:var(--navy2);border:1px solid var(--border);border-radius:var(--radius)">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.28"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <p style="font-size:.85rem">No elections yet. Click <strong style="color:var(--gold)">Create Election</strong> to add the first one.</p>
+    </div>`;
+        return;
+      }
+
+      sub.textContent = `${allElections.length} election${allElections.length !== 1 ? 's' : ''} total`;
+
+      const statusMap = {
+        Active: { cls: 'live', label: 'Live' },
+        Upcoming: { cls: 'upcoming', label: 'Upcoming' },
+        Closed: { cls: 'closed', label: 'Closed' },
+        Draft: { cls: 'draft', label: 'Draft' },
+      };
+
+      grid.innerHTML = allElections.map((e, i) => {
+        const s = statusMap[e.status] || statusMap.Draft;
+        const pct = e.voters > 0 ? Math.round((e.voted / e.voters) * 100) : 0;
+        const fillColor =
+          e.status === 'Active' ? 'linear-gradient(90deg,var(--success),#7be8b4)' :
+            e.status === 'Closed' ? 'linear-gradient(90deg,var(--info),#7ac8e8)' :
+              e.status === 'Upcoming' ? 'linear-gradient(90deg,var(--gold),var(--gold2))' :
+                'linear-gradient(90deg,var(--muted),#a0b0c0)';
+
+        let footerBtns = '';
+        let resultsRow = '';
+        if (e.status === 'Active') {
+          footerBtns = `<button class="btn btn-danger" onclick="askCloseVoting(${e.id})" style="padding:7px 8px;font-size:.75rem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Close</button>`;
+        } else if (e.status === 'Draft') {
+          footerBtns = `<button class="btn btn-success" onclick="activateElection(${e.id})" style="padding:7px 8px;font-size:.75rem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Activate</button>`;
+        } else if (e.status === 'Upcoming') {
+          footerBtns = `<button class="btn btn-gold" onclick="activateElection(${e.id})" style="padding:7px 8px;font-size:.75rem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Start Now</button>`;
+        } else {
+          /* A closed election keeps its tallies hidden from members until
+             they are released, so offer that here — without it there was
+             no way to publish and the members' Results page stayed empty.
+
+             Releasing used to be a one-way door: this slot held a dead
+             "Published" label, so a count let out by mistake could not be
+             taken back. The two states are one toggle now. */
+          const releaseBtn = e.published
+            ? `<button class="btn btn-outline" onclick="askUnpublish(${e.id})" title="Hide these results from members again" style="padding:7px 8px;font-size:.75rem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Unpublish</button>`
+            : `<button class="btn btn-gold" onclick="releaseResults(${e.id})" style="padding:7px 8px;font-size:.75rem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Release Results</button>`;
+
+          /* With the label gone from the footer, the card still has to say
+             which of the two states it is in, without the reader having to
+             work it out from the verb on a button. */
+          resultsRow = `<div class="ec-row"><span class="ec-label">Results</span><span class="ec-val${e.published ? ' live' : ''}">${e.published ? 'Published' : 'Hidden from members'}</span></div>`;
+
+          footerBtns = `${e.status === 'Closed' ? `<button class="btn btn-success" onclick="askReopen(${e.id})" style="padding:7px 8px;font-size:.75rem">Reopen Election</button>` : ''}${releaseBtn}
+      <a href="reports.html" class="btn btn-outline" style="padding:7px 8px;font-size:.75rem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results</a>`;
+        }
+
+        return `<div class="ec" style="animation:fadeUp .5s ${i * .06}s both">
+      <div class="ec-head">
+        <div>
+          <div class="ec-status ${s.cls}">${s.label}</div>
+          <div class="ec-title">${esc(e.title)}</div>
+          <div class="ec-date">${e.startDate || '—'} → ${e.endDate || '—'}</div>
+        </div>
+        <button aria-label="Edit this election" aria-disabled="${e.status === 'Closed'}" class="ec-edit-btn" onclick="openEditId(${e.id})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+      </div>
+      <div class="ec-body">
+        <div class="ec-row"><span class="ec-label">Registered Voters</span><span class="ec-val">${(e.voters || 0).toLocaleString()}</span></div>
+        <div class="ec-row"><span class="ec-label">Votes Cast</span><span class="ec-val ${e.status === 'Active' ? 'live' : ''}">${(e.voted || 0).toLocaleString()}</span></div>
+        <div class="ec-row"><span class="ec-label">Candidates</span><span class="ec-val">${e.candidates || 0}</span></div>
+        <div class="ec-row"><span class="ec-label">Positions</span><span class="ec-val">${e.positions || 0}</span></div>
+        ${resultsRow}
+        <div class="ec-mini-bar"><div class="ec-mini-fill" style="width:0%;background:${fillColor}" data-w="${pct}%"></div></div>
+        <div class="ec-turnout"><span>Turnout</span><span style="color:${e.status === 'Active' ? 'var(--success)' : 'var(--muted2)'};font-weight:600">${pct}%</span></div>
+      </div>
+      <div class="ec-footer">
+        ${footerBtns}
+        <button class="btn btn-outline" aria-disabled="${e.status === 'Closed'}" onclick="openEditId(${e.id})" style="padding:7px 8px;font-size:.75rem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
+        </button>
+        <button class="btn btn-red" onclick="askDelete(${e.id})" style="padding:7px 8px;font-size:.75rem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Delete
+        </button>
+      </div>
+    </div>`;
+      }).join('');
+
+      setTimeout(() => {
+        document.querySelectorAll('.ec-mini-fill').forEach(b => {
+          b.style.transition = 'width 1.2s cubic-bezier(.22,1,.36,1)'; b.style.width = b.dataset.w;
+        });
+      }, 300);
+    }
+
+    /* ─────────────────────────────────────────
+       POSITIONS OVERVIEW
+       ─────────────────────────────────────────
+       Reads positionList from the active election.
+       positionList: [{ name, candidateCount, topVotes, maxVotes }]
+    ───────────────────────────────────────── */
+    function renderPositions() {
+      const active = selectedPositionsElection();
+      const subEl = document.getElementById('positions-sub');
+      const gridEl = document.getElementById('positions-grid');
+
+      if (!active || !active.positionList || active.positionList.length === 0) {
+        subEl.textContent = active ? active.title + ' — 0 positions' : 'No elections available';
+        gridEl.innerHTML = `<div class="positions-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      ${active ? 'No positions configured for this election.' : 'Create an election to add positions.'}
+    </div>`;
+        return;
+      }
+
+      subEl.textContent = active.title + ' — ' + active.positionList.length + ' positions';
+      gridEl.innerHTML = `<div class="positions-grid">
+    ${active.positionList.map((p, i) => {
+        const pct = p.maxVotes > 0 ? Math.round((p.topVotes / p.maxVotes) * 100) : 0;
+        const color = POS_COLORS[i % POS_COLORS.length];
+        const avHTML = Array.from({ length: Math.min(p.candidateCount || 0, 4) }, (_, j) => {
+          const { bg, fg } = POS_AVATARS[(i + j) % POS_AVATARS.length];
+          return `<div class="pos-av" style="background:${bg};color:${fg}">${String.fromCharCode(65 + j)}</div>`;
+        }).join('') + (p.candidateCount > 4 ? `<div class="pos-av" style="background:rgba(255,255,255,.08);color:var(--muted)">+${p.candidateCount - 4}</div>` : '');
+        return `<div class="pos-item">
+        <div class="pos-heading"><div class="pos-name" style="color:${color}">${esc(p.name)}</div>
+          ${p.id ? `<button type="button" class="btn btn-red position-delete" onclick="askDeletePosition(${active.id}, ${p.id})" aria-label="Delete ${esc(p.name)}">Delete</button>` : ''}
+        </div>
+        <div class="pos-count">${p.candidateCount || 0} candidate${p.candidateCount !== 1 ? 's' : ''}</div>
+        <div class="pos-avatars">${avHTML}</div>
+        <div class="pos-bar"><div class="pos-fill" style="width:0%;background:linear-gradient(90deg,${color},${color}99)" data-w="${pct}%"></div></div>
+        <div class="pos-pct">${pct}% engagement</div>
+      </div>`;
+      }).join('')}
+  </div>`;
+
+      setTimeout(() => {
+        document.querySelectorAll('.pos-fill').forEach(b => {
+          b.style.transition = 'width 1.3s .5s cubic-bezier(.22,1,.36,1)'; b.style.width = b.dataset.w;
+        });
+      }, 300);
+    }
+
+    /* ─────────────────────────────────────────
+       MODAL ACTIONS
+    ───────────────────────────────────────── */
+    function clearForm() {
+      ['f-title', 'f-desc', 'f-start', 'f-end'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      const yr = document.getElementById('f-year'); if (yr) yr.value = new Date().getFullYear();
+      document.getElementById('f-status').value = 'Draft';
+      document.getElementById('edit-id').value = '';
+      document.getElementById('election-save').disabled = false;
+      document.getElementById('election-edit-note').style.display = 'none';
+      renderPositionChecks();
+    }
+
+    function openCreate() {
+      document.getElementById('modal-title').textContent = 'Create New Election';
+      clearForm();
+      openModal('election-modal');
+    }
+
+    function openEdit() {
+      const active = selectedActiveElection();
+      if (active) openEditId(active.id);
+      else openCreate();
+    }
+
+    function openEditId(id) {
+      const e = allElections.find(x => x.id === id);
+      if (!e) { showToast('That election is no longer available. Refresh the election list.', 'warn'); return; }
+      if (e.status === 'Closed') {
+        showToast('The election must be open to edit.', 'warn');
+        return;
+      }
+      document.getElementById('modal-title').textContent = 'Edit Election';
+      clearForm();
+      if (e) {
+        renderPositionChecks(e.positionList || [], e.id);
+        document.getElementById('election-save').disabled = e.status === 'Closed';
+        document.getElementById('election-edit-note').style.display = e.status === 'Closed' ? 'block' : 'none';
+        document.getElementById('edit-id').value = e.id;
+        document.getElementById('f-title').value = e.title || '';
+        document.getElementById('f-desc').value = e.description || '';
+        document.getElementById('f-start').value = e.startISO || '';
+        document.getElementById('f-end').value = e.endISO || '';
+        document.getElementById('f-year').value = e.year || new Date().getFullYear();
+        document.getElementById('f-status').value =
+          e.status === 'Active' ? 'Active' : e.status === 'Upcoming' ? 'Upcoming' : e.status === 'Closed' ? 'Closed' : 'Draft';
+      }
+      openModal('election-modal');
+    }
+
+    function togglePosCheck(el) {
+      el.classList.toggle('checked', el.querySelector('input').checked);
+    }
+
+    function renderPositionChecks(existing = null, electionId = null) {
+      const defaults = ['President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor', 'Director'];
+      const normalize = name => String(name).replace(/\s+/g, ' ').trim().toLowerCase();
+      const included = new Map((existing || []).map(p => [normalize(p.name), p.name]));
+      const names = new Map(defaults.map(name => [normalize(name), name]));
+      included.forEach((name, key) => names.set(key, name));
+      document.getElementById('pos-checklist').innerHTML = [...names].map(([key, name]) => {
+        const present = included.has(key), checked = existing === null || present;
+        const position = (existing || []).find(p => normalize(p.name) === key);
+        const label = `<label class="pos-check${checked ? ' checked' : ''}" onchange="togglePosCheck(this)"><input type="checkbox" ${checked ? 'checked' : ''} ${present ? 'disabled title="Already included in this election"' : ''} /><span>${esc(name)}</span></label>`;
+        return position?.id && electionId ? `<div class="position-choice" data-position-id="${position.id}">${label}<button type="button" class="btn btn-red position-delete" onclick="askDeletePosition(${electionId}, ${position.id})" aria-label="Delete ${esc(name)}">Delete</button></div>` : label;
+      }).join('');
+    }
+
+    function saveElection() {
+      if (!CoopVoteValidation.validate('#election-modal')) return;
+      const title = document.getElementById('f-title').value.trim();
+      if (!title) { showToast('Please enter an election title.', 'warn'); return; }
+      const editId = document.getElementById('edit-id').value;
+      const startDate = document.getElementById('f-start').value;
+      const endDate = document.getElementById('f-end').value;
+
+      if (!startDate || !endDate) {
+        showToast('Please set both a start and an end date.', 'warn');
+        return;
+      }
+
+      const positions = [...document.querySelectorAll('#pos-checklist input:checked:not(:disabled)')]
+        .map(input => input.closest('label').querySelector('span').textContent.replace(/\s+/g, ' ').trim());
+      if (!editId && positions.length === 0) {
+        showToast('Select at least one position to save this election.', 'warn');
+        document.querySelector('#pos-checklist input')?.focus();
+        return;
+      }
+
+      return CoopVote.api(editId ? `elections/${editId}` : 'elections', {
+        method: editId ? 'PUT' : 'POST',
+        body: {
+          title,
+          description: document.getElementById('f-desc').value.trim(),
+          startDate, endDate,
+          ...(!editId ? { positions } : {})
+        }
+      })
+        .then(res => {
+          positionsElectionId = Number(res.id || editId);
+          if (!editId) return; // Creation saves positions in the same database transaction.
+          /* Add any newly ticked positions to the election. */
+          const id = res.id || editId;
+          // Retry a failed position addition against the saved election.
+          document.getElementById('edit-id').value = id;
+          return Promise.all(
+            positions.map(name =>
+              CoopVote.api('positions', { method: 'POST', body: { electionId: id, name } })
+                .catch(err => {
+                  if (err.status === 409) return null; // already present
+                  throw new Error('Election details were saved, but a position could not be added: ' + err.message);
+                })
+            )
+          );
+        })
+        .then(() => {
+          closeModal('election-modal');
+          showToast('Election saved successfully.', 'success');
+          loadElections();
+        })
+        .catch(err => showToast(err.message || 'Could not save this election.', 'error'));
+    }
+
+    /* ─────────────────────────────────────────
+       ADD POSITION
+       Its own dialog — this button used to open the Create Election
+       form, so there was no way to add a single position.
+    ───────────────────────────────────────── */
+    function openAddPosition() {
+      const sel = document.getElementById('p-election');
+
+      if (!allElections.length) {
+        showToast('Create an election first, then add positions to it.', 'warn');
+        return;
+      }
+
+      /* Offer the live election first, then the rest. */
+      const ordered = [...allElections].sort((a, b) =>
+        (a.status === 'Active' ? -1 : 0) - (b.status === 'Active' ? -1 : 0));
+
+      sel.innerHTML = ordered.map(e =>
+        `<option value="${e.id}">${esc(e.title)} — ${e.status}</option>`).join('');
+      const selected = selectedPositionsElection();
+      if (selected) sel.value = String(selected.id);
+
+      document.getElementById('p-name').value = '';
+      document.getElementById('p-desc').value = '';
+      openModal('position-modal');
+      setTimeout(() => document.getElementById('p-name').focus(), 80);
+    }
+
+    function savePosition() {
+      if (!CoopVoteValidation.validate('#position-modal')) return;
+      const electionId = document.getElementById('p-election').value;
+      const name = document.getElementById('p-name').value.trim();
+      const description = document.getElementById('p-desc').value.trim();
+
+      if (!electionId) { showToast('Please choose an election.', 'warn'); return; }
+      if (!name) { showToast('Please enter a position name.', 'warn'); return; }
+
+      CoopVote.api('positions', { method: 'POST', body: { electionId, name, description } })
+        .then(() => {
+          closeModal('position-modal');
+          positionsElectionId = Number(electionId);
+          showToast(`Position "${name}" added.`, 'success');
+          loadElections();
+        })
+        .catch(err => showToast(err.message || 'Could not add this position.', 'error'));
+    }
+
+    function activateElection(id) {
+      if (allElections.find(e => e.id === id)?.approvalReady === false) {
+        window.location.href = '../management.html?election=' + id + '#approvals';
+        return;
+      }
+      CoopVote.api(`elections/${id}/activate`, { method: 'PATCH' })
+        .then(() => {
+          showToast('Election is now live! Members can start voting.', 'success');
+          loadElections();
+        })
+        .catch(err => showToast(err.message || 'Could not start this election.', 'error'));
+    }
+
+    /* Which election the Close dialog is about. Two elections can run side
+       by side, and the dialog used to ignore the card that opened it and
+       close whichever active one came first in the list. */
+    let closeTarget = null;
+
+    function askCloseVoting(id) {
+      const e = id == null ? selectedActiveElection() : allElections.find(x => x.id === id);
+      if (!e || e.status !== 'Active') {
+        showToast('There is no election currently running.', 'warn');
+        return;
+      }
+      closeTarget = e.id;
+      document.getElementById('close-title').textContent = `Close “${esc(e.title)}” now?`;
+      document.getElementById('close-msg').textContent =
+        'This ends the voting period immediately. Members who have not voted '
+        + 'will no longer be able to. The tallies stay hidden from members '
+        + 'until you press Release Results.';
+      openModal('close-modal');
+    }
+
+    function confirmCloseVoting() {
+      const id = closeTarget;
+      closeTarget = null;
+      if (!id) {
+        closeModal('close-modal');
+        showToast('There is no election currently running.', 'warn');
+        return;
+      }
+
+      CoopVote.api(`elections/${id}/close`, { method: 'PATCH' })
+        .then(() => {
+          closeModal('close-modal');
+          showToast('Voting closed. Press Release Results when you want members to see them.', 'warn');
+          loadElections();
+        })
+        .catch(err => {
+          closeModal('close-modal');
+          showToast(err.message || 'Could not close this election.', 'error');
+        });
+    }
+
+    let reopenTarget = null;
+    let reopening = false;
+
+    function askReopen(id) {
+      if (reopening) return;
+      const election = allElections.find(e => e.id === id && e.status === 'Closed');
+      if (!election) { showToast('Only a closed election can be reopened.', 'warn'); return; }
+      if (election.approvalReady === false) {
+        window.location.href = '../management.html?election=' + id + '#approvals';
+        return;
+      }
+      reopenTarget = id;
+      document.getElementById('reopen-election-name').textContent = election.title;
+      document.getElementById('reopen-end').value = election.approvedEnd || '';
+      const future = new Date(Date.now() + 60000);
+      future.setMinutes(future.getMinutes() - future.getTimezoneOffset());
+      document.getElementById('reopen-end').min = future.toISOString().slice(0, 16);
+      document.getElementById('reopen-error').textContent = '';
+      openModal('reopen-modal');
+      document.getElementById('reopen-end').focus();
+    }
+
+    async function confirmReopen() {
+      if (reopening || !reopenTarget) return;
+      const endDate = document.getElementById('reopen-end').value;
+      const error = document.getElementById('reopen-error');
+      if (!endDate || !Number.isFinite(Date.parse(endDate)) || Date.parse(endDate) <= Date.now()) {
+        error.textContent = 'Choose a new closing date and time in the future.';
+        document.getElementById('reopen-end').focus();
+        return;
+      }
+      if (!CoopVoteValidation.validate('#reopen-modal')) return;
+      reopening = true;
+      const button = document.getElementById('reopen-save');
+      button.disabled = true;
+      button.textContent = 'Reopening…';
+      error.textContent = '';
+      try {
+        await CoopVote.api(`elections/${reopenTarget}/reopen`, { method: 'PATCH', body: { endDate } });
+        reopenTarget = null;
+        closeModal('reopen-modal');
+        showToast('Election reopened. Existing votes are preserved; results will need to be published again.', 'success');
+        loadElections();
+      } catch (err) {
+        error.textContent = err.message || 'Could not reopen this election. Please try again.';
+      } finally {
+        reopening = false;
+        button.disabled = false;
+        button.textContent = 'Reopen Election';
+      }
+    }
+
+    /* Publish the tallies so members can see the results. */
+    /* ───────────────────────────────────────
+       UNPUBLISH RESULTS
+       ───────────────────────────────────────
+       Members read results_released_at live on every request, so clearing it
+       takes the tally straight back out of their Results page. Nothing about
+       the ballots changes.
+    ─────────────────────────────────────── */
+    let unpublishTarget = null;
+
+    function askUnpublish(id) {
+      const e = allElections.find(x => x.id === id);
+      if (!e) {
+        showToast('That election is no longer on this page.', 'warn');
+        return;
+      }
+      unpublishTarget = id;
+      /* textContent, not innerHTML: the browser puts this in as text and
+         cannot be talked into reading it as markup. So the title goes in
+         raw - running it through esc() here would show an election called
+         "Officers & Directors" as "Officers &amp; Directors". Escape for
+         innerHTML; never for textContent. */
+      document.getElementById('unpublish-title').textContent =
+        'Hide the results of “' + e.title + '”?';
+      document.getElementById('unpublish-msg').textContent =
+        'Members will no longer see the tally on their Results page. No vote is '
+        + 'changed or lost, and you can release it again at any time. Anyone '
+        + 'who has already read the figures will of course remember them.';
+      openModal('unpublish-modal');
+    }
+
+    function confirmUnpublish() {
+      const id = unpublishTarget;
+      unpublishTarget = null;
+      if (!id) { closeModal('unpublish-modal'); return; }
+
+      CoopVote.api(`elections/${id}/unpublish`, { method: 'PATCH' })
+        .then(() => {
+          closeModal('unpublish-modal');
+          showToast('Results unpublished. Members can no longer see the tally.', 'warn');
+          loadElections();
+        })
+        .catch(err => {
+          closeModal('unpublish-modal');
+          showToast(err.message || 'Could not unpublish these results.', 'error');
+        });
+    }
+
+    function releaseResults(id) {
+      CoopVote.api(`elections/${id}/release`, { method: 'PATCH' })
+        .then(() => {
+          showToast('Results released. Members can now see them.', 'success');
+          loadElections();
+        })
+        .catch(err => showToast(err.message || 'Could not release the results.', 'error'));
+    }
+
+    let positionDeleteTarget = null;
+    let positionDeleting = false;
+
+    function askDeletePosition(electionId, positionId) {
+      if (positionDeleting) return;
+      const election = allElections.find(e => e.id === electionId);
+      const position = election?.positionList.find(p => p.id === positionId);
+      if (!position) { showToast('This position no longer exists. Reload the election list.', 'warn'); return; }
+      const reason = election.status === 'Closed' ? 'Reopen the election before deleting a position.'
+        : position.topVotes > 0 ? 'This position already has votes and cannot be deleted.'
+        : position.candidateCount > 0 ? 'Remove or reassign this position\'s candidates in Candidate Management first.'
+        : election.positionList.length <= 1 ? 'Keep at least one position in this election.' : '';
+      if (reason) { showToast(reason, 'warn'); return; }
+      positionDeleteTarget = { electionId, positionId };
+      document.getElementById('delete-position-message').textContent = 'Delete “' + position.name + '” from “' + election.title + '”? This cannot be undone.';
+      openModal('delete-position-modal');
+      document.getElementById('delete-position-cancel').focus();
+    }
+
+    async function confirmDeletePosition() {
+      if (positionDeleting || !positionDeleteTarget) return;
+      const target = positionDeleteTarget;
+      positionDeleting = true;
+      const button = document.getElementById('delete-position-save');
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      document.getElementById('delete-position-cancel').disabled = true;
+      try {
+        await CoopVote.api(`positions/${target.positionId}`, { method: 'DELETE' });
+        const election = allElections.find(e => e.id === target.electionId);
+        if (election) {
+          election.positionList = election.positionList.filter(p => p.id !== target.positionId);
+          election.positions = election.positionList.length;
+        }
+        document.querySelector(`[data-position-id="${target.positionId}"]`)?.remove();
+        initElections(allElections);
+        positionDeleteTarget = null;
+        closeModal('delete-position-modal');
+        showToast('Position deleted.', 'success');
+      } catch (err) {
+        showToast(err.message || 'Could not delete this position. Please try again.', 'error');
+      } finally {
+        positionDeleting = false;
+        button.disabled = false;
+        button.textContent = 'Delete Position';
+        document.getElementById('delete-position-cancel').disabled = false;
+      }
+    }
+
+    function askDelete(id) { deleteTarget = id; openModal('confirm-modal'); }
+
+    function confirmDelete() {
+      const id = deleteTarget;
+      deleteTarget = null;
+
+      CoopVote.api(`elections/${id}`, { method: 'DELETE' })
+        .then(() => {
+          closeModal('confirm-modal');
+          showToast('Election deleted.', 'warn');
+          loadElections();
+        })
+        .catch(err => {
+          closeModal('confirm-modal');
+          /* An election with votes cannot be deleted — the API says so. */
+          showToast(err.message || 'Could not delete this election.', 'error');
+        });
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('show'); }
+    function closeModal(id) {
+      if (id === 'delete-position-modal') {
+        if (positionDeleting && positionDeleteTarget) return;
+        positionDeleteTarget = null;
+      }
+      document.getElementById(id).classList.remove('show');
+    }
+
+    /* ─────────────────────────────────────────
+       TOAST
+    ───────────────────────────────────────── */
+    function showToast(msg, type = 'success') {
+      const wrap = document.getElementById('toast-wrap');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<div class="toast-dot"></div><span>${esc(msg)}</span>`;
+      wrap.appendChild(t);
+      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3400);
+    }
+
+    /* ─────────────────────────────────────────
+       INIT
+    ───────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      CoopVote.guard('admin').then(loadElections);
+
+      /*
+       * When your backend is ready, replace loadElections() with:
+       *
+       * fetch('/api/elections')
+       *   .then(r => r.json())
+       *   .then(data => initElections(data))
+       *   .catch(() => { initElections([]); showToast('Failed to load elections.','error'); });
+       */
+    });
+  </script>
+</body>
+
+</html>

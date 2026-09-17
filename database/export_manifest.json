@@ -1,0 +1,37 @@
+{
+    "exportedAt": "2026-09-15T22:55:15+08:00",
+    "tables": 25,
+    "removed": [
+        "election_controls"
+    ],
+    "rows": {
+        "admin_profiles": 0,
+        "announcements": 0,
+        "audit_logs": 1214,
+        "ballots": 70,
+        "blocked_ips": 1,
+        "candidates": 44,
+        "election_admin_decisions": 0,
+        "election_approval_requests": 0,
+        "election_integrity": 4,
+        "election_reports": 3,
+        "elections": 4,
+        "governance_config": 1,
+        "login_attempts": 548,
+        "member_profile_photo_chunks": 38,
+        "members": 114,
+        "notification_reads": 0,
+        "otp_tokens": 18,
+        "positions": 25,
+        "roles": 2,
+        "security_alert_reviews": 1,
+        "settings": 4,
+        "user_preferences": 2,
+        "users": 114,
+        "vote_integrity": 384,
+        "votes": 384,
+        "profilePhotoBytes": 1839037
+    },
+    "sha256": "c4948f3450d13baf9ef10d01baee649f2b5962c2c5180652e14b3c6bf251790f",
+    "backup": "before-quorum-cleanup-20260915_225510_7956dd.sql"
+}

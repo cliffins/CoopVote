@@ -1,0 +1,284 @@
+/* Shared screen-fit rules. Preserve each page's colors, typography and card widths. */
+:root {
+  --cv-screen-height: 100vh;
+  --cv-dialog-gap: clamp(8px, 2vw, 20px);
+  --cv-dialog-top: max(var(--cv-dialog-gap), env(safe-area-inset-top, 0px));
+  --cv-dialog-bottom: max(var(--cv-dialog-gap), env(safe-area-inset-bottom, 0px));
+}
+@supports (height: 100dvh) { :root { --cv-screen-height: 100dvh; } }
+.app { height: var(--cv-visible-height, var(--cv-screen-height)); min-height: 0; width: 100%; }
+.app .main, .app .content { min-width: 0; min-height: 0; }
+.app .header { flex-shrink: 0; }
+.app .content {
+  gap: 16px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 20px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+.app .content > * { flex-shrink: 0; }
+
+/* Independent columns keep their natural height; repeated cards align by row.
+   The ballot owns its own bounded scroll layout in ballot-layout.css. */
+.mid-row,
+.bottom-row,
+.two-col,
+.main-grid,
+.profile-grid {
+  align-items: start;
+}
+.cards-grid,
+.cands-grid,
+.elections-grid,
+.positions-grid,
+.export-grid,
+.three-col {
+  align-items: stretch;
+}
+.cards-grid > .cand-card,
+.cands-grid > .cand-card,
+.elections-grid > .ec {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cand-card > .card-banner,
+.cand-card > .cand-card-top { flex-shrink: 0; }
+.cards-grid .card-info,
+.cands-grid .cand-body,
+.elections-grid .ec-body { flex: 1 0 auto; }
+.cards-grid .card-info { display: flex; flex-direction: column; }
+.cards-grid .card-position { align-self: center; }
+.cards-grid .card-meta { margin-top: auto; }
+/* Full biographies remain in View Profile; previews keep card rows compact. */
+.cards-grid .card-desc,
+.cands-grid .cand-bio { -webkit-line-clamp: 3; line-clamp: 3; }
+.cand-card > .card-actions,
+.cand-card > .cand-footer,
+.ec > .ec-footer,
+.export-card > .export-footer { margin-top: auto; }
+.card-actions > .card-btn { min-height: 40px; }
+
+/* Long names and table content must not push a column past its neighbours. */
+:is(.mid-row, .bottom-row, .two-col, .main-grid, .profile-grid,
+    .results-layout, .three-col, .positions-grid, .export-grid,
+    .summary-strip, .stats-strip, .stats-grid) > * { min-width: 0; }
+.card-name, .cand-name, .ec-title, .pos-name,
+.card-title, .section-title { overflow-wrap: anywhere; }
+.card-head, .section-head, .cand-footer { flex-wrap: wrap; }
+.cand-footer { gap: 8px; }
+.export-footer { flex-wrap: wrap; gap: 8px; }
+.side-panels,
+.profile-forms,
+.profile-summary {
+  align-self: start;
+}
+.form-row { align-items: start; }
+
+/* Dashboard/report rows share the height of their tallest card. This opt-in
+   also lets the log card match the complete stack of security panels. */
+.equal-height-grid { align-items: stretch; }
+.equal-height-grid > * { align-self: stretch; }
+.equal-height-grid > .log-card > .log-list {
+  /* Start at the usual log height, then fill any extra height from the sidebar. */
+  flex: 1 1 380px;
+  height: 380px;
+  min-height: 0;
+  max-height: none;
+}
+
+/* Pair the voter dashboard's cards in shared rows. Independent flex columns
+   cannot align the second row when the first two cards have different content.
+   The wrappers remain in the DOM for existing selectors and mobile ordering. */
+.dashboard-primary { display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 961px) {
+  .paired-card-grid { align-items: stretch; }
+  .paired-card-grid > .dashboard-primary,
+  .paired-card-grid > .side-panel { display: contents; }
+  .paired-card-grid > .dashboard-primary > * { grid-column: 1; align-self: stretch; min-width: 0; }
+  .paired-card-grid > .side-panel > * { grid-column: 2; align-self: stretch; min-width: 0; }
+  .paired-card-grid > :is(.dashboard-primary, .side-panel) > :nth-child(1) { grid-row: 1; }
+  .paired-card-grid > :is(.dashboard-primary, .side-panel) > :nth-child(2) { grid-row: 2; }
+}
+
+/* Present related actions as one predictable group on every page. */
+.header-actions,
+.toolbar,
+.page-actions,
+.card-actions,
+.action-btns,
+.save-actions,
+.log-actions,
+.threat-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.card-head,
+.section-head,
+.log-head,
+.save-bar,
+.modal-foot {
+  column-gap: 12px;
+  row-gap: 8px;
+}
+.header-actions button,
+.toolbar button,
+.page-actions button,
+.card-actions button,
+.action-btns button,
+.save-actions button,
+.log-actions button {
+  flex-shrink: 0;
+}
+
+/* Control sizes depend on the viewport, never the selected option's length. */
+.app select:is(.filter-select, .el-select) {
+  --cv-filter-width: 200px;
+  box-sizing: border-box;
+  width: var(--cv-filter-width);
+  flex: 0 0 var(--cv-filter-width);
+  min-width: 0;
+  max-width: 100%;
+  height: 44px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.app select.el-select, .app select#el-select { --cv-filter-width: 280px; }
+.app .candidate-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+.app .candidate-toolbar > .search-wrap { min-width: 0; width: 100%; }
+.app .candidate-toolbar :is(.filter-select, #election-filter, .search-wrap input) {
+  width: 100%; min-width: 0; max-width: 100%; height: 44px; box-sizing: border-box;
+}
+.candidate-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.candidate-actions > .btn { min-height: 44px; }
+.summary-strip .s-card > div:last-child { min-width: 0; }
+.summary-strip .s-val {
+  min-height: 1.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 700px) {
+  .app .candidate-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app .candidate-toolbar > :is(.search-wrap, #election-filter) { grid-column: 1 / -1; }
+}
+@media (max-width: 400px) {
+  .candidate-actions > .btn { flex: 1 1 110px; }
+}
+
+/* The body scrolls while the title and actions keep their natural height. */
+.modal-backdrop {
+  top: var(--cv-visible-top, 0px);
+  bottom: auto;
+  height: var(--cv-visible-height, var(--cv-screen-height));
+  min-height: 0;
+  padding: var(--cv-dialog-top) max(var(--cv-dialog-gap), env(safe-area-inset-right, 0px))
+    var(--cv-dialog-bottom) max(var(--cv-dialog-gap), env(safe-area-inset-left, 0px));
+  overflow: hidden;
+}
+.modal-backdrop > .modal {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: calc(var(--cv-visible-height, var(--cv-screen-height)) - var(--cv-dialog-top) - var(--cv-dialog-bottom));
+  overflow: hidden;
+}
+.modal > .modal-head, .modal > .modal-foot { flex: 0 0 auto; }
+.modal > .modal-head { padding: clamp(12px, 2vh, 20px) clamp(14px, 3vw, 26px); }
+.modal > .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 16px;
+  padding: clamp(14px, 2.5vh, 24px) clamp(14px, 3vw, 26px);
+}
+.modal > .modal-foot { flex-wrap: wrap; padding: 12px clamp(14px, 3vw, 26px); gap: 8px; }
+.modal-foot button {
+  min-width: 0;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  justify-content: center;
+}
+.modal-title { min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
+.modal-close { min-width: 44px; min-height: 44px; }
+.modal-foot button svg { flex-shrink: 0; }
+.modal button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.modal-body .confirm-name, .modal-body .confirm-pos {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+#created-memberno, #created-username, #created-password, #created-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.modal-body p, .modal-body .field-hint, .modal-body .profile-field-val { overflow-wrap: anywhere; }
+.form-row, .field, .profile-forms, .profile-summary { min-width: 0; }
+.field input:not([type="checkbox"]):not([type="radio"]), .field select, .field textarea {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  scroll-margin-block: 16px;
+}
+.field input:not([type="checkbox"]):not([type="radio"]), .field select { min-height: 44px; }
+.field select { width: 100%; text-overflow: ellipsis; }
+.field textarea { resize: vertical; min-height: 6rem; }
+.field label, .field-note, .field-error { overflow-wrap: anywhere; }
+.profile-forms > .card, .save-bar { flex-shrink: 0; }
+
+/* Login grows naturally and scrolls at page level on short screens. */
+.auth-page { height: auto; }
+.auth-page .page {
+  min-height: var(--cv-visible-height, var(--cv-screen-height));
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+}
+.page > .login-card { flex-shrink: 0; margin-block: auto; }
+@media (max-width: 600px) {
+  .app .content { gap: 12px; }
+  .modal .form-row, .modal .profile-grid, .profile-fields .form-row, .password-fields .form-row { grid-template-columns: minmax(0, 1fr); }
+  .modal-backdrop > .modal { border-radius: 14px; }
+  .modal-foot button { flex: 1 1 130px; }
+  .field input:not([type="checkbox"]):not([type="radio"]), .field select, .field textarea { font-size: 1rem; }
+  .app .header { height: auto; min-height: var(--header-h, 64px); padding-block: 8px; gap: 8px; }
+  .app .header-title { min-width: 0; }
+  .app .header-title h1, .app .header-title p { white-space: normal; overflow-wrap: anywhere; }
+  .profile-hero { align-items: flex-start; }
+  .photo-upload { flex-wrap: wrap; }
+  .photo-upload-text { min-width: 0; overflow-wrap: anywhere; }
+  .section-head, .card-head, .save-bar { align-items: flex-start; }
+  .section-head > :last-child, .save-actions { margin-left: 0; }
+  .save-actions { width: 100%; }
+  .save-actions > button { flex: 1 1 140px; }
+}
+/* Very short viewports need the entire dialog, including actions, to scroll. */
+@media (max-height: 400px) {
+  .modal-backdrop > .modal { display: block; overflow-y: auto; overscroll-behavior-y: contain; }
+  .modal > .modal-body { overflow: visible; }
+  .page > .login-card { padding-block: 20px; }
+}
+:root[data-cv-compact-viewport] .modal-backdrop > .modal { display: block; overflow-y: auto; overscroll-behavior-y: contain; }
+:root[data-cv-compact-viewport] .modal > .modal-body { overflow: visible; }
+@media (prefers-reduced-motion: reduce) { .modal-backdrop, .modal-backdrop > .modal { transition: none; } }
