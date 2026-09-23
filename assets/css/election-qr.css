@@ -1,0 +1,31 @@
+.hero-top .hero-details { flex: 1 1 340px; min-width: 0; }
+.hero-top .hero-tools { display: grid; gap: 16px; flex: 0 1 230px; min-width: 0; }
+.hero-tools .hero-btns { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.election-qr { display: grid; justify-items: center; gap: 10px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--navy2); }
+.election-qr h3 { font: 700 .9rem/1.4 'DM Sans', sans-serif; color: var(--white); margin: 0; }
+.election-qr canvas { display: block; width: 180px; height: 180px; max-width: 100%; object-fit: contain; image-rendering: pixelated; border-radius: 2px; }
+.election-qr p { font-size: .75rem; line-height: 1.5; text-align: center; color: var(--muted2); margin: 0; }
+.election-qr .qr-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.election-qr .qr-actions .btn { justify-content: center; padding: 8px; font-size: .75rem; white-space: nowrap; min-width: 0; }
+.election-qr .qr-link { color: var(--gold); font-size: .75rem; text-underline-offset: 3px; }
+.election-qr [hidden] { display: none; }
+.election-qr a:focus-visible, .election-qr button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@media (min-width: 1150px) {
+  .hero-card.live-state { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 24px; align-items: start; }
+  .hero-card.live-state .hero-top { display: contents; }
+  .hero-card.live-state .hero-details { grid-column: 1; grid-row: 1; }
+  .hero-card.live-state .hero-tools { grid-column: 2; grid-row: 1 / 4; }
+  .hero-card.live-state .progress-section { grid-column: 1; grid-row: 2; margin: 0; }
+  .hero-card.live-state .hero-stats { grid-column: 1; grid-row: 3; align-self: end; }
+}
+@media (max-width: 700px) {
+  .hero-top .hero-tools { flex-basis: 100%; }
+  .hero-tools .hero-btns { grid-template-columns: 1fr 1fr; }
+  .election-qr { width: 100%; }
+  .election-qr .qr-actions { max-width: 260px; }
+}
+@media (max-width: 600px) {
+  .app .header { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 8px; height: auto; padding-block: 12px; }
+  .app .header-title { min-width: 0; }
+  .app .header-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}

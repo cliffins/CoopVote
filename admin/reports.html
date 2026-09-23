@@ -1526,8 +1526,10 @@
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/election-operations.css?v=20260913-clean-reports">
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1617,10 +1619,10 @@
 
       <div class="sidebar-footer">
         <div class="admin-card">
-          <div class="admin-avatar">SA</div>
+          <div class="admin-avatar" id="sidebar-avatar">?</div>
           <div class="admin-info">
-            <div class="admin-name">System Admin</div>
-            <div class="admin-role">Super Administrator</div>
+            <div class="admin-name" id="sidebar-name">—</div>
+            <div class="admin-role" id="sidebar-id">Administrator</div>
           </div>
         </div>
       </div>
@@ -1666,7 +1668,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script src="../assets/js/election-operations.js?v=20260913-clean-reports"></script>
   <script>
     /* ─────────────────────────────────────────
@@ -1741,12 +1743,12 @@
 
     function setPositionFilter(name) {
       fPosition = name || '';
-      renderPage();
+      renderPage(true);
     }
 
     function setResultFilter(winnersOnly) {
       fWinnersOnly = !!winnersOnly;
-      renderPage();
+      renderPage(true);
     }
 
     function setDateFilter(which, value) {
@@ -1769,8 +1771,13 @@
     /* ─────────────────────────────────────────
        RENDER PAGE
     ───────────────────────────────────────── */
-    function renderPage() {
+    function renderPage(preserveLayout = false) {
       const c = document.getElementById('main-content');
+      const scrollTop = c.scrollTop;
+      const oldTableScroll = c.querySelector('.cv-report-results .table-scroll');
+      const tableScroll = oldTableScroll ? { left: oldTableScroll.scrollLeft, top: oldTableScroll.scrollTop } : null;
+      const focusedControl = c.contains(document.activeElement) ? document.activeElement.id : '';
+      c.classList.toggle('cv-filter-update', preserveLayout);
       const hasData = reportData && reportData.selected;
 
       /* ── Filter Bar (always visible) ── */
@@ -1936,9 +1943,9 @@
         <div class="section-sub">Detailed results per candidate and position</div>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button class="chip ${fWinnersOnly ? '' : 'active'}" onclick="setResultFilter(false)">All</button>
-        <button class="chip ${fWinnersOnly ? 'active' : ''}" onclick="setResultFilter(true)">Winners</button>
-        <select class="filter-select" style="padding:6px 10px;font-size:.78rem"
+        <button id="report-all" class="chip ${fWinnersOnly ? '' : 'active'}" onclick="setResultFilter(false)">All</button>
+        <button id="report-winners" class="chip ${fWinnersOnly ? 'active' : ''}" onclick="setResultFilter(true)">Winners</button>
+        <select id="report-position-filter" aria-label="Filter results by position" class="filter-select" style="padding:6px 10px;font-size:.78rem"
           onchange="setPositionFilter(this.value)">
           <option value="">All Positions</option>
           ${pd.map(p => `<option value="${esc(p.name)}" ${fPosition === p.name ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
@@ -1946,10 +1953,10 @@
       </div>
     </div>
 
-    <div class="card" style="animation-delay:.22s">
-      ${results.length > 0
-          ? `<div class="table-scroll">
-          <table>
+    <div class="card cv-report-results" style="animation-delay:.22s">
+        <div class="table-scroll">
+          <table class="cv-data-table cv-report">
+              <colgroup><col style="width:7%"><col style="width:24%"><col style="width:18%"><col style="width:9%"><col style="width:8%"><col style="width:20%"><col style="width:14%"></colgroup>
             <thead><tr>
               <th>Rank</th><th>Candidate</th><th>Position</th><th>Votes</th><th>Share</th><th>Progress</th><th>Status</th>
             </tr></thead>
@@ -1974,28 +1981,24 @@
                   </div></td>
                   <td>${r.winner ? `<span class="badge badge-gold">Winner</span>` : `<span class="badge badge-muted">—</span>`}</td>
                 </tr>`;
-          }).join('')}
+          }).join('') || `<tr><td colspan="7" class="cv-empty-row"><p>${allResults.length ? 'No candidate matches the current filter.' : 'No candidate result data available.'}</p>${allResults.length ? `<button class="chip" onclick="setPositionFilter('');setResultFilter(false)">Clear filters</button>` : ''}</td></tr>`}
             </tbody>
           </table>
         </div>
         <div class="pagination">
           <div class="pag-info">Showing ${results.length} candidate${results.length !== 1 ? 's' : ''}${filtered ? ` of ${allResults.length}` : ''}</div>
           
-        </div>`
-          : `<div class="empty-section">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <p>${allResults.length > 0
-              ? 'No candidate matches the current filter.'
-              : 'No candidate result data available.'}</p>
-            ${allResults.length > 0
-              ? `<button class="chip" style="margin-top:10px" onclick="setPositionFilter('');setResultFilter(false)">Clear filters</button>`
-              : ''}
-          </div>`
-        }
+        </div>
     </div>
 
     <!-- EXPORT CARDS -->
     `;
+      if (preserveLayout) {
+        c.scrollTop = scrollTop;
+        const viewport = c.querySelector('.cv-report-results .table-scroll');
+        if (viewport && tableScroll) { viewport.scrollLeft = tableScroll.left; viewport.scrollTop = tableScroll.top; }
+        if (focusedControl) document.getElementById(focusedControl)?.focus({ preventScroll: true });
+      }
 
       /* animate bars & donut */
       setTimeout(() => {

@@ -1236,8 +1236,10 @@
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/election-operations.css?v=20260913-clean-reports">
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1329,17 +1331,11 @@
 
       <div class="sidebar-footer">
         <div class="admin-card">
-          <div class="admin-avatar">SA</div>
+          <div class="admin-avatar" id="sidebar-avatar">?</div>
           <div class="admin-info">
-            <div class="admin-name">System Admin</div>
-            <div class="admin-role">Super Administrator</div>
+            <div class="admin-name" id="sidebar-name">—</div>
+            <div class="admin-role" id="sidebar-id">Administrator</div>
           </div>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            style="color:var(--muted);flex-shrink:0">
-            <circle cx="12" cy="12" r="1" />
-            <circle cx="19" cy="12" r="1" />
-            <circle cx="5" cy="12" r="1" />
-          </svg>
         </div>
       </div>
     </aside>
@@ -1523,7 +1519,8 @@
               <a href="voter-management.html" class="chip">View All</a>
             </div>
             <div class="table-wrap">
-              <table>
+              <table class="cv-data-table cv-activity">
+              <colgroup><col style="width:32%"><col style="width:24%"><col style="width:22%"><col style="width:22%"></colgroup>
                 <thead>
                   <tr>
                     <th>Voter</th>
@@ -1566,7 +1563,7 @@
   </div><!-- /app -->
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script src="../assets/js/election-operations.js?v=20260913-clean-reports"></script>
   <script>
     /* ─────────────────────────────────────────

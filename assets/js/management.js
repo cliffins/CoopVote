@@ -8,7 +8,7 @@
   $('logout').onclick=()=>CoopVote.logout();
   const tabs=isAdmin?[['officers','Officer Management'],['approvals','Election Approvals'],['themes','Themes'],['branding','Branding']]:[['themes','Themes']];
   function closeMenu(){ $('sidebar').classList.remove('open');$('sidebar-overlay').hidden=true;$('menu-toggle').setAttribute('aria-expanded','false');$('sidebar').inert=window.matchMedia('(max-width:900px)').matches; }
-  $('menu-toggle').onclick=()=>{const open=!$('sidebar').classList.contains('open');$('sidebar').classList.toggle('open',open);$('sidebar').inert=!open&&window.matchMedia('(max-width:900px)').matches;$('sidebar-overlay').hidden=!open;$('menu-toggle').setAttribute('aria-expanded',String(open));if(open)$('sidebar').querySelector('a')?.focus();};
+  $('menu-toggle').onclick=()=>{const open=!$('sidebar').classList.contains('open');$('sidebar').classList.toggle('open',open);$('sidebar').inert=!open&&window.matchMedia('(max-width:900px)').matches;$('sidebar-overlay').hidden=!open;$('menu-toggle').setAttribute('aria-expanded',String(open));if(open)$('sidebar').querySelector('a')?.focus({preventScroll:true});};
   $('sidebar-overlay').onclick=closeMenu;
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('sidebar').classList.contains('open')){closeMenu();$('menu-toggle').focus();}});
   window.matchMedia('(max-width:900px)').addEventListener('change',closeMenu);closeMenu();
@@ -27,7 +27,7 @@
     try {
       if(tab==='themes'){const data=await api('preferences');if(revision!==refreshId)return;CoopVoteAppearance.remember(user,data.theme);renderThemes(data.theme);}
       else if(tab==='officers'){const data=await api('accounts');if(revision!==refreshId)return;accounts=data;renderAccounts();}
-      else if(tab==='branding'){const data=await CoopVote.api('branding');if(revision!==refreshId)return;$('branding-text').value=data.text;$('branding-coop-name').value=data.coopName||'CoopVote';brandingLogo=data.logo;$('branding-file').value='';previewBranding();}
+      else if(tab==='branding'){const data=await CoopVote.api('branding');if(revision!==refreshId)return;loadBranding(data);}
       else{const data=await api('overview');if(revision!==refreshId)return;overview=data;renderApprovals();}
       return true;
     }catch(e){if(revision===refreshId)error(e.message);return false;}
@@ -46,7 +46,7 @@
     refreshId++;
     try{const result=await work();if(after)after(result);if(message)toast(message);await refresh();}
     catch(e){const form=button.closest('form'), target=form?.querySelector('.form-error');if(target)target.textContent=e.message;else toast(e.message);}
-    finally{mutation=false;busyControls(false);button.removeAttribute('aria-busy');syncPasswordButton();syncRequirementButton();syncRefreshButtons();}
+    finally{mutation=false;busyControls(false);button.removeAttribute('aria-busy');syncPasswordButton();syncRequirementButton();syncRefreshButtons();syncBrandingButton();}
   }
   let refreshing=false, nextRefresh=0;
   function syncRefreshButtons(){ $('refresh-page').disabled=mutation||refreshing||Date.now()<nextRefresh; }
@@ -60,12 +60,27 @@
   document.addEventListener('click',e=>{if(mutation&&e.target.closest('.sidebar a')){e.preventDefault();toast('Wait for the current action to finish.');}},true);
   const previews={navy:['#0b1931','#162a52','#c9a84c'],light:['#f2f5fa','#d6e1f0','#735615'],forest:['#102820','#20483a','#c8c879'],ocean:['#102b38','#1d4b5d','#84d2de'],plum:['#291f35','#493856','#d5b1cd'],slate:['#242b34','#394652','#b7c9df']};
   function renderThemes(current){
-    $('theme-grid').innerHTML=Object.entries(previews).map(([key,p])=>`<button type="button" class="theme-choice" data-theme="${key}" aria-pressed="${key===current}"><span class="theme-preview" aria-hidden="true" style="--preview-bg:${p[0]};--preview-card:${p[1]};--preview-accent:${p[2]}"><i></i><i></i></span><span class="theme-caption"><strong>${key[0].toUpperCase()+key.slice(1)}</strong><span>${key===current?'Selected':'Choose'}</span></span></button>`).join('');
-    $('theme-grid').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.theme===current||mutation)return;run(b,()=>api('preferences','PUT',{theme:b.dataset.theme}),d=>CoopVoteAppearance.remember(user,d.theme),'Theme saved.');});
+    $('theme-grid').innerHTML=Object.entries(previews).map(([key,p])=>`<button type="button" class="theme-choice" data-theme="${key}" aria-pressed="${key===current}"><span class="theme-preview" aria-hidden="true" style="--preview-bg:${p[0]};--preview-card:${p[1]};--preview-accent:${p[2]}"><span class="preview-nav"><i></i><i></i><i></i><i></i></span><span class="preview-content"><span class="preview-heading"></span><span class="preview-metrics"><i></i><i></i><i></i></span><span class="preview-table"><i></i><i></i><i></i></span></span></span><span class="theme-caption"><strong>${key[0].toUpperCase()+key.slice(1)}</strong><span class="theme-state">${key===current?'Selected':'Choose'}</span></span></button>`).join('');
+    $('theme-grid').querySelectorAll('button').forEach(b=>{
+      if(b.dataset.theme==='navy'){
+        b.querySelector('strong').textContent='Default (Navy)';
+        if(isAdmin){b.querySelector('.theme-state').textContent='Restore defaults';b.setAttribute('aria-label','Restore default theme, logo, logo text, and cooperative name');}
+      }
+      b.onclick=()=>chooseTheme(b,current);
+    });
+  }
+  function chooseTheme(button,current){
+    const theme=button.dataset.theme,resetBranding=isAdmin&&theme==='navy';
+    if(mutation||(theme===current&&!resetBranding))return;
+    return run(button,()=>api('preferences','PUT',{theme,...(resetBranding?{resetBranding:true}:{})}),data=>{
+      CoopVoteAppearance.remember(user,data.theme);
+      if(data.branding){loadBranding(data.branding);window.CoopVoteBranding?.apply(data.branding);}
+    },resetBranding?'Default theme and branding restored.':'Theme saved.');
   }
   function renderAccounts(){
     const query=$('officer-search').value.trim().toLocaleLowerCase(),status=$('officer-status').value;
     const visible=accounts.filter(a=>(!status||a.status===status)&&(!query||[a.name,a.username,a.email].join(' ').toLocaleLowerCase().includes(query)));
+    $('officer-count').textContent=visible.length+' of '+accounts.length+' accounts';
     $('accounts').innerHTML=visible.map(a=>`<tr><td>${esc(a.name)}${a.id===user.id?' (you)':''}</td><td>${esc(a.username)}</td><td>${esc(a.email)}</td><td><span class="status ${a.status==='active'?'good':''}">${esc(a.status)}</span></td><td><div class="row-actions officer-actions"><button type="button" class="officer-action" data-edit="${a.id}">Edit</button>${a.id!==user.id?`<button type="button" class="officer-action ${a.status==='active'?'danger-outline':''}" data-status="${a.id}">${a.status==='active'?'Deactivate':'Activate'}</button>`:''}</div></td></tr>`).join('')||'<tr><td colspan="5" class="empty-cell">No officers match your filters.</td></tr>';
     $('accounts').querySelectorAll('.status').forEach(b=>{const active=b.classList.contains('good');b.className='badge '+(active?'badge-green':'badge-muted');b.textContent=active?'Active':'Deactivated';});
     $('accounts').querySelectorAll('[data-edit]').forEach(b=>{
@@ -153,16 +168,37 @@
     if($('reject'))$('reject').onclick=()=>ask('Reject Election',`Explain what needs to change in ${e.title}.`,true,note=>api('elections/'+e.id+'/decide','POST',{requestId:r.request_id,decision:'reject',note}),'Election rejected.',true);
     if($('open-election'))$('open-election').onclick=()=>ask(e.status==='Closed'?'Reopen Election':'Open Election',`Open ${e.title} for voting now?`,false,()=>CoopVote.api('elections/'+e.id+'/'+(e.status==='Closed'?'reopen':'activate'),{method:'PATCH',body:e.status==='Closed'?{endDate:r.proposed_end.replace(' ','T').slice(0,16)}:{}}),'Election is open for voting.');
   }
-  let brandingLogo=null, imageRevision=0, imageLoading=false;
+  let brandingLogo=null, savedBranding=null, imageRevision=0, imageLoading=false;
+  function loadBranding(data){
+    savedBranding={text:data.text.trim(),coopName:(data.coopName||'Santiago City Multi-Purpose Cooperative').trim(),logo:data.logo||null};
+    imageRevision++;imageLoading=false;brandingLogo=savedBranding.logo;
+    $('branding-text').value=savedBranding.text;$('branding-coop-name').value=savedBranding.coopName;$('branding-file').value='';
+    previewBranding();
+  }
+  function brandingHasChanges(){
+    return !!savedBranding && ($('branding-text').value.trim()!==savedBranding.text || $('branding-coop-name').value.trim()!==savedBranding.coopName || brandingLogo!==savedBranding.logo);
+  }
+  function syncBrandingButton(){
+    $('branding-save').disabled=mutation||imageLoading||!$('branding-text').value.trim()||!$('branding-coop-name').value.trim()||!brandingHasChanges();
+  }
   function previewBranding(){
     $('branding-preview-text').textContent=$('branding-text').value.trim()||'Logo text';
+    $('branding-preview-coop').textContent=$('branding-coop-name').value.trim()||'Cooperative name';
+    $('branding-preview-default').toggleAttribute('hidden',!!brandingLogo);
     const img=$('branding-preview-image');img.hidden=!brandingLogo;
     if(brandingLogo)img.src=brandingLogo;else img.removeAttribute('src');
-    $('branding-save').disabled=imageLoading||!$('branding-text').value.trim()||!$('branding-coop-name').value.trim();
+    syncBrandingButton();
   }
   $('branding-text').oninput=previewBranding;
   $('branding-coop-name').oninput=previewBranding;
-  $('branding-remove').onclick=()=>{imageRevision++;imageLoading=false;brandingLogo=null;$('branding-file').value='';previewBranding();};
+  function resetBranding(){
+    if(mutation)return;
+    imageRevision++;imageLoading=false;
+    return run($('branding-remove'),()=>CoopVote.api('branding',{method:'PUT',body:{text:'CoopVote',coopName:'Santiago City Multi-Purpose Cooperative',logo:null}}),data=>{
+      loadBranding(data);window.CoopVoteBranding?.apply(data);
+    },'Default branding restored.');
+  }
+  $('branding-remove').onclick=resetBranding;
   $('branding-file').onchange=async e=>{
     const file=e.target.files[0],revision=++imageRevision;if(!file)return;
     const error=$('branding-form').querySelector('.form-error');error.textContent='';
@@ -180,9 +216,9 @@
     finally{if(revision===imageRevision){imageLoading=false;previewBranding();}}
   };
   $('branding-form').onsubmit=e=>{
-    e.preventDefault();if(imageLoading)return;
+    e.preventDefault();if(mutation||imageLoading||!brandingHasChanges())return;
     const text=$('branding-text').value.trim(),coopName=$('branding-coop-name').value.trim();if(!text||!coopName)return;
-    run(e.submitter,()=>CoopVote.api('branding',{method:'PUT',body:{text,logo:brandingLogo,coopName}}),data=>window.CoopVoteBranding?.apply(data),'Branding saved.');
+    run(e.submitter,()=>CoopVote.api('branding',{method:'PUT',body:{text,logo:brandingLogo,coopName}}),data=>{loadBranding(data);window.CoopVoteBranding?.apply(data);},'Branding saved.');
   };
   window.addEventListener('hashchange',route);await route();
 })();

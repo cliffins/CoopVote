@@ -6,13 +6,14 @@
  */
 declare(strict_types=1);
 require_once __DIR__.'/../../includes/validation.php';
+require_once __DIR__.'/../../includes/branding.php';
 function handle_branding(): never
 {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $s=db()->prepare('SELECT setting_value FROM settings WHERE setting_key=?');
         $s->execute(['site_branding']);
         $data=json_decode($s->fetchColumn() ?: 'null',true) ?: ['text'=>'CoopVote','logo'=>null];
-        $data['coopName']=coop_setting('coop_name','CoopVote');
+        $data['coopName']=coop_setting('coop_name',branding_defaults()['coopName']);
         json_out($data);
     }
     require_method('PUT');$me=require_admin();require_json_request();
@@ -21,7 +22,7 @@ function handle_branding(): never
         json_error('Enter a logo name with 1 to 40 characters.',422);
     }
     $text=trim_form_text($text);
-    $coopName=input('coopName',coop_setting('coop_name','CoopVote'));
+    $coopName=input('coopName',coop_setting('coop_name',branding_defaults()['coopName']));
     if (!is_string($coopName) || blank_form_value($coopName) || mb_strlen(trim_form_text($coopName))>150) {
         json_error('Enter a cooperative name with 1 to 150 characters.',422);
     }
@@ -44,13 +45,10 @@ function handle_branding(): never
         if (!$clean || strlen($clean)>45000) json_error('The logo is too detailed. Choose a simpler image.',422);
         $logo='data:'.$mime.';base64,'.base64_encode($clean);
     }
-    $data=['text'=>$text,'logo'=>$logo];
-    db_transaction(static function(PDO $pdo) use($data,$coopName):void {
-        $save=$pdo->prepare('INSERT INTO settings(setting_key,setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_at=NOW()');
-        $save->execute(['site_branding',json_encode($data,JSON_THROW_ON_ERROR)]);
-        $save->execute(['coop_name',$coopName]);
+    $data=['text'=>$text,'logo'=>$logo,'coopName'=>$coopName];
+    db_transaction(static function(PDO $pdo) use($data):void {
+        branding_store($pdo,$data);
     });
-    $data['coopName']=$coopName;
     audit((int)$me['user_id'],'branding.updated','settings',null,'Updated the system logo and name');
     json_out($data);
 }

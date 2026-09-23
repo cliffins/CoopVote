@@ -1,0 +1,8 @@
+# Generated test output; keep the directory for browser/report scripts.
+/tests/reports/*
+!/tests/reports/.gitkeep
+/database/test-data/screenshots/
+/database/test-data/*.log
+
+# Runtime logs are generated locally.
+/logs/*.log

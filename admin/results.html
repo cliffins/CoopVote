@@ -1279,8 +1279,10 @@
   <link rel="stylesheet" href="../assets/css/results-layout.css?v=20260912-align2" />
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1369,10 +1371,10 @@
 
       <div class="sidebar-footer">
         <div class="admin-card">
-          <div class="admin-avatar">SA</div>
+          <div class="admin-avatar" id="sidebar-avatar">?</div>
           <div class="admin-info">
-            <div class="admin-name">System Admin</div>
-            <div class="admin-role">Super Administrator</div>
+            <div class="admin-name" id="sidebar-name">—</div>
+            <div class="admin-role" id="sidebar-id">Administrator</div>
           </div>
         </div>
       </div>
@@ -1418,7 +1420,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script>
     /* ─────────────────────────────────────────
        STATE

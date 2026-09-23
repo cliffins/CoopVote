@@ -29,17 +29,56 @@
   brandingScript.src=ROOT+'assets/js/branding.js?v=20260916-coop-name';
   document.head.appendChild(brandingScript);
 
+  // Close the mobile drawer for navigation, including the current page's link.
+  // Use the rendered layout so each page keeps its own responsive breakpoint.
+  function closeSidebarOnNavigation(event) {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest('.sidebar a[href]');
+    if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self') || link.getAttribute('aria-disabled') === 'true') return;
+    const sidebar = link.closest('.sidebar');
+    if (!sidebar.classList.contains('open') || window.getComputedStyle(sidebar).position !== 'fixed') return;
+    sidebar.classList.remove('open');
+    const overlay = document.getElementById('overlay');
+    if (overlay) overlay.classList.remove('show');
+    const settingsOverlay = document.getElementById('sidebar-overlay');
+    if (settingsOverlay) settingsOverlay.hidden = true;
+    document.querySelectorAll('.hamburger, [aria-controls="sidebar"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
+    if (sidebar.hasAttribute('data-shared-sidebar')) sidebar.inert = true;
+  }
+  document.addEventListener('click', closeSidebarOnNavigation);
+
   /* ── Which election the member is looking at ───────────────
      Several elections can run at once, so the choice is kept here and
      travels with every voter request. localStorage keeps it steady as
      the member moves between Candidates, the Ballot and Results.      */
   const ELECTION_KEY = 'coopvote.election';
+  let electionMemory = null;
+
+  function requestedElection() {
+    const id = new URLSearchParams(window.location.search).get('election') || '';
+    return /^[1-9][0-9]{0,9}$/.test(id) ? id : '';
+  }
+
+  function loginDestination(user) {
+    const id = requestedElection();
+    return id && (user.role === 'member' || user.roleSlug === 'voter')
+      ? ROOT + 'voter/election.html?election=' + id
+      : ROOT + (user.home || user.redirect || (user.role === 'admin' ? 'admin/dashboard.html' : 'voter/dashboard.html'));
+  }
 
   function selectedElection() {
+    if (isElectionPickerPage() && requestedElection()) return requestedElection();
+    if (electionMemory !== null) return electionMemory;
     try { return localStorage.getItem(ELECTION_KEY) || ''; } catch (e) { return ''; }
   }
 
   function setSelectedElection(id) {
+    electionMemory = id ? String(id) : '';
+    if (isElectionPickerPage() && requestedElection() && id) {
+      const link = new URL(window.location.href);
+      link.searchParams.set('election', String(id));
+      window.history.replaceState(null, '', link.href);
+    }
     try {
       if (id) localStorage.setItem(ELECTION_KEY, String(id));
       else localStorage.removeItem(ELECTION_KEY);
@@ -267,7 +306,8 @@
     const here = window.location.pathname.split('/').pop() || '';
     if (here.indexOf('login') === 0) return;
     /* replace(), not href: the signed-out page must not stay in history. */
-    window.location.replace(ROOT + 'login.html?expired=1');
+    const id = isElectionPickerPage() ? requestedElection() : '';
+    window.location.replace(ROOT + 'login.html?' + (id ? 'election=' + id : 'expired=1'));
   }
 
   /* ── Back-button protection ────────────────────────────────
@@ -347,6 +387,7 @@
       if (window.CoopVoteSidebar) window.CoopVoteSidebar.mount(user);
       applyIdentity(user);
       if (window.CoopVoteAppearance) window.CoopVoteAppearance.sync(user);
+      if (window.CoopVoteVoterNavigation) window.CoopVoteVoterNavigation.init(user);
       applyCoopName(window.CoopVote.coop);
       initNotifications(user);
       if (user.role === 'member') await initElectionPicker();
@@ -399,7 +440,9 @@
     /* Drop a stored id that no longer exists, so the member is not stuck
        pointing at a deleted election. */
     const stored = selectedElection();
-    const chosen = list.find(e => String(e.id) === stored)
+    const requested = requestedElection();
+    window.CoopVote.electionLinkUnavailable = !!requested && !list.some(e => String(e.id) === requested);
+    const chosen = window.CoopVote.electionLinkUnavailable ? null : list.find(e => String(e.id) === stored)
       || list.find(e => String(e.id) === String(data.selectedId))
       || list.find(e => e.live) || list[0] || null;
     // Resolve a stale selection before the page requests its election data.
@@ -422,9 +465,9 @@
       '<span class="cv-picker-label">Election</span>'
       + '<div class="cv-picker-shell">'
       + '<button type="button" class="cv-picker-btn" id="cv-picker-btn"'
-      + ' aria-haspopup="listbox" aria-expanded="false" aria-label="Choose election"' + (!chosen ? ' disabled' : '') + '>'
+      + ' aria-haspopup="listbox" aria-expanded="false" aria-label="Choose election"' + (!list.length ? ' disabled' : '') + '>'
       + '<span class="cv-dot' + (chosen?.live ? ' live' : '') + '"></span>'
-      + '<span class="cv-picker-current" id="cv-picker-current">' + escapeHtml(chosen?.title || 'No available elections') + '</span>'
+      + '<span class="cv-picker-current" id="cv-picker-current">' + escapeHtml(chosen?.title || (list.length ? 'Choose another election' : 'No available elections')) + '</span>'
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="cv-chev">'
       + '<polyline points="6 9 12 15 18 9"/></svg>'
       + '</button>'
@@ -453,7 +496,7 @@
       const li = e.target.closest('li[data-id]');
       if (!li) return;
       close();
-      if (String(li.dataset.id) === String(chosen.id)) return;   // no change
+      if (String(li.dataset.id) === String(chosen?.id)) return;   // no change
       setSelectedElection(li.dataset.id);
       /* Reload so every panel reflects the new election at once. */
       window.location.reload();
@@ -1023,7 +1066,7 @@
   window.CoopVote = {
     api, guard, logout, download, toast, initials, url, ROOT, watch, user: null,
     /* Election selection, for pages that want to read or change it. */
-    selectedElection, setSelectedElection, elections: [],
+    selectedElection, setSelectedElection, requestedElection, loginDestination, elections: [],
     paginate, paginationPages, renderPagination, escapeHtml, esc, coop: {},
   };
 })(window, document);

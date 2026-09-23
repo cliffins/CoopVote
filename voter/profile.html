@@ -1077,8 +1077,11 @@
   <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <script src="../assets/js/voter-navigation.js?v=20260919-voter-badges"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1305,7 +1308,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script>
     /* ─────────────────────────────────────────
        SIDEBAR
@@ -1403,7 +1406,6 @@
       setEl('info-last-login', m?.lastLogin || '—');
 
       /* ── nav badges ── */
-      updateNavBadges(el, m);
 
       /* ── vote status card ── */
       renderVoteStatusCard(el, m);
@@ -1461,19 +1463,7 @@
     /* ─────────────────────────────────────────
        NAV BADGES
     ───────────────────────────────────────── */
-    function updateNavBadges(el, member) {
-      document.querySelectorAll('.nav-badge').forEach(b => b.remove());
-      /* "Live" is a claim about right now, and "Vote!" is an invitation to
-         do something. Neither holds unless the ballot is actually open. */
-      if (el && el.live) {
-        const navEl = document.getElementById('nav-election');
-        if (navEl) { const b = document.createElement('span'); b.className = 'nav-badge green'; b.textContent = 'Live'; navEl.appendChild(b) }
-      }
-      if (el && el.live && member && !member.hasVoted) {
-        const navB = document.getElementById('nav-ballot');
-        if (navB) { const b = document.createElement('span'); b.className = 'nav-badge gold'; b.textContent = 'Vote!'; navB.appendChild(b) }
-      }
-    }
+
 
     /* Profile edits use one save action and keep failed edits in the form. */
     function profileValues() {

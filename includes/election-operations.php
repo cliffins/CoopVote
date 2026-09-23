@@ -76,7 +76,7 @@ function admin_elections_open(int $electionId, array $me): never
         $start = min($e['start_datetime'], date('Y-m-d H:i:s'));
         $pdo->prepare("UPDATE elections SET status='published', start_datetime=? WHERE election_id=?")->execute([$start, $electionId]);
         governance_consume($pdo, $electionId);
-        audit((int)$me['user_id'], 'election.published', 'election', $electionId, 'Started approved election');
+        audit((int)$me['user_id'], 'election.published', 'election', $electionId, 'Started approved election '.audit_subject('election',$electionId));
         return ['ok' => true, 'status' => 'Active'];
     });
     if (isset($result['error'])) json_error($result['error'], 409, ['code' => 'APPROVAL_REQUIRED']);

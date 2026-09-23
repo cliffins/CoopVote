@@ -1317,8 +1317,11 @@
   <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <script src="../assets/js/voter-navigation.js?v=20260919-voter-badges"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1444,7 +1447,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script>
     /* ─────────────────────────────────────────
        SIDEBAR
@@ -1487,6 +1490,7 @@
        }
     ───────────────────────────────────────── */
     function loadData() {
+      if (CoopVote.electionLinkUnavailable) { initPage(null); return; }
       CoopVote.api('voter/election')
         .then(data => initPage(data))
         .catch(err => {
@@ -1507,18 +1511,6 @@
       const sn = document.getElementById('sidebar-name'); if (sn) sn.textContent = name;
       const si = document.getElementById('sidebar-id'); if (si) si.textContent = mid;
 
-      /* nav badges */
-      document.querySelectorAll('.nav-badge').forEach(b => b.remove());
-      if (election && election.live) {
-        const navEl = document.getElementById('nav-ballot');
-        const nb1 = document.createElement('span'); nb1.className = 'nav-badge green'; nb1.textContent = 'Live';
-        document.querySelector('[href="election.html"]')?.appendChild(nb1);
-        if (navEl && member && !member.hasVoted) {
-          const nb2 = document.createElement('span'); nb2.className = 'nav-badge gold'; nb2.textContent = 'Vote!';
-          navEl.appendChild(nb2);
-        }
-      }
-
       if (cdInterval) { clearInterval(cdInterval); cdInterval = null; }
       renderPage(election, member);
     }
@@ -1538,8 +1530,8 @@
           <line x1="8" y1="2" x2="8" y2="6"/>
           <line x1="16" y1="2" x2="16" y2="6"/>
         </svg>
-        <h2>No Active Election</h2>
-        <p>There is no election currently running. Check back later or contact your cooperative administrator.</p>
+        <h2>${CoopVote.electionLinkUnavailable ? 'Election Unavailable' : 'No Active Election'}</h2>
+        <p>${CoopVote.electionLinkUnavailable ? 'This election is closed or no longer available. Choose another election above or contact your cooperative administrator.' : 'There is no election currently running. Check back later or contact your cooperative administrator.'}</p>
         <a href="dashboard.html">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           Back to Dashboard
@@ -1555,7 +1547,7 @@
 
       const voteBtn = hasVoted
         ? `<div class="btn-voted-hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Vote Already Submitted</div>`
-        : `<a href="ballot.html" class="btn-vote-hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cast My Vote</a>`;
+        : `<a href="ballot.html?election=${election.id}" class="btn-vote-hero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Cast My Vote</a>`;
 
       /* positions grid HTML */
       const posGridHTML = positions.length > 0
@@ -1688,7 +1680,7 @@
           : `<div class="vs-icon pending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
                  <div class="vs-title" style="color:var(--gold)">Your Vote is Pending</div>
                  <div class="vs-msg">You have not yet cast your vote. Please vote before the election closes.</div>
-                 <a href="ballot.html" class="vs-btn">
+                 <a href="ballot.html?election=${election.id}" class="vs-btn">
                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                    Cast My Vote Now
                  </a>`}

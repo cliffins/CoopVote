@@ -1359,8 +1359,11 @@
   <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <script src="../assets/js/voter-navigation.js?v=20260919-voter-badges"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1669,7 +1672,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script>
     /* SIDEBAR */
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show') }
@@ -1722,7 +1725,6 @@
       renderCandidates(cands, el);
       renderResults(results, data?.resultsElection);
       renderAnnouncement(ann);
-      updateNavBadges(el, m);
     }
 
     /* MEMBER */
@@ -1879,19 +1881,7 @@
     }
 
     /* NAV BADGES */
-    function updateNavBadges(el, member) {
-      document.querySelectorAll('.nav-badge').forEach(b => b.remove());
-      /* Only while the ballot is genuinely open — the card below can show
-         an Upcoming election, which is not a live one. */
-      if (el && el.status === 'Active') {
-        const navEl = document.getElementById('nav-election');
-        if (navEl) { const b = document.createElement('span'); b.className = 'nav-badge green'; b.textContent = 'Live'; navEl.appendChild(b) }
-      }
-      if (el && el.status === 'Active' && member && !member.hasVoted) {
-        const navB = document.getElementById('nav-ballot');
-        if (navB) { const b = document.createElement('span'); b.className = 'nav-badge gold'; b.textContent = 'Vote!'; navB.appendChild(b) }
-      }
-    }
+
 
     window.addEventListener('DOMContentLoaded', () => {
       setDate();

@@ -1766,3 +1766,30 @@
 2026-09-17 12:05:25  SKIPPED (MAIL_ENABLED is false) -> voter10@test.coop | Your CoopVote voting receipt — CV-UNT8BLNU
 2026-09-17 12:05:28  SKIPPED (MAIL_ENABLED is false) -> voter9@test.coop | Your CoopVote voting receipt — CV-ZDMNQM5N
 2026-09-17 12:05:30  SKIPPED (MAIL_ENABLED is false) -> voter9@test.coop | Your CoopVote voting receipt — CV-MH9B9CXD
+2026-09-17 17:50:30  SKIPPED (MAIL_ENABLED is false) -> voter10@test.coop | Your CoopVote voting receipt — CV-J36BLAGX
+2026-09-17 17:50:34  SKIPPED (MAIL_ENABLED is false) -> voter9@test.coop | Your CoopVote voting receipt — CV-LSZ6F77D
+2026-09-17 17:50:35  SKIPPED (MAIL_ENABLED is false) -> voter9@test.coop | Your CoopVote voting receipt — CV-P893UML5
+2026-09-17 17:50:45  SKIPPED (MAIL_ENABLED is false) -> mallory@test.coop | Your CoopVote voting receipt — CV-F6DG62ZP
+2026-09-17 17:50:46  SKIPPED (MAIL_ENABLED is false) -> voter6@test.coop | Your CoopVote voting receipt — CV-BQLXKAC9
+2026-09-17 17:52:13  SKIPPED (MAIL_ENABLED is false) -> voter10@test.coop | Your CoopVote voting receipt — CV-45ZV28CY
+2026-09-17 17:52:17  SKIPPED (MAIL_ENABLED is false) -> voter9@test.coop | Your CoopVote voting receipt — CV-MUTTDLK8
+2026-09-17 17:52:18  SKIPPED (MAIL_ENABLED is false) -> voter9@test.coop | Your CoopVote voting receipt — CV-NZRG6SE8
+2026-09-17 17:52:25  SKIPPED (MAIL_ENABLED is false) -> pend@test.coop | About your CoopVote registration
+2026-09-17 17:52:25  SKIPPED (MAIL_ENABLED is false) -> voter10@test.coop | Your CoopVote membership has been approved
+2026-09-17 17:52:25  SKIPPED (MAIL_ENABLED is false) -> voter10@test.coop | Your CoopVote membership has been approved
+2026-09-17 17:52:26  SKIPPED (MAIL_ENABLED is false) -> voter5@test.coop | Your CoopVote voting receipt — CV-LBNFB299
+2026-09-17 22:18:16  SENT -> danlebii@gmail.com | Your CoopVote account is ready
+2026-09-17 22:22:00  SENT -> johndoe@gmail.com | Your CoopVote account is ready
+2026-09-17 22:23:05  SENT -> lexkilsa@gmail.com | Your CoopVote account is ready
+2026-09-17 22:52:56  SENT -> manokadobong@gmail.com | Your CoopVote account is ready
+2026-09-17 22:58:07  SENT -> manokadobong@gmail.com | Your CoopVote voting receipt — CV-UPXLVE5W
+2026-09-17 22:59:26  SENT -> manokadobong@gmail.com | Your CoopVote voting receipt — CV-6DTJP3LV
+2026-09-17 23:00:10  SENT -> manokadobong@gmail.com | Your CoopVote voting receipt — CV-6LDMNFNP
+2026-09-19 13:44:54  SENT -> manokadobong@gmail.com | Your CoopVote voting receipt — CV-CWJRA35H
+2026-09-19 21:16:40  SKIPPED (MAIL_ENABLED is false) -> pend@test.coop | About your CoopVote registration
+2026-09-19 21:16:40  SKIPPED (MAIL_ENABLED is false) -> voter10@test.coop | Your CoopVote membership has been approved
+2026-09-19 21:16:40  SKIPPED (MAIL_ENABLED is false) -> voter10@test.coop | Your CoopVote membership has been approved
+2026-09-19 21:16:42  SKIPPED (MAIL_ENABLED is false) -> voter5@test.coop | Your CoopVote voting receipt — CV-XVPXUXWJ
+2026-09-22 21:41:44  SKIPPED (MAIL_ENABLED is false) -> voter1@test.coop | Your CoopVote voting receipt — CV-9TP75H4D
+2026-09-22 21:43:18  SKIPPED (MAIL_ENABLED is false) -> voter1@test.coop | Your CoopVote voting receipt — CV-Z7F7J3CG
+2026-09-22 23:31:18  SKIPPED (MAIL_ENABLED is false) -> voter1@test.coop | Your CoopVote voting receipt — CV-KB7W8KNQ

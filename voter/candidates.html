@@ -1125,8 +1125,11 @@
   <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <script src="../assets/js/voter-navigation.js?v=20260919-voter-badges"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1283,7 +1286,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script>
     /* ─────────────────────────────────────────
        STATE
@@ -1369,17 +1372,6 @@
       /* header subtitle */
       const hs = document.getElementById('header-sub');
       if (hs) hs.textContent = election ? election.title : 'No active election';
-
-      /* nav badges */
-      document.querySelectorAll('.nav-badge').forEach(b => b.remove());
-      if (election && election.active) {
-        const nb1 = document.createElement('span'); nb1.className = 'nav-badge green'; nb1.textContent = 'Live';
-        document.getElementById('nav-election')?.appendChild(nb1);
-        if (!hasVoted) {
-          const nb2 = document.createElement('span'); nb2.className = 'nav-badge gold'; nb2.textContent = 'Vote!';
-          document.getElementById('nav-ballot')?.appendChild(nb2);
-        }
-      }
 
       renderPage();
     }

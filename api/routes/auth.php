@@ -160,7 +160,7 @@ function auth_route_me(): never
         /* The cooperative's own details, so pages can name it rather than
            showing the product name everywhere. */
         'coop' => [
-            'name'         => coop_setting('coop_name', 'CoopVote'),
+            'name'         => coop_setting('coop_name', 'Santiago City Multi-Purpose Cooperative'),
             'short'        => coop_setting('coop_short', ''),
             'supportEmail' => coop_setting('support_email', ''),
         ],

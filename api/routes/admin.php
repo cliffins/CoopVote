@@ -122,7 +122,7 @@ function admin_dashboard(): never
     )->fetchAll() as $r) {
         $recentActivity[] = [
             'type'  => audit_type($r['action']),
-            'title' => $r['description'] ?: $r['action'],
+            'title' => audit_event_text($r),
             'time'  => fmt_relative($r['timestamp']),
         ];
     }
@@ -365,9 +365,10 @@ function admin_voters_save(int $userId): never
     $full = trim($first . ' ' . $last);
 
     if ($userId !== 0) {
-        $existing = $pdo->prepare('SELECT member_id FROM members WHERE user_id = ? LIMIT 1');
+        $existing = $pdo->prepare('SELECT m.*, u.email FROM members m JOIN users u ON u.user_id=m.user_id WHERE m.user_id = ? LIMIT 1');
         $existing->execute([$userId]);
-        if (!$existing->fetchColumn()) json_error('That member no longer exists. Reload the voter list.', 404);
+        $before = $existing->fetch();
+        if (!$before) json_error('That member no longer exists. Reload the voter list.', 404);
     }
     if ($memberNo !== '') {
         $dupNo = $pdo->prepare('SELECT 1 FROM members WHERE member_no = ? AND user_id <> ? LIMIT 1');
@@ -474,7 +475,9 @@ function admin_voters_save(int $userId): never
         throw $e;
     }
 
-    audit((int) $me['user_id'], 'member.updated', 'user', $userId, 'Updated member "' . $full . '"');
+    audit((int) $me['user_id'], 'member.updated', 'user', $userId, 'Updated member ' . audit_subject('user', $userId)
+        . audit_changed_fields($before, ['full_name'=>$full,'email'=>$email,'contact_no'=>$phone,'address'=>$addr,'date_of_birth'=>$dob,'member_no'=>$memberNo],
+            ['full_name'=>'name','email'=>'email','contact_no'=>'phone','address'=>'address','date_of_birth'=>'date of birth','member_no'=>'member ID']));
     json_out(['ok' => true, 'id' => $userId]);
 }
 
@@ -506,7 +509,7 @@ function admin_voters_status(int $userId, string $action): never
         'UPDATE members SET membership_status = ?, approved_by = ?, approved_at = NOW() WHERE user_id = ?'
     )->execute([$memberStatus, (int) $me['user_id'], $userId]);
 
-    audit((int) $me['user_id'], $auditAction, 'user', $userId, $label . ' (user #' . $userId . ')');
+    audit((int) $me['user_id'], $auditAction, 'user', $userId, $label . ' for ' . audit_subject('user', $userId));
 
     /* Tell the applicant the decision — but not while the administrator waits.
        The status change already stands, so the answer goes back straight
@@ -542,6 +545,7 @@ function admin_voters_status(int $userId, string $action): never
 function admin_voters_delete(int $userId): never
 {
     $me = current_user();
+    $subject = audit_subject('user', $userId);
     if ((int) $me['user_id'] === $userId) {
         json_error('You cannot delete your own account.', 409);
     }
@@ -586,14 +590,14 @@ function admin_voters_delete(int $userId): never
         };
 
         audit((int) $me['user_id'], 'user.status_changed', 'user', $userId,
-            'Deactivated member #' . $userId . ' (voted=' . ($hasVoted ? 'yes' : 'no')
+            'Deactivated member ' . $subject . ' (voted=' . ($hasVoted ? 'yes' : 'no')
             . ', candidacies=' . $candidacies . ', votes received=' . $votesReceived . ')');
 
         json_out(['ok' => true, 'deactivated' => true, 'message' => $why]);
     }
 
     db()->prepare('DELETE FROM users WHERE user_id = ?')->execute([$userId]);
-    audit((int) $me['user_id'], 'member.deleted', 'user', $userId, 'Deleted member #' . $userId);
+    audit((int) $me['user_id'], 'member.deleted', 'user', $userId, 'Deleted member ' . $subject);
     json_out(['ok' => true, 'deleted' => true]);
 }
 
@@ -756,7 +760,7 @@ function admin_candidates_save(int $candidateId): never
     /* Editing keeps the candidacy in its original election. */
     $existingMember = 0;
     if ($candidateId !== 0) {
-        $s = $pdo->prepare('SELECT member_id, election_id FROM candidates WHERE candidate_id = ? LIMIT 1');
+        $s = $pdo->prepare('SELECT c.*, m.occupation, m.years_in_coop FROM candidates c JOIN members m ON m.member_id=c.member_id WHERE c.candidate_id = ? LIMIT 1');
         $s->execute([$candidateId]);
         $existing = $s->fetch();
         if (!$existing) json_error('That candidate does not exist.', 404);
@@ -846,7 +850,7 @@ function admin_candidates_save(int $candidateId): never
             throw $e;
         }
 
-        audit((int) $me['user_id'], 'candidate.created', 'candidate', $candidateId, 'Added candidate #' . $candidateId);
+        audit((int) $me['user_id'], 'candidate.created', 'candidate', $candidateId, 'Added candidate ' . audit_subject('candidate', $candidateId));
         json_out(['ok' => true, 'id' => $candidateId], 201);
     }
 
@@ -866,7 +870,11 @@ function admin_candidates_save(int $candidateId): never
 
     admin_candidate_member_extras($existingMember, $occ, $years);
 
-    audit((int) $me['user_id'], 'candidate.updated', 'candidate', $candidateId, 'Updated candidate #' . $candidateId);
+    audit((int) $me['user_id'], 'candidate.updated', 'candidate', $candidateId, 'Updated candidate ' . audit_subject('candidate', $candidateId)
+        . audit_changed_fields($existing, ['platform'=>$platform,'bio'=>$bio,'is_active'=>$isActive,'position_id'=>$positionId ?: $existing['position_id'],
+            'occupation'=>$occ !== '' ? $occ : $existing['occupation'],
+            'years_in_coop'=>($years !== null && $years !== '') ? (int)$years : $existing['years_in_coop']],
+            ['platform'=>'platform','bio'=>'biography','is_active'=>'status','position_id'=>'position','occupation'=>'occupation','years_in_coop'=>'membership years']));
     json_out(['ok' => true, 'id' => $candidateId]);
 }
 
@@ -887,6 +895,7 @@ function admin_candidate_member_extras(int $memberId, string $occ, mixed $years)
 function admin_candidates_delete(int $candidateId): never
 {
     $me = current_user();
+    $subject = audit_subject('candidate', $candidateId);
 
     // Serialize candidate removal with the approval check and opening transition.
     db()->beginTransaction();
@@ -902,14 +911,14 @@ function admin_candidates_delete(int $candidateId): never
         db()->prepare('UPDATE candidates SET is_active = 0 WHERE candidate_id = ?')->execute([$candidateId]);
         db()->commit();
         audit((int) $me['user_id'], 'candidate.deactivated', 'candidate', $candidateId,
-            'Withdrew candidate #' . $candidateId . ' (votes exist — tally preserved)');
+            'Withdrew candidate ' . $subject . ' (votes exist — tally preserved)');
         json_out(['ok' => true, 'deactivated' => true,
             'message' => 'This candidate already has votes, so they were marked withdrawn instead of deleted. The tally stays intact.']);
     }
 
     db()->prepare('DELETE FROM candidates WHERE candidate_id = ?')->execute([$candidateId]);
     db()->commit();
-    audit((int) $me['user_id'], 'candidate.deleted', 'candidate', $candidateId, 'Deleted candidate #' . $candidateId);
+    audit((int) $me['user_id'], 'candidate.deleted', 'candidate', $candidateId, 'Deleted candidate ' . $subject);
     json_out(['ok' => true, 'deleted' => true]);
 }
 
@@ -1021,7 +1030,8 @@ function admin_elections_save(int $electionId): never
         json_out(['ok' => true, 'id' => $electionId], 201);
     }
 
-    $error = db_transaction(static function (PDO $pdo) use ($electionId, $title, $desc, $startSql, $endSql): ?array {
+    $changes = '';
+    $error = db_transaction(static function (PDO $pdo) use ($electionId, $title, $desc, $startSql, $endSql, &$changes): ?array {
         $existing = $pdo->prepare('SELECT * FROM elections WHERE election_id = ? FOR UPDATE');
         $existing->execute([$electionId]);
         $current = $existing->fetch();
@@ -1033,11 +1043,14 @@ function admin_elections_save(int $electionId): never
         }
         $pdo->prepare('UPDATE elections SET title = ?, description = ?, start_datetime = ?, end_datetime = ? WHERE election_id = ?')
             ->execute([$title, $desc ?: null, $startSql, $endSql, $electionId]);
+        $changes = audit_changed_fields($current,
+            ['title'=>$title,'description'=>$desc,'start_datetime'=>$startSql,'end_datetime'=>$endSql],
+            ['title'=>'title','description'=>'description','start_datetime'=>'start date','end_datetime'=>'end date']);
         return null;
     });
     if ($error) json_error($error[0], $error[1]);
 
-    audit((int) $me['user_id'], 'election.updated', 'election', $electionId, 'Updated election "' . $title . '"');
+    audit((int) $me['user_id'], 'election.updated', 'election', $electionId, 'Updated election "' . $title . '"' . $changes);
     json_out(['ok' => true, 'id' => $electionId]);
 }
 
@@ -1140,6 +1153,7 @@ function admin_elections_action(int $electionId, string $action): never
 function admin_elections_delete(int $electionId): never
 {
     $me = current_user();
+    $subject = audit_subject('election', $electionId);
 
     $s = db()->prepare('SELECT COUNT(*) FROM votes WHERE election_id = ?');
     $s->execute([$electionId]);
@@ -1148,7 +1162,7 @@ function admin_elections_delete(int $electionId): never
     }
 
     db()->prepare('DELETE FROM elections WHERE election_id = ?')->execute([$electionId]);
-    audit((int) $me['user_id'], 'election.deleted', 'election', $electionId, 'Deleted election #' . $electionId);
+    audit((int) $me['user_id'], 'election.deleted', 'election', $electionId, 'Deleted election ' . $subject);
     json_out(['ok' => true, 'deleted' => true]);
 }
 
@@ -1210,7 +1224,7 @@ function admin_positions(array $args): never
         }
 
         $pid = (int) db()->lastInsertId();
-        audit((int) $me['user_id'], 'position.created', 'position', $pid, 'Added position "' . $name . '"');
+        audit((int) $me['user_id'], 'position.created', 'position', $pid, 'Added position ' . audit_subject('position', $pid));
         json_out(['ok' => true, 'id' => $pid], 201);
     }
 
@@ -1219,6 +1233,7 @@ function admin_positions(array $args): never
         $lookup->execute([$id]);
         $eid = (int) $lookup->fetchColumn();
         if (!$eid) json_error('This position no longer exists. Reload the election list.', 404);
+        $subject = audit_subject('position', $id);
         $error = db_transaction(static function (PDO $pdo) use ($id, $eid): ?array {
             // Use the same election lock as voting and closing before changing the ballot.
             $election = $pdo->prepare('SELECT * FROM elections WHERE election_id = ? FOR UPDATE');
@@ -1241,7 +1256,7 @@ function admin_positions(array $args): never
             return null;
         });
         if ($error) json_error($error[0], $error[1]);
-        audit((int) $me['user_id'], 'position.deleted', 'position', $id, 'Deleted position #' . $id);
+        audit((int) $me['user_id'], 'position.deleted', 'position', $id, 'Deleted position ' . $subject);
         json_out(['ok' => true, 'deleted' => true]);
     }
 
@@ -1311,7 +1326,7 @@ function admin_monitor(): never
     )->fetchAll() as $r) {
         $activityFeed[] = [
             'type'  => audit_type($r['action']),
-            'title' => $r['description'] ?: $r['action'],
+            'title' => audit_event_text($r),
             'time'  => fmt_relative($r['timestamp']),
         ];
     }
@@ -1670,7 +1685,7 @@ function security_logs(int $limit = 120): array
 
         $out[] = [
             'type'    => audit_type($r['action']),
-            'event'   => $r['description'] ?: $r['action'],
+            'event'   => audit_event_text($r),
             'time'    => fmt_datetime($r['timestamp']),
             'ip'      => $r['ip_address'] ?: '—',
             'userAgent' => trim((string) ($r['user_agent'] ?? '')),
@@ -1718,8 +1733,9 @@ function admin_announcements(array $args): never
     }
 
     if ($method === 'DELETE' && ($id = (int) ($args[0] ?? 0))) {
+        $subject = audit_subject('announcement', $id);
         db()->prepare('DELETE FROM announcements WHERE announcement_id = ?')->execute([$id]);
-        audit((int) $me['user_id'], 'announcement.deleted', 'announcement', $id, 'Removed notice #' . $id);
+        audit((int) $me['user_id'], 'announcement.deleted', 'announcement', $id, 'Removed notice ' . $subject);
         json_out(['ok' => true, 'deleted' => true]);
     }
 

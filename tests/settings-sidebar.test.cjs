@@ -22,4 +22,29 @@ for(const role of ['admin','member']){
 const management=fs.readFileSync('assets/js/management.js','utf8');
 assert.match(management,/CoopVoteAppearance\.navigation\(user\)/,'changing feature updates the existing sidebar');
 assert.match(management,/aria-expanded/);assert.match(management,/\.inert=/,'offscreen mobile navigation does not trap keyboard focus');
-console.log('Settings sidebar passed: existing role navigation, nested-host links, identity hooks, active state, duplicate prevention and mobile controls.');
+const runtime=fs.readFileSync('assets/js/app.js','utf8');
+const handler=runtime.match(/  function closeSidebarOnNavigation\(event\) \{[^]*?\n  \}/)[0];
+for(const shared of [false,true]){
+  const classes=new Set(['open']),overlays=new Set(['show']);
+  const sidebar={classList:{contains:v=>classes.has(v),remove:v=>classes.delete(v)},hasAttribute:()=>shared,inert:false};
+  const overlay={classList:{remove:v=>overlays.delete(v)}},settingsOverlay={hidden:false};
+  const toggle={setAttribute(k,v){this[k]=v;}};
+  const link={target:'',hasAttribute:()=>false,getAttribute:()=>null,closest:()=>sidebar};
+  let position='fixed';
+  const ctx=vm.createContext({window:{getComputedStyle:()=>({position})},document:{getElementById:id=>id==='overlay'?overlay:settingsOverlay,querySelectorAll:()=>[toggle]}});
+  vm.runInContext(handler,ctx);
+  const click={target:{closest:()=>link}};
+  ctx.closeSidebarOnNavigation({...click,defaultPrevented:true});assert.ok(classes.has('open'),'blocked navigation leaves the drawer open');
+  ctx.closeSidebarOnNavigation({...click,ctrlKey:true});assert.ok(classes.has('open'),'new-tab navigation keeps current drawer');
+  position='relative';ctx.closeSidebarOnNavigation(click);assert.ok(classes.has('open'),'desktop sidebar stays in place');
+  position='fixed';ctx.closeSidebarOnNavigation(click);
+  assert.equal(classes.has('open'),false,'mobile link selection closes sidebar');
+  assert.equal(overlays.has('show'),false,'mobile overlay closes');
+  assert.equal(settingsOverlay.hidden,true);
+  assert.equal(toggle['aria-expanded'],'false');
+  assert.equal(sidebar.inert,shared,'only settings uses its existing inert-aware toggle');
+}
+for(const dir of ['admin','voter'])for(const file of fs.readdirSync(dir).filter(f=>f.endsWith('.html'))){
+  assert.match(fs.readFileSync(dir+'/'+file,'utf8'),/app\.js\?v=20260919-voter-badges/,'each page loads the updated shared navigation');
+}
+console.log('Sidebar checks passed: shared role navigation, mobile link dismissal and overlay cleanup, desktop behavior, and blocked/new-tab navigation.');

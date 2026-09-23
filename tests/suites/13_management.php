@@ -21,6 +21,37 @@ return static function(Suite $t, PDO $pdo, array $fx):void {
     $t->same('cooperative name saves',200,$a->api('PUT','branding',['text'=>'CoopVote','logo'=>null,'coopName'=>'New Cooperative'])['status']);
     $t->same('cooperative name persists','New Cooperative',$anon->api('GET','branding')['json']['coopName']);
     $t->same('existing name setting stays in sync','New Cooperative',$pdo->query("SELECT setting_value FROM settings WHERE setting_key='coop_name'")->fetchColumn());
+    $t->same('save complete default identity',200,$a->api('PUT','branding',['text'=>'CoopVote','logo'=>null,'coopName'=>'Santiago City Multi-Purpose Cooperative'])['status']);
+    $defaults=$anon->api('GET','branding')['json'];
+    $t->same('default logo text persists','CoopVote',$defaults['text']);
+    $t->same('default cooperative name persists','Santiago City Multi-Purpose Cooperative',$defaults['coopName']);
+    $t->same('default logo persists',null,$defaults['logo']);
+    $t->group('Default theme restores branding atomically for administrators');
+    $custom=['text'=>'Custom Mark','logo'=>'data:image/png;base64,'.base64_encode($png),'coopName'=>'Custom Cooperative'];
+    $a->api('PUT','branding',$custom);
+    $custom=$anon->api('GET','branding')['json'];
+    $a->api('PUT','management/preferences',['theme'=>'forest']);
+    $t->same('other themes retain the complete branding',$custom,$anon->api('GET','branding')['json']);
+    $t->same('voter cannot request shared branding reset',403,$v->api('PUT','management/preferences',['theme'=>'navy','resetBranding'=>true])['status']);
+    $t->same('voter default theme changes only their preference',200,$v->api('PUT','management/preferences',['theme'=>'navy'])['status']);
+    $t->same('voter theme leaves branding intact',$custom,$anon->api('GET','branding')['json']);
+    $t->same('non-default branding reset refused',422,$a->api('PUT','management/preferences',['theme'=>'light','resetBranding'=>true])['status']);
+    $t->same('invalid reset flag refused',422,$a->api('PUT','management/preferences',['theme'=>'navy','resetBranding'=>'true'])['status']);
+    tdb_guard((string)$pdo->query('SELECT DATABASE()')->fetchColumn());
+    $pdo->exec("CREATE TRIGGER test_branding_reset_failure BEFORE UPDATE ON settings FOR EACH ROW BEGIN IF NEW.setting_key='coop_name' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Simulated branding write failure'; END IF; END");
+    try {
+        $t->same('failed branding write reports failure',500,$a->api('PUT','management/preferences',['theme'=>'navy','resetBranding'=>true])['status']);
+        $t->same('failed reset rolls back theme','forest',$a->api('GET','management/preferences')['json']['theme']);
+        $t->same('failed reset rolls back logo and text',$custom,$anon->api('GET','branding')['json']);
+    } finally { $pdo->exec('DROP TRIGGER IF EXISTS test_branding_reset_failure'); }
+    $reset=$a->api('PUT','management/preferences',['theme'=>'navy','resetBranding'=>true]);
+    $t->same('default action saves successfully',200,$reset['status']);
+    $t->same('default action returns saved branding',$defaults,$reset['json']['branding']);
+    $t->same('default theme persists','navy',$a->api('GET','management/preferences')['json']['theme']);
+    $a->api('PUT','branding',$custom);
+    $t->same('already selected default can restore branding again',200,$a->api('PUT','management/preferences',['theme'=>'navy','resetBranding'=>true])['status']);
+    $a->api('POST','auth/logout',[]);$a->login('t_admin');
+    $t->same('default branding survives login',$defaults,$anon->api('GET','branding')['json']);
     $t->group('Account boundaries and persistent preferences');
     $t->same('anonymous cannot read preferences',401,$anon->api('GET','management/preferences')['status']);
     foreach(['accounts','overview'] as $route)$t->same('voter cannot read '.$route,403,$v->api('GET','management/'.$route)['status']);

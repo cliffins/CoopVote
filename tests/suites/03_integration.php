@@ -352,4 +352,5 @@ return static function (Suite $t, PDO $pdo, array $fx): void {
     (require __DIR__ . '/../position-deletion-integration.php')($t, $pdo);
     (require __DIR__ . '/../voter-registration-integration.php')($t, $pdo);
     (require __DIR__ . '/../installation-integration.php')($t, $pdo);
+    (require __DIR__ . '/../audit-descriptions-integration.php')($t, $pdo);
 };

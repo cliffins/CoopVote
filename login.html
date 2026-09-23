@@ -887,7 +887,7 @@
        script down with it. -->
   <script src="assets/js/vendor/three.min.js"></script>
   <script src="assets/js/validation.js?v=20260911-required2"></script>
-  <script src="assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="assets/js/app.js?v=20260923-election-qr"></script>
   <script>
     /* ═══════════════════════════════════════
        3D BACKGROUND SCENE
@@ -1163,12 +1163,13 @@
        * replaceState() rewrites the entry in place — no new history step.
        */
       if (q.has('bye') || q.has('expired')) {
-        history.replaceState(null, '', window.location.pathname);
+        q.delete('bye'); q.delete('expired');
+        history.replaceState(null, '', window.location.pathname + (q.toString() ? '?' + q.toString() : ''));
       }
 
       /* Already signed in? Go straight to the right dashboard. */
       CoopVote.api('auth/me')
-        .then(d => { window.location.replace(d.user.home); })
+        .then(d => { window.location.replace(CoopVote.loginDestination(d.user)); })
         .catch(() => { /* not signed in — stay here */ });
     });
 
@@ -1234,7 +1235,7 @@
            * the "already signed in" check immediately threw the member
            * forward again — Back looked broken.
            */
-          setTimeout(() => window.location.replace(data.redirect), 900);
+          setTimeout(() => window.location.replace(CoopVote.loginDestination(data)), 900);
         })
         .catch(err => {
           btn.classList.remove('loading');

@@ -812,9 +812,11 @@ return static function (Suite $t, PDO $pdo, array $fx): void {
     /* The pages have to read the flag rather than the mere presence of an
        election, or the server-side fix above changes nothing on screen. */
     $pf = (string) file_get_contents(BASE_PATH . '/voter/profile.html');
-    $t->ok('the profile page hangs its Live badge on that flag',
-        str_contains($pf, 'if (el && el.live) {'),
-        'it used to be `if (el)`, which was true of a closed election too');
+    $nav = (string) file_get_contents(BASE_PATH . '/assets/js/voter-navigation.js');
+    $t->ok('the profile uses shared navigation with explicitly live elections',
+        str_contains($pf, 'assets/js/voter-navigation.js')
+        && str_contains($nav, "e.live === true && e.status === 'Active'"),
+        'a closed or upcoming election must never receive a Live badge');
     $t->ok('and offers no ballot button before voting opens',
         str_contains($pf, 'Voting Has Not Opened'));
 

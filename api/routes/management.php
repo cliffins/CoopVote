@@ -15,6 +15,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../includes/admin-approvals.php';
 require_once __DIR__ . '/voter.php';
+require_once __DIR__ . '/../../includes/branding.php';
 
 function handle_management(array $args): never
 {
@@ -31,13 +32,25 @@ function management_dispatch(array $args): never
     $action=$args[0] ?? 'overview'; $method=$_SERVER['REQUEST_METHOD']; $pdo=db();
     $me=require_login(); $uid=(int)$me['user_id']; $admin=$me['role_slug']==='admin';
     if ($action==='preferences') {
+        $branding=null;
         if ($method==='PUT') {
             require_json_request(); $theme=input_str('theme');
             if (!in_array($theme,GOVERNANCE_THEMES,true)) governance_fail('Choose one of the six themes.');
-            $pdo->prepare('INSERT INTO user_preferences (user_id,theme) VALUES (?,?) ON DUPLICATE KEY UPDATE theme=VALUES(theme)')->execute([$uid,$theme]);
+            $resetBranding=input('resetBranding',false);
+            if (!is_bool($resetBranding)) governance_fail('Choose a valid default-theme action.');
+            if ($resetBranding && !$admin) governance_fail('Only administrators can reset the cooperative branding.',403);
+            if ($resetBranding && $theme!=='navy') governance_fail('Branding can be reset with the Default theme.');
+            $branding=$resetBranding ? branding_defaults() : null;
+            db_transaction(static function(PDO $pdo) use($uid,$theme,$branding):void {
+                $pdo->prepare('INSERT INTO user_preferences (user_id,theme) VALUES (?,?) ON DUPLICATE KEY UPDATE theme=VALUES(theme)')->execute([$uid,$theme]);
+                if ($branding!==null) branding_store($pdo,$branding);
+            });
+            if ($branding!==null) audit($uid,'branding.updated','settings',null,'Restored the default logo, logo text and cooperative name with the Default theme');
         } else require_method('GET');
         $s=$pdo->prepare('SELECT theme FROM user_preferences WHERE user_id=?');$s->execute([$uid]);
-        json_out(['theme'=>$s->fetchColumn() ?: 'navy', 'themes'=>GOVERNANCE_THEMES]);
+        $data=['theme'=>$s->fetchColumn() ?: 'navy', 'themes'=>GOVERNANCE_THEMES];
+        if ($branding!==null) $data['branding']=$branding;
+        json_out($data);
     }
     require_admin();
     if ($action==='overview') {
@@ -72,7 +85,7 @@ function management_dispatch(array $args): never
                 $pdo->prepare("UPDATE election_approval_requests SET state='superseded' WHERE election_id=? AND state='pending'")->execute([$eid]);
                 $pdo->prepare('INSERT INTO election_approval_requests (election_id,fingerprint,required_approvals,requested_by,proposed_end) VALUES (?,?,?,?,?)')->execute([$eid,$fingerprint,$threshold,$uid,$end]);
             });
-            audit($uid,'election.approval_requested','election',$eid,'Requested admin approval');json_out(['ok'=>true]);
+            audit($uid,'election.approval_requested','election',$eid,'Requested admin approval for election ' . audit_subject('election',$eid));json_out(['ok'=>true]);
         }
         if ($operation==='decide') {
             $decision=input_str('decision');$note=input_str('note');$requestId=(int)input('requestId');
@@ -82,7 +95,7 @@ function management_dispatch(array $args): never
                 if (!$r || (int)$r['request_id']!==$requestId || $r['stale']) governance_fail('This request changed. Reload the review before deciding.',409);
                 $pdo->prepare('INSERT INTO election_admin_decisions (request_id,admin_id,decision,note) VALUES (?,?,?,?)')->execute([$requestId,$uid,$decision,$note]);
             });
-            audit($uid,'election.reviewed','election',$eid,$decision.': '.$note);json_out(['ok'=>true]);
+            audit($uid,'election.reviewed','election',$eid,ucfirst($decision).' decision for election '.audit_subject('election',$eid).($note!=='' ? ': '.$note : ''));json_out(['ok'=>true]);
         }
         governance_fail('Unknown election review action.',404);
     }
@@ -98,7 +111,7 @@ function management_dispatch(array $args): never
                 $pdo->prepare('UPDATE users SET email=? WHERE user_id=?')->execute([$email,$id]);
                 $pdo->prepare('INSERT INTO admin_profiles(user_id,display_name) VALUES(?,?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name)')->execute([$id,$name]);
             });
-            audit($uid,'admin.updated','user',$id,'Updated admin account');json_out(['ok'=>true]);
+            audit($uid,'admin.updated','user',$id,'Updated admin account '.audit_subject('user',$id));json_out(['ok'=>true]);
         }
         if ($method==='GET') {
             json_out($pdo->query("SELECT u.user_id AS id,u.username,u.email,u.status,COALESCE(p.display_name,u.username) AS name FROM users u JOIN roles r ON r.role_id=u.role_id LEFT JOIN admin_profiles p ON p.user_id=u.user_id WHERE r.slug='admin' ORDER BY u.user_id")->fetchAll());
@@ -114,7 +127,7 @@ function management_dispatch(array $args): never
                 $pdo->prepare("INSERT INTO users (username,email,password_hash,role_id,status,email_verified_at) VALUES (?,?,?,(SELECT role_id FROM roles WHERE slug='admin'),'active',NOW())")->execute([$username,$email,password_hash($password,PASSWORD_BCRYPT)]);
                 $id=(int)$pdo->lastInsertId();$pdo->prepare('INSERT INTO admin_profiles (user_id,display_name) VALUES (?,?)')->execute([$id,$name]);return $id;
             });
-            audit($uid,'admin.created','user',$id,'Created admin '.$username);json_out(['ok'=>true,'username'=>$username,'password'=>$password],201);
+            audit($uid,'admin.created','user',$id,'Created admin '.audit_subject('user',$id));json_out(['ok'=>true,'username'=>$username,'password'=>$password],201);
         }
         $status=input_str('status');
         if (!in_array($status,['active','deactivated'],true)) governance_fail('Choose active or deactivated.');
@@ -127,7 +140,7 @@ function management_dispatch(array $args): never
             $required=max(1,(int)$pdo->query('SELECT required_approvals FROM governance_config WHERE id=1')->fetchColumn(),(int)$pdo->query("SELECT COALESCE(MAX(required_approvals),1) FROM election_approval_requests WHERE state='pending'")->fetchColumn());
             if (governance_admin_count($pdo)<$required) governance_fail('Keep enough active admins to satisfy the configured and pending approval requirements.',409);
         });
-        audit($uid,'admin.status_changed','user',$id,$status);json_out(['ok'=>true]);
+        audit($uid,'admin.status_changed','user',$id,ucfirst($status).' admin account '.audit_subject('user',$id));json_out(['ok'=>true]);
     }
     if ($action==='config') {
         require_method('PUT');require_json_request();$n=filter_var(input('requiredApprovals'),FILTER_VALIDATE_INT);

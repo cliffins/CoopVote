@@ -7,11 +7,14 @@
   <title>CoopVote Settings</title>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700;800&display=swap">
-  <link rel="stylesheet" href="assets/css/management.css?v=20260916-branding">
+  <link rel="stylesheet" href="assets/css/management.css?v=20260920-module-entry">
   <link rel="stylesheet" href="assets/css/settings-sidebar.css?v=20260915">
   <link rel="stylesheet" href="assets/css/themes.css?v=20260915">
-  <script src="assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <script src="assets/js/voter-navigation.js?v=20260919-voter-badges"></script>
+  <link rel="stylesheet" href="assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -43,37 +46,48 @@
       <div class="module-content">
         <p id="page-error" role="alert" hidden></p>
         <section id="themes" hidden aria-label="Theme preferences">
-          <p class="intro">Choose how CoopVote looks. Your theme stays with your account.</p>
+          <div class="module-intro">
+            <h2>Your theme</h2>
+            <p class="hint">Choose a theme. Your preference stays with your account.</p>
+          </div>
           <div id="theme-grid" class="theme-grid"></div>
         </section>
         <section id="officers" hidden aria-label="Officer accounts">
-          <div class="module-toolbar"><label class="search-box"><span class="sr-only">Search officers</span><input
-                id="officer-search" type="search" placeholder="Search name, username or email"></label><label><span
-                class="sr-only">Officer status</span><select id="officer-status" class="filter-select">
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="deactivated">Deactivated</option>
-              </select></label><button type="button" id="add-officer" class="primary">Add Officer</button></div>
-          <div class="table-wrap">
-            <table class="officer-table">
-              <colgroup>
-                <col class="officer-col-name">
-                <col class="officer-col-username">
-                <col class="officer-col-email">
-                <col class="officer-col-status">
-                <col class="officer-col-actions">
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="accounts"></tbody>
-            </table>
+          <div class="panel officer-directory">
+            <div class="section-heading">
+              <div class="module-intro">
+                <h2>Administrator accounts</h2>
+                <p class="hint">Manage officers and their access to CoopVote.</p>
+              </div><span class="count-label" id="officer-count" role="status"></span>
+            </div>
+            <div class="module-toolbar"><label class="search-box"><span class="sr-only">Search officers</span><input
+                  id="officer-search" type="search" placeholder="Search name, username or email"></label><label><span
+                  class="sr-only">Officer status</span><select id="officer-status" class="filter-select">
+                  <option value="">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="deactivated">Deactivated</option>
+                </select></label><button type="button" id="add-officer" class="primary">Add Officer</button></div>
+            <div class="table-wrap">
+              <table class="officer-table">
+                <colgroup>
+                  <col class="officer-col-name">
+                  <col class="officer-col-username">
+                  <col class="officer-col-email">
+                  <col class="officer-col-status">
+                  <col class="officer-col-actions">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="accounts"></tbody>
+              </table>
+            </div>
           </div>
           <details class="panel password-settings">
             <summary>Change My Password</summary>
@@ -99,33 +113,60 @@
           </details>
         </section>
         <section id="branding" hidden aria-label="System branding">
-          <form id="branding-form" class="panel compact-form">
-            <h2>Logo and Name</h2>
-            <div class="branding-preview"><img id="branding-preview-image" alt="Logo preview" hidden><span
-                id="branding-preview-text">CoopVote</span></div>
-            <label>Logo text<input id="branding-text" name="text" required maxlength="40" value="CoopVote"></label>
-            <label>Cooperative name<input id="branding-coop-name" name="coopName" required maxlength="150"
-                aria-describedby="branding-coop-help"></label>
-            <p id="branding-coop-help" class="hint">Shown below the logo in the sidebar.</p>
-            <label>Logo image<input id="branding-file" type="file" accept="image/png,image/jpeg,image/webp"
-                aria-describedby="branding-help"></label>
-            <p id="branding-help" class="hint">PNG, JPEG or WebP, up to 5 MB. The image will be resized to fit the logo
-              mark.</p>
-            <button type="button" id="branding-remove">Use Default Mark</button>
+          <form id="branding-form" class="panel branding-form">
+            <div class="module-intro">
+              <h2>Cooperative identity</h2>
+              <p class="hint">Set the logo and names members see throughout CoopVote.</p>
+            </div>
+            <div class="branding-layout">
+              <div class="branding-fields">
+                <label>Logo text<input id="branding-text" name="text" required maxlength="40" value="CoopVote"></label>
+                <label>Cooperative name<input id="branding-coop-name" name="coopName" required maxlength="150"
+                    aria-describedby="branding-coop-help"></label>
+                <p id="branding-coop-help" class="hint">Shown below the logo in the sidebar.</p>
+                <label>Logo image<input id="branding-file" type="file" accept="image/png,image/jpeg,image/webp"
+                    aria-describedby="branding-help"></label>
+                <p id="branding-help" class="hint">PNG, JPEG or WebP, up to 5 MB. The image will be resized to fit the
+                  logo
+                  mark.</p>
+              </div>
+              <aside class="branding-sample" aria-label="Branding preview">
+                <span class="eyebrow">Live preview</span>
+                <div class="branding-preview">
+                  <div class="branding-mark"><img id="branding-preview-image" alt="" hidden><svg
+                      id="branding-preview-default" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                    </svg></div>
+                  <span id="branding-preview-text">CoopVote</span>
+                  <span id="branding-preview-coop">Santiago City Multi-Purpose Cooperative</span>
+                </div>
+                <p class="hint">Your sidebar identity, as members will see it.</p>
+              </aside>
+            </div>
             <p class="form-error" role="alert"></p>
-            <div class="form-actions"><button type="submit" class="primary" id="branding-save">Save Branding</button>
+            <div class="form-actions"><button type="button" id="branding-remove">Use Default</button><button
+                type="submit" class="primary" id="branding-save" disabled>Save Branding</button>
             </div>
           </form>
         </section>
         <section id="approvals" hidden aria-label="Election approvals">
-          <form id="approval-config" class="panel config-form"><label>Approvals required<select class="filter-select"
-                name="requiredApprovals" id="threshold" required></select></label><button type="submit"
-              id="save-requirement" disabled>Save Requirement</button>
+          <form id="approval-config" class="panel config-form">
+            <div class="module-intro">
+              <h2>Approval requirement</h2>
+              <p class="hint">Set how many administrators must approve an election before it opens.</p>
+            </div>
+            <div class="config-controls"><label>Approvals required<select class="filter-select" name="requiredApprovals"
+                  id="threshold" required></select></label><button type="submit" id="save-requirement" class="primary"
+                disabled>Save Requirement</button></div>
             <p id="admin-count" class="hint"></p>
             <p class="hint">Applies to new requests. Each Admin account can decide once per request.</p>
             <p class="form-error" role="alert"></p>
           </form>
           <div class="panel election-review">
+            <div class="module-intro">
+              <h2>Election review</h2>
+              <p class="hint">Review the election and record your decision.</p>
+            </div>
             <div class="review-toolbar"><label>Election<select class="filter-select"
                   id="election-select"></select></label></div>
             <div id="review"></div>
@@ -167,9 +208,9 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite" hidden></div>
-  <script src="assets/js/settings-sidebar.js?v=20260915"></script>
-  <script src="assets/js/app.js?v=20260917-election-nav"></script>
-  <script src="assets/js/management.js?v=20260916-coop-name"></script>
+  <script src="assets/js/settings-sidebar.js?v=20260919-admin-card"></script>
+  <script src="assets/js/app.js?v=20260923-election-qr"></script>
+  <script src="assets/js/management.js?v=20260923-sidebar-scroll"></script>
 </body>
 
 </html>

@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/audit-description.php';
 require_once __DIR__ . '/session-storage.php';
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -303,7 +304,7 @@ function audit(
             $action,
             $entityType,
             $entityId,
-            $description !== null ? substr($description, 0, 255) : null,
+            $description !== null ? mb_strcut($description, 0, 255, 'UTF-8') : null,
             client_ip(),
             user_agent(),
         ]);

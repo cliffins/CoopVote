@@ -1415,8 +1415,10 @@
   <link rel="stylesheet" href="../assets/css/responsive.css?v=20260914-stable-controls" />
   <script src="../assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="../assets/css/themes.css?v=20260915">
-  <script src="../assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260917-election-nav" />
+  <script src="../assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
+  <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
 </head>
 
 <body>
@@ -1699,10 +1701,10 @@
 
       <div class="sidebar-footer">
         <div class="admin-card">
-          <div class="admin-avatar">SA</div>
+          <div class="admin-avatar" id="sidebar-avatar">?</div>
           <div class="admin-info">
-            <div class="admin-name">System Admin</div>
-            <div class="admin-role">Super Administrator</div>
+            <div class="admin-name" id="sidebar-name">—</div>
+            <div class="admin-role" id="sidebar-id">Administrator</div>
           </div>
         </div>
       </div>
@@ -1826,7 +1828,8 @@
         <!-- TABLE -->
         <div class="table-card">
           <div class="table-scroll">
-            <table>
+            <table class="cv-data-table cv-voters">
+              <colgroup><col style="width:4%"><col style="width:5%"><col style="width:17%"><col style="width:11%"><col style="width:15%"><col style="width:11%"><col style="width:12%"><col style="width:12%"><col style="width:13%"></colgroup>
               <thead>
                 <tr>
                   <th><input type="checkbox" id="check-all" onchange="toggleAll(this)"
@@ -1855,7 +1858,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260917-election-nav"></script>
+  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
   <script src="../assets/js/voter-registration.js?v=20260917"></script>
   <script>
     /* ─────────────────────────────────────────

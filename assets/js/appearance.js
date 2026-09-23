@@ -13,16 +13,7 @@
   function navigation(user) {
     const sidebar = document.querySelector('.sidebar');
     if (!sidebar) return;
-    const scrollKey = 'cv.sidebar.scroll.' + user.role + '.' + user.id;
-    let scrollTop = sidebar.scrollTop;
-    if (!sidebar.dataset.scrollRemembered) {
-      try { scrollTop = Number(sessionStorage.getItem(scrollKey)) || 0; } catch (_) { /* Storage is optional. */ }
-      sidebar.addEventListener('click', event => {
-        if (!event.target.closest('a[href]')) return;
-        try { sessionStorage.setItem(scrollKey, String(sidebar.scrollTop)); } catch (_) { /* Storage is optional. */ }
-      });
-      sidebar.dataset.scrollRemembered = 'true';
-    }
+    if (window.CoopVoteNavigation) window.CoopVoteNavigation.bind(user);
     const after = (anchor, element) => {
       if (anchor && anchor.nextElementSibling !== element) anchor.insertAdjacentElement('afterend', element);
     };
@@ -46,7 +37,7 @@
     after(settings,themes);
     if(user.role==='admin')after(themes,link('branding','Branding'));
     sidebar.querySelectorAll('[data-cv-nav]').forEach(a=>{const current=location.pathname.endsWith('/management.html')&&a.hash===(location.hash|| (user.role==='admin'?'#officers':'#themes'));a.classList.toggle('active',current);if(current)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-    sidebar.scrollTop = scrollTop;
+    if (window.CoopVoteNavigation) window.CoopVoteNavigation.restore();
   }
   async function sync(user) {
     const currentRevision = revision;

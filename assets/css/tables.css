@@ -1,0 +1,54 @@
+/* Column geometry is independent of the current rows and filter selection. */
+.cv-data-table { width:100%; table-layout:fixed; }
+.cv-data-table.cv-voters { min-width:1120px; }
+.cv-data-table.cv-candidates { min-width:1000px; }
+.cv-data-table.cv-report { min-width:860px; }
+.cv-data-table.cv-monitor { min-width:620px; }
+.cv-data-table.cv-activity { min-width:560px; }
+.cv-data-table :is(th,td) { box-sizing:border-box; overflow-wrap:anywhere; }
+.cv-data-table :is(.voter-cell,.cand-cell) { min-width:0; }
+.cv-data-table :is(.voter-cell,.cand-cell)>div:last-child { min-width:0; }
+.cv-data-table .badge { max-width:100%; white-space:nowrap; overflow-wrap:normal; }
+.cv-data-table:is(.cv-candidates,.cv-report) td:nth-child(3) .badge { white-space:normal; }
+.cv-data-table .action-btns { flex-wrap:nowrap; }
+.app :is(.table-scroll,.table-wrap), .officer-directory>.table-wrap, .log-list {
+  scrollbar-gutter:stable;
+  overflow-y:scroll;
+  overflow-anchor:none;
+}
+.app .table-card>.pagination, .cv-report-results>.pagination {
+  min-height:62px;
+  flex-shrink:0;
+}
+.app .table-card .pag-btns {
+  height:40px;
+  min-height:40px;
+  align-items:center;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  padding-block:3px;
+}
+.cv-report-results { display:flex; flex-direction:column; height:clamp(300px,48dvh,520px); }
+.cv-report-results>.table-scroll { flex:1; min-height:0; overflow:auto; overflow-y:scroll; }
+.cv-report-results thead, .officer-directory thead, .cv-activity thead {
+  position:sticky; top:0; z-index:1; background:var(--navy2);
+}
+.cv-report-results .cv-empty-row { padding:36px 20px; text-align:center; color:var(--muted2); }
+.cv-report-results .cv-empty-row button { margin-top:12px; }
+.officer-directory>.table-wrap { height:clamp(240px,38dvh,420px); overflow:auto; overflow-y:scroll; }
+.officer-directory .count-label { min-width:9ch; text-align:right; }
+.card:has(.cv-activity)>.table-wrap { height:clamp(220px,32dvh,360px); overflow:auto; overflow-y:scroll; }
+/* Refiltering reports updates existing layout without replaying entrance motion. */
+.cv-filter-update, .cv-filter-update * { animation:none!important; }
+@media(max-width:600px) {
+  .app .table-card>.pagination { flex-direction:column; align-items:stretch; gap:6px; }
+  .app .table-card .pag-info { min-height:18px; }
+  .app .table-card .pag-btns { width:100%; }
+}
+@media print {
+  .cv-data-table { min-width:0!important; }
+  .cv-report-results, .cv-report-results>.table-scroll,
+  .officer-directory>.table-wrap, .card:has(.cv-activity)>.table-wrap {
+    height:auto; overflow:visible;
+  }
+}
