@@ -32,6 +32,14 @@ function installation_schema_issues(PDO $pdo, string $database): array
 
 function installation_error(Throwable $e): array
 {
+    if ($e->getMessage() === 'DB_TLS_REQUIRED') {
+        return ['code'=>'DB_TLS_REQUIRED', 'error'=>'The secure database connection is not configured.',
+            'fix'=>'Set COOPVOTE_DB_SSL_CA or db_ssl_ca in config/security-local.php to the database CA certificate. See SECURITY_DEPLOYMENT.txt.'];
+    }
+    if ($e->getMessage() === 'DB_ENCRYPTION_REQUIRED') {
+        return ['code'=>'DB_ENCRYPTION_REQUIRED', 'error'=>'The database encryption configuration is incomplete.',
+            'fix'=>'Configure MariaDB with a separate AES-256 key, then run php tools/encrypt_database.php. See SECURITY_DEPLOYMENT.txt.'];
+    }
     if ($e instanceof PDOException && (in_array((int) ($e->errorInfo[1] ?? 0), [1054,1146,1932], true)
         || in_array((string) $e->getCode(), ['42S02','42S22'], true))) {
         return ['code'=>'DB_SCHEMA_MISMATCH',

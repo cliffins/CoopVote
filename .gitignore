@@ -1,4 +1,6 @@
 # Generated test output; keep the directory for browser/report scripts.
+# A Windows process may create this literal environment-variable directory.
+/%SystemDrive%/
 /tests/reports/*
 !/tests/reports/.gitkeep
 /database/test-data/screenshots/
@@ -6,3 +8,12 @@
 
 # Runtime logs are generated locally.
 /logs/*.log
+/logs/pre-officer-security-*.sql
+
+# Private deployment keys, exported data and authenticated encrypted backups.
+/config/security-local.php
+/config/integrity-key.php
+/database/backups/*
+/logs/*.sql
+*.cvbak
+*.cvbak.json

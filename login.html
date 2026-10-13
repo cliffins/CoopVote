@@ -7,7 +7,7 @@
   <title>CoopVote — Sign In</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet" />
+    rel="stylesheet" media="print" onload="this.media='all'" />
   <style>
     *,
     *::before,
@@ -384,7 +384,6 @@
       box-shadow: 0 14px 36px rgba(0, 0, 0, .5);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      animation: toastIn .35s cubic-bezier(.22, 1, .36, 1);
     }
 
     /* An explicit size is required: the markup carries only a viewBox,
@@ -412,23 +411,6 @@
       border: 1px solid rgba(76, 175, 130, .45);
       border-left: 3px solid var(--success);
       color: #80dbb4;
-    }
-
-    .notice.fading {
-      opacity: 0;
-      transition: opacity .4s ease;
-    }
-
-    @keyframes toastIn {
-      from {
-        opacity: 0;
-        transform: translateX(24px)
-      }
-
-      to {
-        opacity: 1;
-        transform: none
-      }
     }
 
     @media(max-width:480px) {
@@ -744,7 +726,20 @@
   <script src="assets/js/viewport.js?v=20260911-layout1" defer></script>
   <link rel="stylesheet" href="assets/css/themes.css?v=20260915">
   <script src="assets/js/appearance.js?v=20260917-election-nav"></script>
-  <link rel="stylesheet" href="assets/css/navigation.css?v=20260917-election-nav" />
+  <script>
+    if (new URLSearchParams(location.search).has('bye')) {
+      document.documentElement.classList.add('cv-logout-arrival');
+    }
+  </script>
+  <style>
+    /* Match the dashboard entrance after login, without capturing the sidebar. */
+    @keyframes cv-module-enter { from { opacity: 0; } to { opacity: 1; } }
+    .cv-logout-arrival .login-card { animation: cv-module-enter 180ms ease-out both; }
+    .cv-logout-arrival .login-card :is(.brand, .headline-wrap, .divider, .field, .forgot, .btn-login, .sec-footer) { animation: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .cv-logout-arrival .login-card { animation: none; }
+    }
+  </style>
 </head>
 
 <body class="auth-page">
@@ -885,184 +880,11 @@
   <!-- Bundled locally: the cooperative runs this on a XAMPP machine that may
        have no internet, and a failed CDN fetch used to take the whole page
        script down with it. -->
-  <script src="assets/js/vendor/three.min.js"></script>
+  <script src="assets/js/login-background-loader.js?v=20260924" defer></script>
   <script src="assets/js/validation.js?v=20260911-required2"></script>
-  <script src="assets/js/app.js?v=20260923-election-qr"></script>
+  <script src="assets/js/app.js?v=20260924-smooth-toast"></script>
   <script>
-    /* ═══════════════════════════════════════
-       3D BACKGROUND SCENE
-    ═══════════════════════════════════════ */
-    /*
-     * Purely decorative, and deliberately sealed off from everything below.
-     *
-     * This block used to be able to kill the whole page. It ran before the
-     * form's own declarations, so when three.js failed to load the thrown
-     * ReferenceError stopped the script right here — the `let`/`const` below
-     * were never initialised, while the hoisted functions still existed and
-     * still ran. Signing in then reported "Cannot access 'noticeTimer'
-     * before initialization" instead of logging anyone in.
-     *
-     * A missing or broken backdrop must cost nothing but the backdrop.
-     */
-    (function () {
-      if (typeof THREE === 'undefined') return;    // no library, no backdrop
-      try {
-        const canvas = document.getElementById('three-canvas');
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setClearColor(0x000000, 0);
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
-        camera.position.set(0, 0, 28);
-
-        function resize() {
-          camera.aspect = innerWidth / innerHeight;
-          camera.updateProjectionMatrix();
-          renderer.setSize(innerWidth, innerHeight);
-        }
-        resize();
-        window.addEventListener('resize', resize);
-
-        /* colors */
-        const C_GOLD = new THREE.Color(0xc9a84c);
-        const C_GOLD2 = new THREE.Color(0xe8c96a);
-        const C_TEAL = new THREE.Color(0x4caf82);
-        const C_BLUE = new THREE.Color(0x4a9fd4);
-        const C_PURPLE = new THREE.Color(0x9b7fd4);
-        const C_NAVY = new THREE.Color(0x162a52);
-
-        /* large floating orbs */
-        const orbConfig = [
-          { p: [-18, 8, -22], r: 7.5, c: C_GOLD, o: .13 },
-          { p: [18, -6, -24], r: 9.5, c: C_NAVY, o: .55 },
-          { p: [-6, -12, -18], r: 5.5, c: C_TEAL, o: .1 },
-          { p: [8, 14, -28], r: 10, c: C_BLUE, o: .09 },
-          { p: [14, 4, -12], r: 3.5, c: C_GOLD2, o: .13 },
-          { p: [-12, -4, -14], r: 4.5, c: C_PURPLE, o: .1 },
-          { p: [2, 18, -20], r: 6, c: C_TEAL, o: .07 },
-        ];
-        const orbs = orbConfig.map(d => {
-          const m = new THREE.Mesh(
-            new THREE.SphereGeometry(d.r, 28, 28),
-            new THREE.MeshStandardMaterial({ color: d.c, transparent: true, opacity: d.o, roughness: .8, metalness: .1 })
-          );
-          m.position.set(...d.p);
-          m.userData = { ox: d.p[0], oy: d.p[1], speed: .15 + Math.random() * .22, phase: Math.random() * Math.PI * 2 };
-          scene.add(m);
-          return m;
-        });
-
-        /* torus rings */
-        function addTorus(r1, r2, col, op, rx, ry, px, py, pz) {
-          const m = new THREE.Mesh(
-            new THREE.TorusGeometry(r1, r2, 8, 100),
-            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op })
-          );
-          m.rotation.x = rx; m.rotation.y = ry;
-          m.position.set(px, py, pz);
-          scene.add(m); return m;
-        }
-        const t1 = addTorus(9, .06, 0xc9a84c, .18, Math.PI / 3, 0, 12, -4, -10);
-        const t2 = addTorus(5.5, .04, 0x4caf82, .13, -Math.PI / 4, Math.PI / 6, -14, 6, -8);
-        const t3 = addTorus(14, .03, 0x4a9fd4, .08, Math.PI / 2, Math.PI / 5, 0, 0, -20);
-
-        /* wireframe polyhedra */
-        function addWire(geo, col, op, px, py, pz) {
-          const m = new THREE.LineSegments(
-            new THREE.EdgesGeometry(geo),
-            new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: op })
-          );
-          m.position.set(px, py, pz); scene.add(m); return m;
-        }
-        const w1 = addWire(new THREE.IcosahedronGeometry(4.5, 1), 0xc9a84c, .12, -18, 8, -18);
-        const w2 = addWire(new THREE.OctahedronGeometry(3, 0), 0x4a9fd4, .13, 16, -8, -14);
-        const w3 = addWire(new THREE.TetrahedronGeometry(3.5, 0), 0x9b7fd4, .1, 2, 14, -16);
-
-        /* particles */
-        const N = 320;
-        const pos = new Float32Array(N * 3);
-        const col = new Float32Array(N * 3);
-        const pal = [C_GOLD, C_GOLD2, C_TEAL, C_BLUE, C_PURPLE, new THREE.Color(0xffffff)];
-        for (let i = 0; i < N; i++) {
-          const r = 12 + Math.random() * 26;
-          const phi = Math.acos(-1 + 2 * Math.random());
-          const th = Math.random() * Math.PI * 2;
-          pos[i * 3] = r * Math.sin(phi) * Math.cos(th);
-          pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(th) * .55;
-          pos[i * 3 + 2] = r * Math.cos(phi) - 10;
-          const c = pal[Math.floor(Math.random() * pal.length)];
-          col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-        }
-        const partGeo = new THREE.BufferGeometry();
-        partGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        partGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-        const parts = new THREE.Points(partGeo,
-          new THREE.PointsMaterial({ size: .11, vertexColors: true, transparent: true, opacity: .5, sizeAttenuation: true })
-        );
-        scene.add(parts);
-
-        /* lights */
-        scene.add(new THREE.AmbientLight(0xffffff, .45));
-        const pl1 = new THREE.PointLight(0xc9a84c, 2.8, 70); pl1.position.set(-5, 8, 10); scene.add(pl1);
-        const pl2 = new THREE.PointLight(0x4caf82, 1.8, 55); pl2.position.set(10, -6, 8); scene.add(pl2);
-
-        /* mouse */
-        let mx = 0, my = 0;
-        window.addEventListener('mousemove', e => { mx = (e.clientX / innerWidth - .5) * 2; my = (e.clientY / innerHeight - .5) * 2 });
-        window.addEventListener('touchmove', e => {
-          if (e.touches.length) {
-            mx = (e.touches[0].clientX / innerWidth - .5) * 2;
-            my = (e.touches[0].clientY / innerHeight - .5) * 2;
-          }
-        }, { passive: true });
-
-        let t = 0;
-        function animate() {
-          requestAnimationFrame(animate);
-          t += .006;
-
-          /* camera parallax */
-          camera.position.x += (mx * 1.4 - camera.position.x) * .022;
-          camera.position.y += (-my * .8 - camera.position.y) * .022;
-          camera.lookAt(0, 0, 0);
-
-          /* orb float */
-          orbs.forEach(o => {
-            const d = o.userData;
-            o.position.y = d.oy + Math.sin(t * d.speed + d.phase) * 1.3;
-            o.position.x = d.ox + Math.cos(t * d.speed * .65 + d.phase) * .7;
-            o.rotation.y += .003;
-          });
-
-          /* ring spin */
-          t1.rotation.z += .004; t2.rotation.x += .003; t2.rotation.z += .002; t3.rotation.y += .0015;
-
-          /* wire spin */
-          w1.rotation.x += .004; w1.rotation.y += .005;
-          w2.rotation.x += .003; w2.rotation.z += .006;
-          w3.rotation.y += .004; w3.rotation.x += .003;
-
-          /* particles */
-          parts.rotation.y += .0007;
-          parts.rotation.x = Math.sin(t * .14) * .05;
-
-          /* breathing lights */
-          pl1.intensity = 2.4 + Math.sin(t * 1.1) * .8;
-          pl2.intensity = 1.4 + Math.cos(t * .85) * .6;
-
-          renderer.render(scene, camera);
-        }
-        animate();
-      } catch (e) {
-        /* A decorative canvas is never worth breaking the sign-in form. */
-        console.warn('Background scene skipped:', e && e.message);
-      }
-    })();
-
-    /* ═══════════════════════════════════════
-       FORM LOGIC
-    ═══════════════════════════════════════ */
+    // Form behavior is independent of the decorative background.
     function togglePassword() {
       const inp = document.getElementById('password');
       const icon = document.getElementById('eye-icon');
@@ -1098,36 +920,23 @@
        For the state of the session itself — signed out, session ended.
        It belongs to no field, so it floats clear of the form and
        clears itself. */
-    let noticeTimer = null;
-
-    /* Length of the fade-out, kept in step with .notice.fading in the CSS. */
-    const NOTICE_FADE_MS = 400;
+    let cancelNoticeMotion = null;
 
     /**
-     * @param dismissAfterMs  total lifetime — gone by this point, fade
-     *                        included. 0 leaves it on screen.
+     * @param dismissAfterMs  readable time before fading out.
+     *                        0 leaves it on screen.
      */
     function showNotice(msg, type = 'success', dismissAfterMs = 0) {
-      clearTimeout(noticeTimer);
-
       const box = document.getElementById('notice-box');
       document.getElementById('notice-msg').textContent = msg;
       box.className = 'notice ' + (type === 'error' ? 'show-error' : 'show-success');
       document.getElementById('notice-icon').innerHTML = type === 'error' ? ICON_ERROR : ICON_OK;
 
-      if (dismissAfterMs > 0) {
-        /* Start fading early enough that it has vanished by dismissAfterMs. */
-        const holdMs = Math.max(0, dismissAfterMs - NOTICE_FADE_MS);
-        noticeTimer = setTimeout(() => {
-          box.classList.add('fading');
-          noticeTimer = setTimeout(hideNotice, NOTICE_FADE_MS);
-        }, holdMs);
-      }
+      cancelNoticeMotion = CoopVote.presentToast(box, dismissAfterMs, hideNotice);
     }
 
     function hideNotice() {
-      clearTimeout(noticeTimer);
-      /* Resetting the class also drops "fading", so the next one is opaque. */
+      if (cancelNoticeMotion) cancelNoticeMotion();
       document.getElementById('notice-box').className = 'notice';
     }
 
@@ -1358,7 +1167,7 @@
       const SEG_GAP     = 120;   // between "Welcome " and "Back"
       const HOLD_FULL   = 2200;  // dwell on the finished phrase
       const HOLD_EMPTY  = 420;   // dwell before typing it again
-      const FIRST_DELAY = 500;   // let the card finish animating in
+      const FIRST_DELAY = document.documentElement.classList.contains('cv-logout-arrival') ? 0 : 500;
 
       let firstPass = true;
 
@@ -1460,7 +1269,9 @@
       /* Anyone who asks for less motion gets the headline without the loop. */
       const stillness = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-      if (stillness.matches) {
+      const returningFromLogout = document.documentElement.classList.contains('cv-logout-arrival');
+      if (stillness.matches || returningFromLogout) {
+        const built = [];
         segments.forEach(seg => {
           let node;
           if (seg.gold) {
@@ -1471,10 +1282,15 @@
             node = document.createTextNode(seg.text);
           }
           headlineEl.insertBefore(node, cursorEl);
+          built.push(node);
         });
-        cursorEl.style.display = 'none';
+        if (stillness.matches) cursorEl.style.display = 'none';
         taglineEl.style.opacity = '1';
         setTimeout(startPlaceholders, 300);
+        if (returningFromLogout && !stillness.matches) {
+          firstPass = false;
+          setTimeout(() => erasePhrase(built, () => setTimeout(loopHeadline, HOLD_EMPTY)), HOLD_FULL);
+        }
       } else {
         loopHeadline();
       }

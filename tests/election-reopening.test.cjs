@@ -57,7 +57,7 @@ vm.runInContext('let reopenTarget = null; let reopening = false;', context);
   assert.equal(calls[0].options.method, 'PUT');
   context.clearForm();
   assert.doesNotMatch(node('pos-checklist').innerHTML, /Custom|disabled/);
-  assert.equal((node('pos-checklist').innerHTML.match(/class="pos-check checked"/g) || []).length, 6);
+  assert.equal((node('pos-checklist').innerHTML.match(/class="pos-check checked"/g) || []).length, 0, 'New elections require explicit position choices');
 
   node('f-title').value = 'New Election';
   node('f-start').value = '2099-01-01T09:00';
@@ -68,6 +68,7 @@ vm.runInContext('let reopenTarget = null; let reopening = false;', context);
   assert.equal(calls.length, 0, 'No election request is sent without selected positions');
   assert.equal(notices.at(-1), 'Select at least one position to save this election.');
   context.renderPositionChecks();
+  node('pos-checklist').innerHTML = node('pos-checklist').innerHTML.replaceAll('type="checkbox"', 'type="checkbox" checked');
   await context.saveElection();
   assert.equal(calls.length, 1, 'Create saves election and positions in a single request');
   assert.equal(calls[0].options.method, 'POST');

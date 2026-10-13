@@ -13,7 +13,7 @@ declare(strict_types=1);
 return static function (Suite $t, PDO $pdo, array $fx): void {
 
     /* The cooperative's own Apache, for the file-exposure checks. */
-    $apacheBase = 'http://localhost/CoopVote/';
+    $apacheBase = 'https://localhost/CoopVote/';
     $apacheUp   = Http::raw('GET', $apacheBase . 'login.html', null, [], 3)['status'] === 200;
 
     /* ═══ SQL injection ══════════════════════════════════════ */

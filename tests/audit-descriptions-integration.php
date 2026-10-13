@@ -7,7 +7,8 @@ return static function (Suite $t, PDO $pdo): void {
     $last = static function (string $action) use ($pdo): string {
         $q = $pdo->prepare('SELECT description FROM audit_logs WHERE action=? ORDER BY log_id DESC LIMIT 1');
         $q->execute([$action]);
-        return (string) $q->fetchColumn(); };
+        return (string) $q->fetchColumn();
+    };
     $t->group('Audit entries retain readable subjects after deletion');
     $payload = ['first' => 'Maria', 'last' => 'Santos', 'email' => 'audit.member@test.coop', 'phone' => '09171234567', 'address' => 'Test address', 'dob' => '1990-01-02'];
     $created = tdb_registration_window($pdo, fn() => $admin->api('POST', 'voters', $payload));

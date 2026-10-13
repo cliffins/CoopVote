@@ -1668,7 +1668,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
+  <script src="../assets/js/app.js?v=20260924-smooth-toast"></script>
   <script src="../assets/js/election-operations.js?v=20260913-clean-reports"></script>
   <script>
     /* ─────────────────────────────────────────
@@ -2065,8 +2065,7 @@
       t.className = `toast ${type}`;
       t.innerHTML = `<div class="toast-icon">${iconMap[type] || iconMap.info}</div><div class="toast-text"><div class="toast-title">${title}</div>${sub ? `<div class="toast-sub">${sub}</div>` : ''}</div>`;
       wrap.appendChild(t);
-      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
-      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400) }, 3500);
+      CoopVote.presentToast(t, 3500);
     }
 
     /* ─────────────────────────────────────────

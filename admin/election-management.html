@@ -2121,7 +2121,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
+  <script src="../assets/js/app.js?v=20260924-smooth-toast"></script>
   <script>
     /* ─────────────────────────────────────────
        STATE
@@ -2448,7 +2448,7 @@
       <div class="ec-body">
         <div class="ec-row"><span class="ec-label">Registered Voters</span><span class="ec-val">${(e.voters || 0).toLocaleString()}</span></div>
         <div class="ec-row"><span class="ec-label">Votes Cast</span><span class="ec-val ${e.status === 'Active' ? 'live' : ''}">${(e.voted || 0).toLocaleString()}</span></div>
-        <div class="ec-row"><span class="ec-label">Candidates</span><span class="ec-val">${e.candidates || 0}</span></div>
+        <div class="ec-row"><span class="ec-label">Candidates</span><a class="ec-val" href="candidate-management.html?election=${e.id}" aria-label="View candidates in ${esc(e.title)}">${e.candidates || 0} — View candidates</a></div>
         <div class="ec-row"><span class="ec-label">Positions</span><span class="ec-val">${e.positions || 0}</span></div>
         ${resultsRow}
         <div class="ec-mini-bar"><div class="ec-mini-fill" style="width:0%;background:${fillColor}" data-w="${pct}%"></div></div>
@@ -2506,7 +2506,7 @@
         <div class="pos-heading"><div class="pos-name" style="color:${color}">${esc(p.name)}</div>
           ${p.id ? `<button type="button" class="btn btn-red position-delete" onclick="askDeletePosition(${active.id}, ${p.id})" aria-label="Delete ${esc(p.name)}">Delete</button>` : ''}
         </div>
-        <div class="pos-count">${p.candidateCount || 0} candidate${p.candidateCount !== 1 ? 's' : ''}</div>
+        <a class="pos-count" href="candidate-management.html?election=${active.id}">${p.candidateCount || 0} candidate${p.candidateCount !== 1 ? 's' : ''}</a>
         <div class="pos-avatars">${avHTML}</div>
         <div class="pos-bar"><div class="pos-fill" style="width:0%;background:linear-gradient(90deg,${color},${color}99)" data-w="${pct}%"></div></div>
         <div class="pos-pct">${pct}% engagement</div>
@@ -2582,7 +2582,7 @@
       const names = new Map(defaults.map(name => [normalize(name), name]));
       included.forEach((name, key) => names.set(key, name));
       document.getElementById('pos-checklist').innerHTML = [...names].map(([key, name]) => {
-        const present = included.has(key), checked = existing === null || present;
+        const present = included.has(key), checked = present;
         const position = (existing || []).find(p => normalize(p.name) === key);
         const label = `<label class="pos-check${checked ? ' checked' : ''}" onchange="togglePosCheck(this)"><input type="checkbox" ${checked ? 'checked' : ''} ${present ? 'disabled title="Already included in this election"' : ''} /><span>${esc(name)}</span></label>`;
         return position?.id && electionId ? `<div class="position-choice" data-position-id="${position.id}">${label}<button type="button" class="btn btn-red position-delete" onclick="askDeletePosition(${electionId}, ${position.id})" aria-label="Delete ${esc(name)}">Delete</button></div>` : label;
@@ -2665,6 +2665,7 @@
         `<option value="${e.id}">${esc(e.title)} — ${e.status}</option>`).join('');
       const selected = selectedPositionsElection();
       if (selected) sel.value = String(selected.id);
+      sel.disabled = true;
 
       document.getElementById('p-name').value = '';
       document.getElementById('p-desc').value = '';
@@ -2681,7 +2682,7 @@
       if (!electionId) { showToast('Please choose an election.', 'warn'); return; }
       if (!name) { showToast('Please enter a position name.', 'warn'); return; }
 
-      CoopVote.api('positions', { method: 'POST', body: { electionId, name, description } })
+      CoopVote.api('positions&election=' + encodeURIComponent(selectedPositionsElection()?.id || ''), { method: 'POST', body: { electionId, name, description } })
         .then(() => {
           closeModal('position-modal');
           positionsElectionId = Number(electionId);
@@ -2882,7 +2883,7 @@
       button.textContent = 'Deleting…';
       document.getElementById('delete-position-cancel').disabled = true;
       try {
-        await CoopVote.api(`positions/${target.positionId}`, { method: 'DELETE' });
+        await CoopVote.api(`positions/${target.positionId}&election=${target.electionId}`, { method: 'DELETE' });
         const election = allElections.find(e => e.id === target.electionId);
         if (election) {
           election.positionList = election.positionList.filter(p => p.id !== target.positionId);
@@ -2940,8 +2941,7 @@
       t.className = `toast ${type}`;
       t.innerHTML = `<div class="toast-dot"></div><span>${esc(msg)}</span>`;
       wrap.appendChild(t);
-      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
-      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3400);
+      CoopVote.presentToast(t, 3400);
     }
 
     /* ─────────────────────────────────────────

@@ -1,0 +1,30 @@
+/* Inherit CoopVote's theme palettes and existing button typography. */
+.voter-import { margin:auto; width:min(980px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); padding:0; border:1px solid var(--border); border-radius:14px; background:var(--navy2); color:var(--white); font-family:'DM Sans',sans-serif; }
+.voter-import::backdrop { background:color-mix(in srgb,var(--navy) 75%,transparent); }
+.voter-import[open] { display:flex; flex-direction:column; }
+.voter-import header,.voter-import footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 22px; flex-wrap:wrap; flex-shrink:0; }
+.voter-import header { border-bottom:1px solid var(--border); }
+.voter-import h2 { font:700 24px 'Playfair Display',serif; text-wrap:balance; }
+.voter-import .import-body { display:grid; grid-template-columns:minmax(0,1fr); gap:18px; padding:20px 22px; overflow:auto; min-height:0; }
+.voter-import .import-body>section { min-width:0; }
+.voter-import .import-upload { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+.voter-import .import-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.voter-import input[type=file] { max-width:100%; min-width:0; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--navy); color:var(--white); font:inherit; }
+.voter-import .import-hint { color:var(--muted2); font-size:13px; line-height:1.65; max-width:70ch; }
+.voter-import .import-summary { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:12px 0; font-size:14px; font-variant-numeric:tabular-nums; font-weight:700; }
+.voter-import .import-errors { color:var(--danger); white-space:pre-line; font-size:13px; line-height:1.6; }
+.voter-import .import-ready { color:var(--success); font-weight:600; }
+.voter-import .import-table-wrap { width:100%; overflow-x:auto; border:1px solid var(--border); border-radius:8px; }
+.voter-import table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:13px; }
+.voter-import th,.voter-import td { padding:12px; text-align:left; vertical-align:top; overflow-wrap:anywhere; border-bottom:1px solid var(--border); color:var(--white); }
+.voter-import th { background:var(--navy3); color:var(--muted2); font-weight:600; }
+.voter-import th:first-child { width:60px; }
+.voter-import details summary { cursor:pointer; padding-top:6px; color:var(--muted2); }
+.voter-import details p { padding-top:6px; line-height:1.6; }
+.voter-import footer { border-top:1px solid var(--border); justify-content:flex-end; }
+.voter-import button:disabled { opacity:.5; cursor:not-allowed; }
+.voter-import :focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+.voter-import [hidden] { display:none!important; }
+@media(max-width:600px) { .voter-import header,.voter-import footer,.voter-import .import-body { padding:14px; } .voter-import table { min-width:590px; } .voter-import .import-controls>* { flex:1 1 180px; } }
+
+.voter-import .import-errors:empty { display:none; }

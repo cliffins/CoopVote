@@ -237,6 +237,12 @@ final class Http
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_FOLLOWLOCATION => false,
         ];
+        // Trust only the configured local development CA for Apache smoke checks.
+        // Peer/hostname verification stays enabled; external URLs use normal trust.
+        if (str_starts_with($url, 'https://localhost/') && is_file(BASE_PATH.'/config/security-local.php')) {
+            $security = require BASE_PATH.'/config/security-local.php';
+            if (!empty($security['db_ssl_ca'])) $opts[CURLOPT_CAINFO] = $security['db_ssl_ca'];
+        }
         if ($jar !== null) {
             $opts[CURLOPT_COOKIEJAR]  = $jar;
             $opts[CURLOPT_COOKIEFILE] = $jar;

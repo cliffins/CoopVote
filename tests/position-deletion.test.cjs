@@ -42,7 +42,7 @@ for (const name of ['renderPositionChecks', 'askDeletePosition', 'confirmDeleteP
   assert.equal(election.positionList.length, 2);
   assert.equal(node('delete-position-save').disabled, false, 'Failure enables retry');
   const success = context.confirmDeletePosition();
-  assert.equal(calls[1].route, 'positions/11');
+  assert.equal(calls[1].route, 'positions/11&election=1');
   assert.equal(calls[1].options.method, 'DELETE');
   resolve({ok: true}); await success;
   assert.equal(election.positions, 1);

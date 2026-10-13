@@ -303,6 +303,8 @@
   }
 
   function redirectToLogin() {
+    // Explicit logout owns its redirect; a late polling 401 must not replace it.
+    if (loggingOut) return;
     const here = window.location.pathname.split('/').pop() || '';
     if (here.indexOf('login') === 0) return;
     /* replace(), not href: the signed-out page must not stay in history. */
@@ -336,10 +338,11 @@
 
   /** Confirm the session is still valid; leave for the sign-in page if not. */
   async function revalidate() {
-    if (guardedRole === null) return;      // not a protected page
+    if (guardedRole === null || loggingOut) return;
     shroud();
     try {
       const data = await api('auth/me');
+      if (loggingOut) { unshroud(); return; }
       if (data.user.role !== guardedRole) {
         window.location.replace(ROOT + data.user.home);
         return;
@@ -789,10 +792,10 @@
     let stopped = false, busy = false, timer = null, failures = 0;
     const schedule = () => {
       clearTimeout(timer);
-      if (!stopped) timer = setTimeout(tick, Math.min(60000, interval * (2 ** failures)));
+      if (!stopped && !loggingOut) timer = setTimeout(tick, Math.min(60000, interval * (2 ** failures)));
     };
     async function tick() {
-      if (stopped || busy) return;
+      if (stopped || busy || loggingOut) return;
       const editing = document.activeElement && document.activeElement.matches('input,textarea,select,[contenteditable="true"]');
       if (document.hidden || navigator.onLine === false || editing || document.querySelector('.modal-backdrop.open,.modal-backdrop.show')) {
         if (status) status.textContent = navigator.onLine === false ? 'Offline — showing last update' : 'Updates paused';
@@ -950,14 +953,15 @@
 
   /**
    * End the session, then return to the sign-in page.
-   * The redirect is held back briefly so the confirmation is actually
-   * readable — otherwise the page navigates before the toast paints.
+   * Redirect as soon as the request finishes; the sign-in page shows
+   * the confirmation without making the user wait on this page.
    */
   let loggingOut = false;
 
   async function logout() {
     if (loggingOut) return;          // ignore a second click
     loggingOut = true;
+    unshroud();
 
     const name = (window.CoopVote.user && window.CoopVote.user.name) || '';
     toast(name ? `Signing out ${name}…` : 'Signing you out…', 'info');
@@ -977,7 +981,7 @@
      * re-check would fire against the sign-in page itself.
      */
     guardedRole = null;
-    setTimeout(() => { window.location.replace(ROOT + 'login.html?bye=1'); }, 1100);
+    window.location.replace(ROOT + 'login.html?bye=1');
   }
 
   const pendingDownloads = new Set();
@@ -1033,6 +1037,48 @@
     }
   }
 
+  // Share only motion and lifetime; each page keeps its existing toast design.
+  const toastMotion = new WeakMap();
+  function presentToast(element, duration = 4200, dismiss = () => element.remove()) {
+    const previous = toastMotion.get(element);
+    const start = previous && !element.hidden ? window.getComputedStyle(element) : null;
+    const from = start ? { opacity: start.opacity, transform: start.transform }
+      : { opacity: 0, transform: 'translateY(-6px)' };
+    if (previous) previous();
+    let timer, animation;
+    const cancel = () => {
+      clearTimeout(timer);
+      if (animation) animation.cancel();
+      if (toastMotion.get(element) === cancel) toastMotion.delete(element);
+    };
+    toastMotion.set(element, cancel);
+    element.hidden = false;
+    element.classList.add('show');
+    element.style.animation = 'none';
+    element.style.transition = 'none';
+    element.style.opacity = '1';
+    element.style.transform = 'none';
+    if (!element.hasAttribute('role')) element.setAttribute('role', 'status');
+    element.setAttribute('aria-atomic', 'true');
+    const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (element.animate && !reduced()) {
+      animation = element.animate([from, { opacity: 1, transform: 'none' }],
+        { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' });
+    }
+    if (duration > 0) timer = setTimeout(() => {
+      const finish = () => {
+        if (toastMotion.get(element) !== cancel) return;
+        cancel(); dismiss();
+      };
+      if (!element.animate || reduced()) { finish(); return; }
+      animation = element.animate([{ opacity: 1, transform: 'none' },
+        { opacity: 0, transform: 'translateY(-4px)' }],
+        { duration: 160, easing: 'ease-in', fill: 'forwards' });
+      animation.finished.then(finish, () => {});
+    }, duration);
+    return cancel;
+  }
+
   /** Minimal toast used by pages that do not define their own. */
   function toast(msg, type) {
     if (typeof window.showToast === 'function') {
@@ -1060,11 +1106,11 @@
       ';padding:12px 16px;border-radius:8px;font-size:.85rem;box-shadow:0 8px 24px rgba(0,0,0,.4);' +
       'max-width:340px;font-family:inherit';
     wrap.appendChild(t);
-    setTimeout(() => t.remove(), 4200);
+    presentToast(t);
   }
 
   window.CoopVote = {
-    api, guard, logout, download, toast, initials, url, ROOT, watch, user: null,
+    api, guard, logout, download, toast, presentToast, initials, url, ROOT, watch, user: null,
     /* Election selection, for pages that want to read or change it. */
     selectedElection, setSelectedElection, requestedElection, loginDestination, elections: [],
     paginate, paginationPages, renderPagination, escapeHtml, esc, coop: {},

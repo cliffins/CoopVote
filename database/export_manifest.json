@@ -1,37 +1,10 @@
 {
-    "exportedAt": "2026-09-15T22:55:15+08:00",
+    "exportedAt": "2026-10-13T13:48:01+08:00",
+    "database": "coopvote",
     "tables": 25,
-    "removed": [
-        "election_controls"
-    ],
-    "rows": {
-        "admin_profiles": 0,
-        "announcements": 0,
-        "audit_logs": 1214,
-        "ballots": 70,
-        "blocked_ips": 1,
-        "candidates": 44,
-        "election_admin_decisions": 0,
-        "election_approval_requests": 0,
-        "election_integrity": 4,
-        "election_reports": 3,
-        "elections": 4,
-        "governance_config": 1,
-        "login_attempts": 548,
-        "member_profile_photo_chunks": 38,
-        "members": 114,
-        "notification_reads": 0,
-        "otp_tokens": 18,
-        "positions": 25,
-        "roles": 2,
-        "security_alert_reviews": 1,
-        "settings": 4,
-        "user_preferences": 2,
-        "users": 114,
-        "vote_integrity": 384,
-        "votes": 384,
-        "profilePhotoBytes": 1839037
-    },
-    "sha256": "c4948f3450d13baf9ef10d01baee649f2b5962c2c5180652e14b3c6bf251790f",
-    "backup": "before-quorum-cleanup-20260915_225510_7956dd.sql"
+    "users": 1,
+    "username": "admin",
+    "encryptedTables": true,
+    "sha256": "dafca6b0d324fc8e0d1a51abac9711b9aaec96d6c87e827d204166d1e54edabc",
+    "restoreVerified": true
 }

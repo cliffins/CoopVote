@@ -3,7 +3,7 @@
   const $=id=>document.getElementById(id), api=(route,method='GET',body)=>CoopVote.api('management/'+route,{method,body});
   const user=await CoopVote.guard();
   if(!user)return;
-  const isAdmin=user.role==='admin';let accounts=[], overview=null, selected=new URLSearchParams(location.search).get('election')||'', refreshId=0, mutation=false, confirmAction=null, toastTimer;
+  const isAdmin=user.role==='admin';let accounts=[], overview=null, selected=new URLSearchParams(location.search).get('election')||'', refreshId=0, mutation=false, confirmAction=null;
   $('identity').textContent=user.name || user.username;
   $('logout').onclick=()=>CoopVote.logout();
   const tabs=isAdmin?[['officers','Officer Management'],['approvals','Election Approvals'],['themes','Themes'],['branding','Branding']]:[['themes','Themes']];
@@ -12,7 +12,7 @@
   $('sidebar-overlay').onclick=closeMenu;
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('sidebar').classList.contains('open')){closeMenu();$('menu-toggle').focus();}});
   window.matchMedia('(max-width:900px)').addEventListener('change',closeMenu);closeMenu();
-  function toast(message){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
+  function toast(message){$('toast').textContent=message;CoopVote.presentToast($('toast'),4500,()=>{$('toast').hidden=true;});}
   function error(message){$('page-error').textContent=message;$('page-error').hidden=!message;}
   function active(){return tabs.some(t=>t[0]===location.hash.slice(1))?location.hash.slice(1):tabs[0][0];}
   async function route(){

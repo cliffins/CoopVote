@@ -4,7 +4,7 @@ const helper = fs.readFileSync('tests/lib/browser.js', 'utf8');
 const prefix = helper.slice(0, helper.indexOf('async function main()'));
 const main = async function () {
   const base = 'http://127.0.0.1:8097/', port = 9355, results = [];
-  const decoderFile = 'tests/reports/jsQR-1.4.0.js';
+  const decoderFile = 'tests/lib/jsQR-1.4.0.js';
   if (!fs.existsSync(decoderFile)) throw Error('Download jsqr@1.4.0/dist/jsQR.js into ' + decoderFile + ' before running.');
   const decoder = fs.readFileSync(decoderFile, 'utf8');
   const proc = spawn(findChrome(), ['--headless=new', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${port}`,

@@ -38,6 +38,16 @@
 .officer-directory>.table-wrap { height:clamp(240px,38dvh,420px); overflow:auto; overflow-y:scroll; }
 .officer-directory .count-label { min-width:9ch; text-align:right; }
 .card:has(.cv-activity)>.table-wrap { height:clamp(220px,32dvh,360px); overflow:auto; overflow-y:scroll; }
+/* Fill the dashboard activity card, including the space shared with its neighbour. */
+.card.recent-voter-activity { display:flex; flex-direction:column; }
+.card.recent-voter-activity>.card-head { flex-shrink:0; }
+.card.recent-voter-activity>.table-wrap { flex:1 1 auto; min-height:220px; }
+.card.recent-voter-activity .cv-activity { min-width:0; height:100%; }
+.card.recent-voter-activity .cv-activity thead { height:40px; }
+.card.recent-voter-activity .cv-activity :is(th,td) { padding-inline:clamp(8px,1vw,14px); }
+.card.recent-voter-activity .cv-activity th { white-space:normal; }
+.card.recent-voter-activity .cv-activity td { vertical-align:middle; }
+.card.recent-voter-activity .cv-activity tr:last-child td { border-bottom:0; }
 /* Refiltering reports updates existing layout without replaying entrance motion. */
 .cv-filter-update, .cv-filter-update * { animation:none!important; }
 @media(max-width:600px) {
@@ -51,4 +61,6 @@
   .officer-directory>.table-wrap, .card:has(.cv-activity)>.table-wrap {
     height:auto; overflow:visible;
   }
+  .card.recent-voter-activity>.table-wrap { min-height:0; }
+  .card.recent-voter-activity .cv-activity { height:auto; }
 }

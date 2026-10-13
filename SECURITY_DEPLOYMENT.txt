@@ -1,0 +1,75 @@
+CoopVote security configuration
+
+Scope
+  All 25 CoopVote InnoDB tables: native MariaDB encryption, AES with a 256-bit
+  key, using file_key_management / AES_CBC. Includes anonymous vote records,
+  participation records, profiles/photos, audit records and saved reports.
+  Database redo logs and temporary tables/files are also encrypted locally.
+  SQL is decrypted for authorized application queries; this does not hide data
+  from a database administrator or protect a compromised running server.
+  Anonymous votes remain separate from voter identity. Existing HMAC integrity
+  verification and bcrypt password hashing remain in place.
+
+Transport
+  Apache: SSLProtocol -all +TLSv1.2 +TLSv1.3, with a valid domain certificate.
+  Root .htaccess redirects HTTP to HTTPS. mod_rewrite is required.
+  Local MariaDB accepts TLSv1.2,TLSv1.3; PHP verifies its certificate and rejects
+  a connection below TLS 1.2 when the DB CA is configured. Configure db_ssl_ca
+  (or COOPVOTE_DB_SSL_CA) on every deployed installation.
+  Behind Cloudflare use Full (strict), with HTTPS and a valid origin certificate.
+  Do not mark arbitrary X-Forwarded-Proto headers as trusted HTTPS.
+  The localhost development CA is only for this PC. Use a publicly trusted
+  certificate for the production domain; never deploy the development CA key.
+
+Local private storage (not in Git or the website)
+  C:/xampp/coopvote-secrets/database.key : MariaDB key ID 1, 32 random bytes in hex
+  C:/xampp/coopvote-secrets/backup.key   : independent 32-byte backup key in hex
+  C:/xampp/coopvote-secrets/ca.crt       : development CA certificate
+  C:/xampp/coopvote-secrets/server.key  : private server TLS key
+  C:/xampp/coopvote-backups/            : encrypted backups and original configs
+  Access is restricted to the Windows owner, Administrators and SYSTEM.
+  Keep a separate protected offline copy of keys. Losing a database key makes
+  its encrypted database files unusable; losing the backup key prevents restore.
+  Do not replace a key file to rotate keys: use a planned migration with tested
+  recovery. Keep keys separate from backups and from exported/source-code ZIPs.
+
+Before hosting
+  A shared PHP host may not permit MariaDB encryption plugins or PROCESS access
+  needed by the encryption checks. Confirm these capabilities before purchase;
+  otherwise use managed MariaDB or a server you can administer.
+  Native database encryption is SERVER configuration, not something copying a
+  PHP folder automatically enables. Follow the hosting provider's supported key
+  management process. Do not copy this Windows plugin DLL to a Linux server.
+  Configure TLS and 256-bit encryption keys on the target, import the SQL into
+  an empty database, then run php tools/encrypt_database.php before allowing use.
+  Normal web requests fail closed when application tables are not encrypted.
+  Use a dedicated least-privilege database account; the local XAMPP root account
+  is not a production credential. Restrict database access to the app host.
+  Encrypt server snapshots and offline media separately. Data encryption does
+  not automatically encrypt SQL exports, access logs, mail logs or session files.
+  Do not publish test fixtures, test/reports, database exports or development tools.
+  Test certificate trust, rejection of TLS 1.0/1.1, Secure cookies, login/voting,
+  all-table encryption, a server restart and backup restoration on the real host.
+  php tools/security_status.php reports local DB encryption and TLS evidence
+  without printing key bytes. Key-size inspection needs local read access to
+  the key file; remote hosting requires equivalent provider evidence.
+
+Encrypted backups
+  php tools/secure-backup.php coopvote
+  php tools/secure-backup.php coopvote_test
+  Requires config/security-local.php or COOPVOTE_BACKUP_KEY_FILE and
+  COOPVOTE_BACKUP_DIRECTORY. Each .cvbak uses AES-256-GCM, a random nonce and
+  authentication tag. Exported SQL stays in memory; the disk file is encrypted.
+  Backup creation also imports into a unique temporary database and removes it
+  after validation. The .json manifest records checksums and restored row counts.
+  Backups are not portable without the matching backup key.
+  Restore into a NEW database (never overwrite an existing database):
+    php tools/restore_secure_backup.php path/to/file.cvbak coopvote_restore_review
+  Confirm contents before changing the application's DB_NAME. Native encryption
+  must already be configured on the destination. Keep the old database until
+  the restored copy has been checked. Restore requires a verified DB TLS CA.
+
+References
+  https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslprotocol
+  https://mariadb.com/docs/server/security/encryption/data-at-rest-encryption
+  https://www.php.net/manual/en/function.openssl-encrypt.php

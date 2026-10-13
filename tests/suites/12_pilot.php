@@ -263,7 +263,7 @@ return static function (Suite $t, PDO $pdo, array $fx): void {
     /* ── One more end-to-end, on the deployed stack ────────── */
     $t->group('A smoke test through Apache, the way it will actually be served');
 
-    $apacheBase = 'http://localhost/CoopVote/';
+    $apacheBase = 'https://localhost/CoopVote/';
     $r = Http::raw('GET', $apacheBase . 'login.html', null, [], 5);
 
     if ($r['status'] !== 200) {

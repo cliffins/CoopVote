@@ -1419,6 +1419,7 @@
   <link rel="stylesheet" href="../assets/css/navigation.css?v=20260923-sidebar-scroll" />
   <script src="../assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
   <link rel="stylesheet" href="../assets/css/tables.css?v=20260918-scroll-position" />
+  <link rel="stylesheet" href="../assets/css/voter-import.css?v=20261012">
 </head>
 
 <body>
@@ -1812,6 +1813,7 @@
           </button>
           <!-- The office registers members, so this is where an account
                begins. There is no public sign-up page. -->
+          <button type="button" class="btn btn-outline" id="import-voters-btn" disabled aria-describedby="voter-registration-status">Import Voters</button>
           <button class="btn btn-gold" id="add-voter-btn" onclick="openAdd()" disabled aria-describedby="voter-registration-status">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -1858,8 +1860,8 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
-  <script src="../assets/js/voter-registration.js?v=20260917"></script>
+  <script src="../assets/js/app.js?v=20260924-smooth-toast"></script>
+  <script src="../assets/js/voter-registration.js?v=20261012"></script>
   <script>
     /* ─────────────────────────────────────────
        STATE
@@ -2438,8 +2440,7 @@
       t.className = `toast ${type}`;
       t.innerHTML = `<div class="toast-dot"></div><span>${msg}</span>`;
       wrap.appendChild(t);
-      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
-      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3400);
+      CoopVote.presentToast(t, 3400);
     }
 
     /* ─────────────────────────────────────────
@@ -2458,6 +2459,24 @@
        */
     });
   </script>
+  <dialog id="voter-import-dialog" class="voter-import" aria-labelledby="import-title">
+    <header><h2 id="import-title">Import Voters</h2><button type="button" class="btn btn-outline" id="import-close">Close</button></header>
+    <div class="import-body">
+      <section id="import-upload" class="import-upload" aria-label="Upload voter list">
+        <p class="import-hint">Fill the Excel or CSV template, then save as <strong>CSV UTF-8</strong> in Excel before uploading. Up to 100 voters per file (256 KB). Keep phone numbers as text to preserve the leading zero; dates use YYYY-MM-DD. Leave Member ID and username blank to generate them.</p>
+        <div class="import-controls"><button type="button" class="btn btn-outline" id="import-template">Excel Template</button><button type="button" class="btn btn-outline" id="import-template-csv">CSV Template</button><label for="import-file">Voter list</label><input id="import-file" type="file" accept=".csv,text/csv"><button type="button" class="btn btn-gold" id="import-preview" disabled>Preview List</button></div>
+      </section>
+      <p id="import-error" class="import-errors" role="alert"></p>
+      <section id="import-review" hidden aria-label="Import preview and results">
+        <p id="import-summary" class="import-summary" role="status"></p>
+        <p id="import-skipped" class="import-hint" hidden>Rows with errors will be skipped. Correct them in your file and upload them separately.</p>
+        <div class="import-table-wrap" tabindex="0" aria-label="Voter import table"><table><thead><tr><th scope="col">Row</th><th scope="col">Voter</th><th scope="col">Email</th><th scope="col" id="import-result-header">Validation</th></tr></thead><tbody id="import-rows"></tbody></table></div>
+      </section>
+      <p id="import-complete-note" class="import-hint" hidden>Download the credentials before starting another import or signing out. They remain available in this session for 30 minutes. Keep this window open while emails are sending. A sent status means the mail server accepted the message.</p>
+    </div>
+    <footer><button type="button" class="btn btn-outline" id="import-new" hidden>Finish &amp; Start New Import</button><button type="button" class="btn btn-outline" id="import-email" hidden>Send / Retry Emails</button><button type="button" class="btn btn-gold" id="import-download" hidden>Download Credentials</button><button type="button" class="btn btn-gold" id="import-confirm" hidden disabled>Import Valid Voters</button></footer>
+  </dialog>
+  <script src="../assets/js/voter-import.js?v=20261012-excel"></script>
 </body>
 
 </html>

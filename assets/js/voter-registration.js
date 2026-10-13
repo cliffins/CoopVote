@@ -10,6 +10,8 @@
   function sync() {
     const add = get('add-voter-btn');
     if (add) { add.disabled = !allowed; add.title = reason; }
+    const bulk = get('import-voters-btn');
+    if (bulk) { bulk.disabled = !allowed; bulk.title = reason; }
     const note = get('voter-registration-status');
     if (note) note.textContent = reason;
     const save = get('save-voter-btn');

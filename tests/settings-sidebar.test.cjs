@@ -44,7 +44,8 @@ for(const shared of [false,true]){
   assert.equal(toggle['aria-expanded'],'false');
   assert.equal(sidebar.inert,shared,'only settings uses its existing inert-aware toggle');
 }
+const appVersion = fs.readFileSync('management.html','utf8').match(/app\.js\?v=([^"\s]+)/)[1];
 for(const dir of ['admin','voter'])for(const file of fs.readdirSync(dir).filter(f=>f.endsWith('.html'))){
-  assert.match(fs.readFileSync(dir+'/'+file,'utf8'),/app\.js\?v=20260919-voter-badges/,'each page loads the updated shared navigation');
+  assert.equal(fs.readFileSync(dir+'/'+file,'utf8').match(/app\.js\?v=([^"\s]+)/)?.[1],appVersion,'each page loads the same shared runtime as settings');
 }
 console.log('Sidebar checks passed: shared role navigation, mobile link dismissal and overlay cleanup, desktop behavior, and blocked/new-tab navigation.');

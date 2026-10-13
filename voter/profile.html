@@ -1308,7 +1308,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
+  <script src="../assets/js/app.js?v=20260924-smooth-toast"></script>
   <script>
     /* ─────────────────────────────────────────
        SIDEBAR
@@ -1723,8 +1723,7 @@
       t.setAttribute('aria-atomic', 'true');
       t.innerHTML = `<div class="toast-dot"></div><span>${esc(msg)}</span>`;
       wrap.appendChild(t);
-      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
-      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400) }, type === 'error' ? 6000 : 3400);
+      CoopVote.presentToast(t, type === 'error' ? 6000 : 3400);
     }
 
     /* ─────────────────────────────────────────

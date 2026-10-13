@@ -11,7 +11,7 @@
 # The .bat and .url launchers are meant to be double-clicked from the
 # folder, never fetched over HTTP; a batch file offered as a download by a
 # web server is a bad habit even when, as here, it holds nothing secret.
-<FilesMatch "(?i)\.(sql|lock|log|ini|bak|old|orig|save|swp|dist|env|sh|md|bat|cmd|ps1|url)$|^(composer\.(json|lock)|\.env.*|\.git.*|.*~)$">
+<FilesMatch "(?i)\.(sql|cvbak|key|pem|lock|log|ini|bak|old|orig|save|swp|dist|env|sh|md|bat|cmd|ps1|url)$|^(composer\.(json|lock)|\.env.*|\.git.*|.*~)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -42,6 +42,23 @@
 </IfModule>
 <IfModule mod_php.c>
     php_flag expose_php off
+</IfModule>
+
+# HTTPS at the origin; forwarded headers from arbitrary clients are not trusted.
+# Behind Cloudflare, use Full (strict), never Flexible.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=308,L,NE]
+</IfModule>
+<IfModule !mod_rewrite.c>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </IfModule>
 
 # Keep page templates and their shared helpers in sync after an update.

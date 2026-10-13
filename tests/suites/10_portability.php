@@ -276,6 +276,11 @@ return static function (Suite $t, PDO $pdo, array $fx): void {
     $sessionDir = BASE_PATH . '/tests/reports/sessions';
     if (!is_dir($sessionDir)) mkdir($sessionDir, 0700, true);
     $env  = array_merge(getenv(), ['COOPVOTE_DB' => TEST_DB, 'COOPVOTE_MAIL' => '0']);
+    // Certificates are deployment inputs outside the copied project, not bundled secrets.
+    if (is_file(BASE_PATH.'/config/security-local.php')) {
+        $security = require BASE_PATH.'/config/security-local.php';
+        if (!empty($security['db_ssl_ca'])) $env['COOPVOTE_DB_SSL_CA'] = $security['db_ssl_ca'];
+    }
     $proc = proc_open(
         [PHP_BINARY, '-d', 'display_errors=0', '-d', 'session.save_path=' . $sessionDir, '-S', '127.0.0.1:' . $port, '-t', $copyRoot],
         [0 => ['pipe', 'r'], 1 => ['file', 'nul', 'a'], 2 => ['file', 'nul', 'a']],

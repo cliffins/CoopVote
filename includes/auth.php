@@ -49,7 +49,7 @@ function auth_boot(): void
         'path'     => '/',
         'httponly' => true,
         'samesite' => 'Lax',
-        'secure'   => !empty($_SERVER['HTTPS']),
+        'secure'   => !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off',
     ]);
     if (!@session_start()) throw new RuntimeException('SESSION_STORAGE_UNAVAILABLE');
 }

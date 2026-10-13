@@ -1933,7 +1933,7 @@
             <input type="text" id="search-input" placeholder="Search by name or position…" oninput="applyFilters()" />
           </div>
           <select class="filter-select" id="election-filter" aria-label="Filter candidates by election" onchange="changeCandidateElection()">
-            <option value="">All Elections</option>
+            <option value="">— Select Election —</option>
           </select>
           <select class="filter-select" id="pos-filter" aria-label="Filter candidates by position" onchange="applyFilters()">
             <option value="">All Positions</option>
@@ -2022,7 +2022,7 @@
   </div>
 
   <script src="../assets/js/validation.js?v=20260911-required2"></script>
-  <script src="../assets/js/app.js?v=20260923-election-qr"></script>
+  <script src="../assets/js/app.js?v=20260924-smooth-toast"></script>
   <script>
     /* ─────────────────────────────────────────
        STATE
@@ -2108,12 +2108,22 @@
          desc, votes, status, years, photoUrl
        }
     ───────────────────────────────────────── */
-    function loadCandidates() {
-      return Promise.all([CoopVote.api('candidates'), CoopVote.api('elections')])
-        .then(([data, elections]) => initCandidates(data, elections))
-        .catch(err => {
-          CoopVote.toast(err.message || 'Could not load data from the server.', 'error');
-        });
+    let candidateListRequest = 0;
+    async function loadCandidates() {
+      const request = ++candidateListRequest;
+      const wanted = document.getElementById('election-filter').value || new URLSearchParams(location.search).get('election') || '';
+      try {
+        const elections = await CoopVote.api('elections');
+        if (request !== candidateListRequest) return;
+        const id = elections.some(e => String(e.id) === wanted) ? wanted : '';
+        initCandidates(allCandidates, elections, id);
+        if (!id) return;
+        const candidates = await CoopVote.api('candidates&election=' + encodeURIComponent(id));
+        if (request !== candidateListRequest || document.getElementById('election-filter').value !== id) return;
+        initCandidates(candidates, elections, id);
+      } catch (err) {
+        if (request === candidateListRequest) CoopVote.toast(err.message || 'Could not load candidates.', 'error');
+      }
     }
 
     let availableElections = [];
@@ -2146,12 +2156,12 @@
           CoopVote.api('elections'), CoopVote.api('candidates/eligible')
         ]);
         if (request !== candidateOptionsRequest) return;
-        availableElections = elections;
+        availableElections = elections.filter(e => String(e.id) === String(electionId));
         electionSelect.innerHTML = '<option value="">— Select Election —</option>' +
-          elections.map(e => `<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('');
+          availableElections.map(e => `<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('');
         electionSelect.value = String(electionId);
         const editing = !!document.getElementById('edit-id').value;
-        availableMembers = members;
+        availableMembers = members.filter(m => (editing && String(m.id) === String(memberId)) || !(m.candidateElectionIds || []).some(id => String(id) === String(electionId)));
         const current = allCandidates.find(c => String(c.id) === document.getElementById('edit-id').value);
         if (editing && current && !members.some(m => String(m.id) === String(memberId))) {
           availableMembers.push({ id: current.memberId, name: [current.first, current.last].join(' '), memberNo: current.memberNo || '',
@@ -2217,14 +2227,14 @@
       select.innerHTML = '<option value="">— Select Election —</option>' +
         elections.map(e => `<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('');
       select.value = previous;
-      select.disabled = editing || !elections.length;
+      select.disabled = true;
       document.getElementById('election-hint').textContent = !availableElections.length
         ? 'No elections yet. Create one in Election Management first.'
         : editing ? 'This candidate belongs to this election.'
         : !elections.length ? 'This voter is already a candidate in every election.'
         : document.getElementById('f-member').value
-          ? 'Elections where this voter is already a candidate are hidden.'
-          : 'Select a voter to see their available elections.';
+          ? 'Candidates and positions are saved only in this election.'
+          : 'Select an eligible voter for this election.';
       return loadCandidatePositions(select.value === previous ? positionId : '');
     }
 
@@ -2280,23 +2290,38 @@
       document.getElementById('save-candidate-btn').disabled = candidateSaving || candidatePositionsLoading || !valid;
     }
 
-    function initCandidates(data, elections = candidateFilterElections) {
+    function initCandidates(data, elections = candidateFilterElections, selectedId = document.getElementById('election-filter').value) {
       allCandidates = data;
       candidateFilterElections = elections;
       const select = document.getElementById('election-filter');
-      const previous = select.value;
-      select.innerHTML = '<option value="">All Elections</option>' + elections.map(e =>
+      const previous = selectedId;
+      select.innerHTML = '<option value="">— Select Election —</option>' + elections.map(e =>
         `<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('');
       select.value = elections.some(e => String(e.id) === previous) ? previous : '';
-      changeCandidateElection();
+      updateCandidateFilters();
     }
 
     function candidatesInSelectedElection() {
       const id = document.getElementById('election-filter').value;
-      return allCandidates.filter(c => !id || String(c.electionId) === id);
+      return id ? allCandidates.filter(c => String(c.electionId) === id) : [];
     }
 
     function changeCandidateElection() {
+      ++candidateListRequest;
+      ++candidateOptionsRequest;
+      ++candidatePositionsRequest;
+      closeModal('cand-modal');
+      allCandidates = [];
+      document.getElementById('pos-filter').value = '';
+      const link = new URL(location.href);
+      const id = document.getElementById('election-filter').value;
+      if (id) link.searchParams.set('election', id); else link.searchParams.delete('election');
+      history.replaceState(null, '', link.href);
+      updateCandidateFilters();
+      return loadCandidates();
+    }
+
+    function updateCandidateFilters() {
       const select = document.getElementById('pos-filter');
       const previous = select.value;
       const names = [...new Set(candidatesInSelectedElection().map(c => c.position).filter(Boolean))];
@@ -2378,8 +2403,8 @@
         wrap.innerHTML = `<div class="empty-grid">
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <p>${isFiltering ? 'No candidates match your search or filters.' : 'No candidates added yet.'}</p>
-        ${!isFiltering ? `<span class="empty-hint">Click <strong>Add Candidate</strong> to add the first one.</span>` : ''}
+        <p>${!document.getElementById('election-filter').value ? 'Select an election to view its candidates.' : isFiltering ? 'No candidates match this election and filters.' : 'No candidates added yet.'}</p>
+        ${!isFiltering ? `<span class="empty-hint">Use the election selector above.</span>` : ''}
       </div>
     </div>`;
         return;
@@ -2435,7 +2460,7 @@
         tbody.innerHTML = `<tr><td colspan="8">
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <p>${isFiltering ? 'No candidates match your search or filters.' : 'No candidates added yet.'}</p>
+        <p>${!document.getElementById('election-filter').value ? 'Select an election to view its candidates.' : isFiltering ? 'No candidates match this election and filters.' : 'No candidates added yet.'}</p>
       </div>
     </td></tr>`;
         pagInfo.textContent = '0 records'; pagBtns.innerHTML = ''; return;
@@ -2494,7 +2519,7 @@
        VIEW CANDIDATE PROFILE
     ───────────────────────────────────────── */
     function viewCandidate(id) {
-      const c = allCandidates.find(x => x.id === id);
+      const c = candidatesInSelectedElection().find(x => x.id === id);
       if (!c) return;
       const { bg, fg } = avatarColor(c.id || 0);
       const pColor = posColor(c.position);
@@ -2549,6 +2574,7 @@
     }
 
     function openAdd() {
+      if (!document.getElementById('election-filter').value) { showToast('Select an election before adding a candidate.', 'warn'); document.getElementById('election-filter').focus(); return; }
       document.getElementById('modal-title').textContent = 'Add New Candidate';
       clearForm();
       openModal('cand-modal');
@@ -2556,7 +2582,7 @@
     }
 
     function openEdit(id) {
-      const c = allCandidates.find(x => x.id === id);
+      const c = candidatesInSelectedElection().find(x => x.id === id);
       if (!c) return;
       document.getElementById('modal-title').textContent = 'Edit Candidate';
       document.getElementById('edit-id').value = c.id;
@@ -2585,6 +2611,7 @@
       const memberId = document.getElementById('f-member').value;
       const electionId = document.getElementById('f-election').value;
       const positionId = document.getElementById('f-position').value;
+      if (electionId !== document.getElementById('election-filter').value) { showToast('The selected election changed. Reopen the candidate form.', 'warn'); return; }
       if (!electionId) { showToast('Please select an election first.', 'warn'); document.getElementById('f-election').focus(); return; }
       if (!availableMembers.some(m => String(m.id) === memberId)) {
         showToast('Please select an existing voter.', 'warn'); document.getElementById('f-member').focus(); return;
@@ -2603,7 +2630,7 @@
 
       candidateSaving = true;
       updateCandidateSaveState();
-      return CoopVote.api(editId ? `candidates/${editId}` : 'candidates', {
+      return CoopVote.api((editId ? `candidates/${editId}` : 'candidates') + '&election=' + encodeURIComponent(electionId), {
         method: editId ? 'PUT' : 'POST',
         body: {
           memberId, electionId, positionId,
@@ -2626,13 +2653,13 @@
     /* ─────────────────────────────────────────
        DELETE CANDIDATE
     ───────────────────────────────────────── */
-    function askDelete(id) { deleteTarget = id; openModal('confirm-modal'); }
+    function askDelete(id) { if (!candidatesInSelectedElection().some(c => c.id === id)) return; deleteTarget = id; openModal('confirm-modal'); }
 
     function confirmDelete() {
       const id = deleteTarget;
       deleteTarget = null;
 
-      CoopVote.api(`candidates/${id}`, { method: 'DELETE' })
+      CoopVote.api(`candidates/${id}&election=${encodeURIComponent(document.getElementById('election-filter').value)}`, { method: 'DELETE' })
         .then(res => {
           closeModal('confirm-modal');
           /* A candidate with votes is marked withdrawn so the tally survives. */
@@ -2669,8 +2696,7 @@
       t.className = `toast ${type}`;
       t.innerHTML = `<div class="toast-dot"></div><span>${msg}</span>`;
       wrap.appendChild(t);
-      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
-      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3400);
+      CoopVote.presentToast(t, 3400);
     }
 
     /* ─────────────────────────────────────────
