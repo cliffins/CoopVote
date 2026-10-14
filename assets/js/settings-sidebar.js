@@ -5,10 +5,11 @@
   const root=new URL(document.currentScript.src).href.replace(/assets\/js\/settings-sidebar\.js.*$/, '');
   window.CoopVoteSidebar={mount(user){
     const sidebar=document.querySelector('[data-shared-sidebar]');
-    if(!sidebar || sidebar.dataset.mounted)return;
+    if(!sidebar || (sidebar.dataset.mounted && sidebar.dataset.mountedRole===user.role))return;
     sidebar.innerHTML=templates[user.role==='admin'?'admin':'voter'];
     sidebar.querySelectorAll('a[href]').forEach(a=>a.href=new URL(a.getAttribute('href'),root).href);
     sidebar.dataset.mounted='true';
+    sidebar.dataset.mountedRole=user.role;
   }};
 })();
 

@@ -1,0 +1,181 @@
+{
+  "title": "CoopVote Launch Audit",
+  "date": "2026-10-13",
+  "timezone": "Asia/Manila",
+  "decision": "NO-GO",
+  "revision": "96ec3b6719d698bb89203f473293e897384aa97e",
+  "scope": "Current local PHP/Apache/MariaDB installation and source. Actual production hosting, human acceptance and physical mobile devices remain unverified. No application fixes were made during this audit.",
+  "findings": [
+    {
+      "id": "C01", "severity": "Critical", "title": "Git repository exposes configuration and signing material over HTTP",
+      "evidence": "Unauthenticated HTTPS GETs to .git/HEAD, .git/index and .git/config returned 200. Two Git objects returned 200 and were byte-for-byte identical to the tracked config/config.php and config/integrity-key.php objects. The tracked configuration contains a non-placeholder SMTP password; the other tracked file contains the vote integrity key. Direct /config requests correctly return 403, but the Git-object path bypasses that protection. No secret value is included in this report.",
+      "impact": "Someone who can reach this installation can recover tracked source and secret material. SMTP credential validity was not tested against Gmail. Possession of the signing key defeats key separation if the attacker also gains database-write access; it does not by itself grant database access.",
+      "locations": [".htaccess:14", "config/config.php:77", "config/integrity-key.php:1", "includes/vote-integrity.php:11", ".gitignore:17"],
+      "fix": "Block the entire .git path at the server, deploy only an explicit runtime file allowlist, move secrets outside source and web roots, revoke/reissue the SMTP credential, and remove secrets from tracked files and history. Rotate the integrity key through a controlled migration that preserves existing signatures and reports; do not simply replace it and break verification.",
+      "verify": "Unauthenticated requests to Git files and objects must fail. A repository/history scan must find no real secrets. Old SMTP credentials must be revoked. Existing signed election records must still verify after the approved key migration.",
+      "artifact": "deployment.json"
+    },
+    {
+      "id": "C02", "severity": "Critical", "title": "Deleting an election can erase a ballot that just received a success receipt",
+      "evidence": "In an isolated two-request race, the first ballot returned HTTP 201 with a receipt and DELETE elections/{id} returned HTTP 200 with deleted=true. Afterwards both the election and its votes had zero remaining rows. The deletion handler checks the vote count before deleting without holding the same election-row lock as vote submission.",
+      "impact": "A legitimate administrator deleting an apparently empty election at the same moment as its first vote can erase an acknowledged ballot through cascading foreign keys.",
+      "locations": ["api/routes/admin.php:848", "api/routes/voter.php:617", "includes/vote-integrity.php:61", "database/schema_only.sql:338"],
+      "fix": "Make deletion and its checks one transaction using the same election lock as voting. Recheck ballot/vote counts after acquiring the lock. Disallow destructive deletion of open or used elections; use a controlled cancellation/archive workflow and review cascading-delete constraints.",
+      "verify": "Repeat the controlled first-vote/delete race. Either deletion is refused and the successful vote remains, or deletion wins and voting is refused without a receipt. Never return success for a ballot later deleted by the competing request.",
+      "artifact": "concurrency.json"
+    },
+    {
+      "id": "H01", "severity": "High", "title": "Voting accepts a withdrawn candidate",
+      "evidence": "Set a candidate to is_active=0 in the isolated fixture, then submit that candidate ID. The API returned 201 and stored a vote. Candidate listing and ballot rendering filter inactive candidates, but the submission validator collects all candidates returned by vt_candidates().",
+      "impact": "A stale ballot or direct API request can count a vote for a candidate who is no longer eligible to receive votes.",
+      "locations": ["api/routes/voter.php:573", "api/routes/voter.php:175", "includes/admin-candidates.php:330"],
+      "fix": "Validate active candidate status inside the voting transaction after taking the election lock. Serialize candidate changes using the same lock and revalidate each chosen candidate and position.",
+      "verify": "Inactive-candidate requests must return a clear 4xx response and leave both vote rows and has_voted unchanged, including concurrent withdrawal/submission.",
+      "artifact": "extended-api.json"
+    },
+    {
+      "id": "H02", "severity": "High", "title": "Malformed candidate IDs silently become real selections",
+      "evidence": "Submitting candidateId as a nonempty array [\"unexpected\"] returned 201 in the test election. The direct integer cast converts a nonempty array to 1, which matched a real candidate in the fixture.",
+      "impact": "Malformed or corrupted input can record a candidate the request did not actually identify. Server-side validation must protect ballot meaning independently of keyboard restrictions.",
+      "locations": ["api/routes/voter.php:579", "api/routes/voter.php:550"],
+      "fix": "Require strictly typed positive integer election and candidate IDs, validate each vote entry as an object/array with the expected shape, and reject booleans, arrays, objects, floats and malformed numeric strings before casting.",
+      "verify": "A type matrix must return 422 for malformed IDs and must not consume the ballot or add selections.",
+      "artifact": "extended-api.json"
+    },
+    {
+      "id": "H03", "severity": "High", "title": "Concurrent password failures bypass the intended lockout counter",
+      "evidence": "Twelve simultaneous invalid-password requests across four PHP workers returned 401, but the account recorded only three failed attempts, zero lockouts and no locked_until value. The implementation reads the counter and later writes a computed value without serialization.",
+      "impact": "Parallel guessing substantially weakens the five-failure lockout. Known and unknown accounts also produce different failure messages, which permits account enumeration.",
+      "locations": ["includes/auth.php:366", "includes/auth.php:382", "includes/auth.php:412"],
+      "fix": "Use atomic counters/transactions for rate limiting, enforce account and source-based limits, and normalize externally visible failure messages while preserving internal diagnostics. Consider administrator MFA as an additional control.",
+      "verify": "Repeated concurrent failure bursts must trigger the documented limit reliably. Valid users must recover according to policy without an attacker being able to reset the counter through races.",
+      "artifact": "concurrency.json"
+    },
+    {
+      "id": "H04", "severity": "High", "title": "Changing a password leaves other authenticated sessions usable",
+      "evidence": "Two independent clients signed in as the same voter. Client A changed the password successfully; the old password no longer logged in, but client B's existing session still fetched the private profile with HTTP 200. The password handler only updates password_hash.",
+      "impact": "Changing a compromised password does not remove an attacker who already has a session. The same password-change route accepts administrators.",
+      "locations": ["api/routes/voter.php:932", "api/routes/voter.php:958", "includes/auth.php:61", "includes/auth.php:454"],
+      "fix": "Version or centrally track sessions, revoke other sessions on password change/reset, rotate the current session identifier and enforce idle/absolute expiry. Define a deliberate recovery policy for administrators.",
+      "verify": "A second pre-change session must lose access immediately after the change. The retained current session, if policy allows it, must use a new identifier.",
+      "artifact": "extended-api.json"
+    },
+    {
+      "id": "H05", "severity": "High", "title": "The application connects as the database superuser",
+      "evidence": "The current application connection reports root@localhost. SHOW GRANTS includes ALL PRIVILEGES ON *.* WITH GRANT OPTION. config/config.php configures an empty database password. TLS and table encryption are enabled but do not reduce these account privileges.",
+      "impact": "An application compromise could affect other databases on the server and database accounts, not just CoopVote. No remote database access was assumed or tested.",
+      "locations": ["config/config.php:17", "config/database.php:41"],
+      "fix": "Provision a dedicated password-protected runtime database user restricted to CoopVote and required operations. Separate migration/backup credentials. Review the metadata privileges needed by the encryption guard and keep the database network private.",
+      "verify": "The runtime user must be unable to access unrelated schemas, grant privileges or change accounts; all permitted application flows and encryption checks must still function.",
+      "artifact": "deployment.json"
+    },
+    {
+      "id": "H06", "severity": "High", "title": "The local runtime is not a suitable production patch baseline",
+      "evidence": "Current versions are Apache 2.4.58, PHP 8.2.12 and MariaDB 10.4.32. MariaDB documents 10.4 maintenance ending in June 2024. Official Apache and PHP release histories contain subsequent security fixes. PHP 8.2 as a branch is still supported until December 31, 2026; that does not make this old patch release current.",
+      "impact": "Deploying this exact XAMPP stack carries obsolete/unpatched components. Exploitability of each Apache/PHP advisory depends on the deployed modules and configuration and was not demonstrated here.",
+      "locations": ["SECURITY_DEPLOYMENT.txt:10"],
+      "fix": "Select maintained, fully patched production components and perform compatibility, encryption, restore and workload tests on the actual hosting environment. Use a valid production-domain certificate and configured proxy trust.",
+      "verify": "Record installed versions, support dates and relevant security advisories at deployment; run the same acceptance/security suite against the production-equivalent stack.",
+      "artifact": "deployment.json"
+    },
+    {
+      "id": "H07", "severity": "High", "title": "Activity logs are not tamper-evident",
+      "evidence": "audit_logs has no chained-hash/signature fields, and audit() inserts ordinary mutable rows while swallowing failures. Changing an audit description directly in the isolated database produced HTTP 200 from the security endpoint, with the changed description displayed and no tamper warning. Vote HMAC protection is a separate mechanism.",
+      "impact": "A database writer can alter activity history without the claimed tamper-evident audit protection detecting it. This does not imply an ordinary voter can edit audit rows through the API.",
+      "locations": ["includes/auth.php:290", "includes/auth.php:310", "database/schema_only.sql:31"],
+      "fix": "If tamper-evident auditing is required, implement authenticated chaining with protected independent checkpoints or an external append-only audit service, verification and actionable alerts. Define fail-safe handling for important events and do not claim protection retroactively for an unverified baseline.",
+      "verify": "Altering, inserting, deleting, reordering and truncating audit entries must be detected against an independently retained checkpoint.",
+      "artifact": "concurrency.json"
+    },
+    {
+      "id": "M01", "severity": "Medium", "title": "Any signed-in voter can retrieve another ordinary member's photo",
+      "evidence": "A test voter requested the member ID of a different non-candidate with an uploaded picture. The endpoint returned 200 with exactly that image. The handler requires login but does not check ownership, administrator status or candidate visibility.",
+      "impact": "Profile pictures can be enumerated by other members even where those members are not candidates. Whether organization policy permits that access has not been provided.",
+      "locations": ["includes/profile-photo.php:134"],
+      "fix": "Define image visibility explicitly. By default allow the owner and authorized administrators, plus candidate images only where the requesting voter may view that election's candidates.",
+      "verify": "Test owner, administrator, eligible candidate viewer, unrelated member and anonymous requests separately.",
+      "artifact": "concurrency.json"
+    },
+    {
+      "id": "M02", "severity": "Medium", "title": "Voting has incomplete stalled-request and failure recovery",
+      "evidence": "A held vote request remained in a disabled Submitting state after 12 seconds; the shared api() has no request deadline and the confirmation cannot be closed while submitting. A forced ballot API 500 displayed No Active Election. When the server returned 201 but its response was lost, the UI told the voter to check the connection and retry without first reconciling ballot state. A subsequent retry correctly returned ALREADY_VOTED and the receipt endpoint recovered the receipt.",
+      "impact": "On unreliable internet, voters can be trapped waiting or misled about whether an election exists or whether their vote counted. The tested duplicate protection held; no duplicate ballot was produced.",
+      "locations": ["assets/js/app.js:106", "voter/ballot.html:1725", "voter/ballot.html:2031", "voter/ballot.html:2058"],
+      "fix": "Use bounded request deadlines with explicit pending/error states. After an ambiguous vote result, check authenticated ballot/receipt status before offering a retry. Keep true empty states separate from failed requests and expose an accessible retry action.",
+      "verify": "Test a stalled request, offline-before-send, response loss after commit, HTTP 500, recovery and session expiry. A timeout must never be presented as proof that no vote was recorded.",
+      "artifact": "browser.json"
+    },
+    {
+      "id": "M03", "severity": "Medium", "title": "Authentication lacks consistent CSRF and method protection",
+      "evidence": "A form-encoded login POST with an untrusted Origin header was accepted with HTTP 200. GET auth/logout was also accepted. Some newer modules require JSON/custom headers, but authentication does not. SameSite=Lax provides protection for many existing-session cross-site POSTs; it does not solve login CSRF or state-changing GETs.",
+      "impact": "A crafted login form can establish an unwanted account session, and cross-site top-level navigation can force a logout. The audit did not claim arbitrary cross-site administrative writes bypass SameSite protections.",
+      "locations": ["api/routes/auth.php:45", "api/routes/auth.php:125", "includes/helpers.php:96", "includes/helpers.php:143"],
+      "fix": "Apply a consistent CSRF policy to state-changing endpoints, validate Origin where appropriate, require POST for logout and use tokens or equivalent protections for login and multipart flows.",
+      "verify": "Simple cross-origin forms and navigations must not change session/account state; legitimate same-origin clients must keep working.",
+      "artifact": "extended-api.json"
+    },
+    {
+      "id": "M04", "severity": "Medium", "title": "Development and setup surfaces remain web-accessible",
+      "evidence": "setup.php returned 200 without login and disclosed PHP version, database username and installation details. tests/reports/results.json and tools/tunnel-demo.cjs were publicly readable. Setup sets a separate PHPSESSID cookie without the application cookie flags. Existing-table checks prevent setup's import from being a demonstrated arbitrary reset of this installed database.",
+      "impact": "Unneeded diagnostic/code/test surfaces expose operational information and may expose future test artifacts. The newly generated audit evidence directories have been denied through their own .htaccess files.",
+      "locations": ["setup.php:14", "setup.php:96", "setup.php:245", ".htaccess:14"],
+      "fix": "Remove or deny setup, tests, developer tools and repository metadata in the production package. Keep necessary operational tools CLI-only and outside the document root. Disable detailed server version banners and add a tested production header policy.",
+      "verify": "Run an unauthenticated deployment-file matrix against the exact artifact to be hosted. Only intentional application/public assets should be served.",
+      "artifact": "deployment.json"
+    },
+    {
+      "id": "M05", "severity": "Medium", "title": "Membership eligibility is not independently enforced at vote time",
+      "evidence": "In a deliberately inconsistent fixture with users.status=active but members.membership_status=inactive, vote submission returned 201. Normal admin deactivation updates both fields, so the observed bypass requires inconsistent data from import, manual changes or a future failure path.",
+      "impact": "If membership status is an eligibility condition, account status alone is not a sufficient server-side guarantee. Turnout eligibility counts likewise read active user status rather than membership status.",
+      "locations": ["includes/auth.php:101", "api/routes/voter.php:40", "api/routes/voter.php:547"],
+      "fix": "Confirm the cooperative's eligibility policy and enforce it in one shared transactional guard used for counts, ballots and vote submission. Prevent contradictory account/member states where possible.",
+      "verify": "Test all account/membership status combinations, missing member records, import paths and status changes during a pending vote.",
+      "artifact": "extended-api.json"
+    },
+    {
+      "id": "M06", "severity": "Medium", "title": "Privacy operating requirements remain unverified",
+      "evidence": "No comprehensive user-facing privacy notice or general data-retention/disposal workflow was found in the current application. A temporary import-credential expiry exists but is not a global retention policy. DPO/contact details, approved lawful bases, retention periods, data-subject request procedures, PIA and incident processes were not provided for validation.",
+      "impact": "Encryption and login guards alone do not establish compliance with Republic Act No. 10173 or the cooperative's organizational requirements. Absence from the repository does not prove the organization has no offline policies.",
+      "locations": ["login.html:1", "voter/profile.html:1", "includes/voter-import.php:84"],
+      "fix": "Obtain approved organizational privacy requirements; publish an accurate privacy notice, define rights-request and incident handling, justify collected personal fields and implement approved retention/access controls including backups. Do not invent lawful bases or disposal periods.",
+      "verify": "The cooperative's privacy lead must review actual operations and records as well as the application. Mark organizational sign-off pending until evidence is supplied.",
+      "artifact": "source review and NPC guidance"
+    },
+    {
+      "id": "M07", "severity": "Medium", "title": "Ballot abstention rules disagree between browser and API",
+      "evidence": "The browser labels contested positions Required, disables Submit until all have a selection and returns early from openConfirm for incomplete ballots. The API accepts any nonempty set of valid positions, and the baseline UAT-07 test explicitly approves skipping a seat.",
+      "impact": "The rule enforced depends on the client. This is a policy inconsistency, not evidence that abstention itself should be forbidden.",
+      "locations": ["voter/ballot.html:1833", "voter/ballot.html:1995", "voter/ballot.html:2004", "api/routes/voter.php:607", "tests/suites/05_acceptance.php:1"],
+      "fix": "Choose the cooperative's abstention rule, then align UI copy, validation, API behavior and acceptance tests. If abstention is allowed, make it an explicit understandable choice.",
+      "verify": "Normal browser users and direct API clients must receive the same rule for partial ballots and empty ballots.",
+      "artifact": "baseline-results.json and source review"
+    },
+    {
+      "id": "M08", "severity": "Medium", "title": "Passing the current suite does not enforce production release gates",
+      "evidence": "The pilot suite treats a real hardcoded mail password as a successful configuration check and checks only the direct config-directory denial. It did not test the downloadable Git-object bypass. Its database fixtures are rebuilt from schema_only.sql without explicit table encryption, and the CLI test server intentionally skips the production table-encryption guard. The new adversarial cases found failures despite the 1,625 passing baseline checks.",
+      "impact": "A green test report can coexist with critical security/data-loss defects. Automated cases called UAT and Pilot are not human acceptance or proof of deployed capacity.",
+      "locations": ["tests/suites/12_pilot.php:235", "tests/lib/testdb.php:102", "config/database.php:34", "database/schema_only.sql:1"],
+      "fix": "Add failing regression cases for the audit findings, secret/history and deployment-artifact gates, and a production-equivalent encrypted/TLS staging run. Separate automated acceptance from signed human pilot approval.",
+      "verify": "The release pipeline must fail for exposed Git objects, tracked secrets and destructive voting races. Record production-equivalent and human sign-off evidence separately.",
+      "artifact": "baseline-results.json, extended-api.json and concurrency.json"
+    },
+    {
+      "id": "L01", "severity": "Low", "title": "Several form controls lack programmatic labels",
+      "evidence": "Browser inspection found controls without associated labels or aria-label/aria-labelledby in seven page types, including #p-election and several table filters/checkboxes. Some have placeholder or nearby visual text; that is not a durable programmatic label.",
+      "impact": "Screen-reader and keyboard users may have difficulty distinguishing controls. The existing usability helper counts placeholders as labels, so its passing result does not establish accessibility compliance.",
+      "locations": ["tests/lib/browser.js:65", "admin/election-management.html:1", "admin/voter-management.html:1"],
+      "fix": "Associate visible labels with inputs and label each filter/selection checkbox. Complete keyboard, focus, contrast and screen-reader checks with the real dialogs and themes.",
+      "verify": "Audit the accessibility tree and tab order; every actionable control must have a meaningful accessible name.",
+      "artifact": "browser.json"
+    },
+    {
+      "id": "L02", "severity": "Low", "title": "Small browser housekeeping errors remain",
+      "evidence": "A fresh login visit requested a missing /favicon.ico in the isolated server. Logout reached login.html, but Chrome emitted InvalidStateError: ViewTransition opt-in disabled. No authenticated page navigation had an uncaught exception during the 80 measured page/viewport checks.",
+      "impact": "These are lower-priority polish/compatibility issues. Logout completed; no account-access bypass was established by the transition error.",
+      "locations": ["login.html:1", "assets/js/navigation.js:1", "assets/js/app.js:1"],
+      "fix": "Provide a consistent favicon and inspect cross-document transition opt-in/fallback behavior on logout. Do not let animation completion control authentication state.",
+      "verify": "Repeat login/logout with reduced motion, supported/unsupported View Transition browsers and browser back navigation.",
+      "artifact": "browser.json"
+    }
+  ]
+}

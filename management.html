@@ -11,8 +11,10 @@
   <link rel="stylesheet" href="assets/css/settings-sidebar.css?v=20260915">
   <link rel="stylesheet" href="assets/css/themes.css?v=20260915">
   <script src="assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
-  <link rel="stylesheet" href="assets/css/navigation.css?v=20260923-sidebar-scroll" />
-  <script src="assets/js/navigation.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="assets/css/navigation.css?v=20261013-stable-sidebar" />
+  <script src="assets/js/navigation.js?v=20261013-stable-sidebar"></script>
+  <script src="assets/js/branding.js?v=20261013-stable-sidebar"></script>
+  <script src="assets/js/settings-sidebar.js?v=20261013-stable-sidebar"></script>
   <script src="assets/js/voter-navigation.js?v=20260919-voter-badges"></script>
   <link rel="stylesheet" href="assets/css/tables.css?v=20260918-scroll-position" />
 </head>
@@ -20,6 +22,7 @@
 <body>
   <div class="settings-shell">
     <aside class="sidebar" id="sidebar" data-shared-sidebar aria-label="Main navigation"></aside>
+    <script>CoopVoteNavigation.bootstrap();</script>
     <button class="sidebar-overlay" id="sidebar-overlay" type="button" aria-label="Close menu" hidden></button>
     <main id="main" tabindex="-1">
       <header class="page-heading"><button class="hamburger hbtn" id="menu-toggle" type="button" aria-label="Open menu"
@@ -208,8 +211,7 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite" hidden></div>
-  <script src="assets/js/settings-sidebar.js?v=20260919-admin-card"></script>
-  <script src="assets/js/app.js?v=20260924-smooth-toast"></script>
+  <script src="assets/js/app.js?v=20261013-stable-sidebar"></script>
   <script src="assets/js/management.js?v=20261011-restored"></script>
 </body>
 

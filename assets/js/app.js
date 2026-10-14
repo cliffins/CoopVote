@@ -25,9 +25,14 @@
 
   const ROOT = (scriptEl ? scriptEl.src : '').replace(/assets\/js\/app\.js.*$/, '');
   const API = ROOT + 'api/index.php?r=';
-  const brandingScript=document.createElement('script');
-  brandingScript.src=ROOT+'assets/js/branding.js?v=20260916-coop-name';
-  document.head.appendChild(brandingScript);
+  // Protected pages preload branding so the sidebar does not reflow after a slow API call.
+  if (window.CoopVoteBranding) {
+    document.addEventListener('DOMContentLoaded', () => window.CoopVoteBranding.start(), { once: true });
+  } else {
+    const brandingScript=document.createElement('script');
+    brandingScript.src=ROOT+'assets/js/branding.js?v=20261013-stable-sidebar';
+    document.head.appendChild(brandingScript);
+  }
 
   // Close the mobile drawer for navigation, including the current page's link.
   // Use the rendered layout so each page keeps its own responsive breakpoint.
@@ -305,6 +310,7 @@
   function redirectToLogin() {
     // Explicit logout owns its redirect; a late polling 401 must not replace it.
     if (loggingOut) return;
+    if (window.CoopVoteNavigation) window.CoopVoteNavigation.clear();
     const here = window.location.pathname.split('/').pop() || '';
     if (here.indexOf('login') === 0) return;
     /* replace(), not href: the signed-out page must not stay in history. */
@@ -386,6 +392,7 @@
         return new Promise(() => {});     // stop the page rendering
       }
       window.CoopVote.user = user;
+      if (window.CoopVoteNavigation) window.CoopVoteNavigation.remember(user);
       window.CoopVote.coop = data.coop || {};
       if (window.CoopVoteSidebar) window.CoopVoteSidebar.mount(user);
       applyIdentity(user);
@@ -981,6 +988,7 @@
      * re-check would fire against the sign-in page itself.
      */
     guardedRole = null;
+    if (window.CoopVoteNavigation) window.CoopVoteNavigation.clear();
     window.location.replace(ROOT + 'login.html?bye=1');
   }
 

@@ -1,9 +1,13 @@
 (function(){
   'use strict';
   let current=null;
+  let started=false;
+  const script=document.currentScript;
+  const cacheKey='cv.branding.'+(script ? new URL(script.src).pathname.replace(/assets\/js\/branding\.js$/, '') : '');
   const original=new WeakMap();
   function apply(data){
     current=data;
+    try { sessionStorage.setItem(cacheKey,JSON.stringify(data)); } catch (_) {}
     const logo=document.querySelector('.sidebar-logo');
     if(logo && typeof data.coopName==='string'){
       let name=document.getElementById('cv-coop-name');
@@ -21,9 +25,21 @@
     });
   }
   async function load(){const data=await CoopVote.api('branding');apply(data);return data;}
-  // Shared sidebar markup arrives asynchronously on the Settings page.
-  const sidebar=document.querySelector('.sidebar');
-  if(sidebar)new MutationObserver(()=>{if(current)apply(current);}).observe(sidebar,{childList:true,subtree:true});
-  window.CoopVoteBranding={apply,load};
-  load().catch(()=>{});
+  function preview(){
+    try {
+      const data=JSON.parse(sessionStorage.getItem(cacheKey));
+      if(data && typeof data.text==='string' && typeof data.coopName==='string'
+          && (data.logo===null || (typeof data.logo==='string' && /^data:image\/(png|jpeg|webp);base64,/.test(data.logo)))) apply(data);
+    } catch (_) {}
+  }
+  function start(){
+    if(started)return;
+    started=true;
+    // Shared sidebar markup can also arrive after authentication.
+    const sidebar=document.querySelector('.sidebar');
+    if(sidebar)new MutationObserver(()=>{if(current)apply(current);}).observe(sidebar,{childList:true,subtree:true});
+    load().catch(()=>{});
+  }
+  window.CoopVoteBranding={apply,load,preview,start};
+  if(typeof CoopVote!=='undefined')start();
 })();

@@ -79,6 +79,9 @@
 @media (min-width: 901px) {
   .sidebar { view-transition-name: cv-sidebar; }
   ::view-transition-group(cv-sidebar) { animation: none; }
+  /* The incoming sidebar is already complete; never crossfade its text/links. */
+  ::view-transition-old(cv-sidebar) { display: none; }
+  ::view-transition-new(cv-sidebar) { animation: none; mix-blend-mode: normal; }
 }
 
 .sidebar .nav-item {
