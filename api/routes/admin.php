@@ -15,6 +15,14 @@ require_once __DIR__ . '/../../includes/election-operations.php';
 require_once __DIR__ . '/../../includes/security-alerts.php';
 require_once __DIR__ . '/../../includes/admin-candidates.php';
 
+/** One scope for activity lists, exports and counters; appearance is not operational activity. */
+function admin_activity_scope(): string
+{
+    return "r.slug = 'admin'
+        AND a.action NOT LIKE 'branding.%'
+        AND a.action NOT LIKE 'theme.%'";
+}
+
 /** An explicit election query must never fall back to an unscoped request. */
 function admin_requested_election(): ?int
 {
@@ -128,7 +136,7 @@ function admin_dashboard(): never
            FROM audit_logs a
            JOIN users u ON u.user_id = a.user_id
            JOIN roles r ON r.role_id = u.role_id
-          WHERE r.slug = 'admin'
+          WHERE " . admin_activity_scope() . "
           ORDER BY a.log_id DESC LIMIT 8"
     )->fetchAll() as $r) {
         $recentActivity[] = [
@@ -1019,7 +1027,7 @@ function admin_monitor(): never
            FROM audit_logs a
            JOIN users u ON u.user_id = a.user_id
            JOIN roles r ON r.role_id = u.role_id
-          WHERE r.slug = 'admin'
+          WHERE " . admin_activity_scope() . "
           ORDER BY a.log_id DESC LIMIT 10"
     )->fetchAll() as $r) {
         $activityFeed[] = [
@@ -1257,7 +1265,7 @@ function admin_security(array $args): never
            FROM audit_logs a
            JOIN users u ON u.user_id = a.user_id
            JOIN roles r ON r.role_id = u.role_id
-          WHERE r.slug = 'admin'"
+          WHERE " . admin_activity_scope()
     )->fetchColumn();
     $failedLogins  = (int) $pdo->query(
         "SELECT COUNT(*) FROM login_attempts WHERE success = 0 AND created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)"
@@ -1273,7 +1281,7 @@ function admin_security(array $args): never
            FROM audit_logs a
            JOIN users u ON u.user_id = a.user_id
            JOIN roles r ON r.role_id = u.role_id
-          WHERE r.slug = 'admin'
+          WHERE " . admin_activity_scope() . "
             AND a.action IN ('auth.login_failed','auth.password_change_failed','security.ip_blocked')"
     )->fetchColumn();
 
@@ -1339,7 +1347,8 @@ function admin_security(array $args): never
  * did. A member's activity is not listed here — not
  * their sign-ins, not their sign-outs, not their ballots, and not a refused
  * sign-in against their account either. All of it is still written to
- * audit_logs; this page is simply not where it is read.
+ * audit_logs; this page is simply not where it is read. Theme and branding
+ * changes are likewise excluded from the list, exports and activity counters.
  *
  * Refused sign-ins on member accounts used to be kept, on the argument that
  * a failed sign-in is not necessarily the member's own doing. The
@@ -1350,7 +1359,7 @@ function admin_security(array $args): never
  * account on the system.
  *
  * The joins are inner ones on purpose. "There is a back-office user behind
- * this row" is the whole rule, so a row with no account at all — what an
+ * this row" is required, so a row with no account at all — what an
  * attempt against a username that does not exist looks like — is left out
  * by the same stroke.
  */
@@ -1363,7 +1372,7 @@ function security_logs(int $limit = 120): array
            JOIN users u ON u.user_id = a.user_id
            JOIN roles r ON r.role_id = u.role_id
            LEFT JOIN members m ON m.user_id = a.user_id
-          WHERE r.slug = 'admin'
+          WHERE " . admin_activity_scope() . "
           ORDER BY a.log_id DESC
           LIMIT ?"
     );

@@ -10,12 +10,15 @@ html[data-cv-theme] body { background:var(--navy);color:var(--white); }
 html[data-cv-theme] .login-card { background:var(--navy2);border-color:var(--border); }
 html[data-cv-theme] .notice.show-error { background:var(--navy2);color:var(--danger);border-color:var(--danger); }
 html[data-cv-theme] .notice.show-success { background:var(--navy2);color:var(--success);border-color:var(--success); }
-html[data-cv-theme] :is(.header,.sidebar,.modal,.modal-content,.modal-box,.dropdown-menu,.cv-picker-menu,.notice-panel,.toast,.toast-container .toast) { background:var(--navy2);color:var(--white);border-color:var(--border); }
+html[data-cv-theme] :is(.header,.page-heading,.sidebar,.modal,.modal-content,.modal-box,dialog,.dropdown-menu,.cv-picker-menu,.notice-panel,.toast,.toast-container .toast) { background:var(--navy2);color:var(--white);border-color:var(--border); }
 html[data-cv-theme] :is(input,textarea,select) { color:var(--white);background-color:var(--navy);border-color:var(--border); }
 html[data-cv-theme] option { background:var(--navy2);color:var(--white); }
 html[data-cv-theme] :is(.btn-primary,.btn-gold,.submit-btn,.login-btn) { background:var(--gold);color:var(--on-accent); }
 html[data-cv-theme] :is(.card,.stat-card,.panel,.summary-card,.position-card,.candidate-card,.receipt-card,.result-card,.form-card) { background-color:var(--navy2);border-color:var(--border); }
 html[data-cv-theme] :is(.filter-select,.el-select,.search-box,.cv-picker-btn,.btn-outline,.btn-secondary) { color:var(--white);background-color:var(--navy2);border-color:var(--border); }
+/* Management uses native buttons for the same shared actions. */
+html[data-cv-theme] .settings-shell button.primary { background:var(--gold);color:var(--on-accent); }
+html[data-cv-theme] .settings-shell button:not(.primary,.danger-outline,.hbtn,.hamburger,.theme-choice,.icon-btn,.sidebar-overlay) { background:var(--navy2);color:var(--white);border:1px solid var(--border); }
 html[data-cv-theme] :is(th,td) { border-color:var(--border); }
 html[data-cv-theme] :is(th,.table-head) { background-color:var(--navy3);color:var(--muted2); }
 html[data-cv-theme] :is(.cv-picker-menu,.cv-picker-option,.cv-picker-title,.cv-picker-name) { color:var(--white); }

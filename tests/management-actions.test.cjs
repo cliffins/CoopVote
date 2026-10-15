@@ -6,10 +6,10 @@ new vm.Script(source);
 function extract(name){const m=source.match(new RegExp('(?:async )?function '+name+'\\([^]*?\\n  }'));assert.ok(m,name+' found');return m[0];}
 function button(disabled=false){return {disabled,dataset:{},innerHTML:'<span class="theme-preview">Preview</span><span>Navy</span>',attrs:{},setAttribute(k,v){this.attrs[k]=v;},removeAttribute(k){delete this.attrs[k];},closest(){return null;}};}
 (async()=>{
-  const primary=button(),previouslyDisabled=button(true),messages=[],errors=[],timers=[];
-  const context=vm.createContext({document:{querySelectorAll:()=>[primary,previouslyDisabled]},toast:m=>messages.push(m),syncPasswordButton(){},syncRequirementButton(){},syncRefreshButtons(){},syncBrandingButton(){},refresh:async()=>false,setTimeout:fn=>timers.push(fn),Date:{now:()=>1000}});
-  vm.runInContext('let mutation=false,refreshId=0,refreshing=false,nextRefresh=0;',context);
-  for(const name of ['busyControls','run','refreshFromButton'])vm.runInContext(extract(name),context);
+  const primary=button(),previouslyDisabled=button(true),messages=[],errors=[];
+  const context=vm.createContext({document:{querySelectorAll:()=>[primary,previouslyDisabled]},toast:m=>messages.push(m),syncPasswordButton(){},syncRequirementButton(){},syncBrandingButton(){},refresh:async()=>false});
+  vm.runInContext('let mutation=false,refreshId=0;',context);
+  for(const name of ['busyControls','run'])vm.runInContext(extract(name),context);
   let reject,calls=0;
   const work=()=>{calls++;return new Promise((_,r)=>reject=r);};
   const pending=context.run(primary,work,null,'Saved.');
@@ -22,16 +22,11 @@ function button(disabled=false){return {disabled,dataset:{},innerHTML:'<span cla
   assert.deepEqual(messages,['Save failed']);assert.match(primary.innerHTML,/theme-preview/,'failed theme save does not destroy preview');
   await context.run(primary,async()=>({ok:true}),()=>calls++,'Theme saved.');
   assert.equal(messages.at(-1),'Theme saved.');assert.equal(primary.disabled,false);
-  messages.length=0;let reads=0;context.refresh=async()=>{reads++;return false;};
-  await context.refreshFromButton(primary);await context.refreshFromButton(primary);
-  assert.equal(reads,1,'refresh cooldown blocks repeated requests');assert.equal(messages.length,0,'failed refresh never announces success');
-  vm.runInContext('nextRefresh=0',context);context.refresh=async()=>true;
-  await context.refreshFromButton(primary);assert.equal(messages.at(-1),'Latest data loaded.');
 
   // Exercise the real refresh failure handling, including late responses.
   let resolveOld,rendered=0;
   const dataContext=vm.createContext({active:()=> 'themes',error:m=>errors.push(m),api:()=>new Promise(r=>resolveOld=r),CoopVoteAppearance:{remember(){}},user:{id:1},renderThemes(){rendered++;}});
-  vm.runInContext('let refreshId=0;',dataContext);vm.runInContext(extract('refresh'),dataContext);
+  vm.runInContext('let refreshId=0,pendingReads=0;const renderedData=new Map();',dataContext);vm.runInContext(extract('refresh'),dataContext);
   const old=dataContext.refresh();vm.runInContext('refreshId++',dataContext);resolveOld({theme:'navy'});await old;
   assert.equal(rendered,0,'late reads cannot replace newer controls');
   dataContext.api=async()=>{throw Error('Connection failed');};assert.equal(await dataContext.refresh(),false);assert.equal(errors.at(-1),'Connection failed');
@@ -45,8 +40,8 @@ function button(disabled=false){return {disabled,dataset:{},innerHTML:'<span cla
   form.elements.newPassword.value='A1!'+ 'é'.repeat(40);form.elements.confirmPassword.value=form.elements.newPassword.value;assert.match(validation.passwordIssue(),/8 or more/,'bcrypt byte limit is checked');
 
   const html=fs.readFileSync('management.html','utf8');
-  assert.equal((html.match(/id="refresh-page"/g)||[]).length,1,'one stable header refresh control');
-  assert.doesNotMatch(source,/id="refresh-page"/,'rendering modules does not replace the refresh control');
+  assert.doesNotMatch(html,/id="refresh-page"/,'automatic refresh needs no manual header control');
+  assert.doesNotMatch(source,/refresh-page|refreshFromButton|syncRefreshButtons/,'no handlers reference the removed control');
   assert.match(html,/id="confirm-action"/);assert.match(source,/confirm-action'\)\.textContent=title/,'confirm label names its action');
   const nodes={'officer-search':{value:''},'officer-status':{value:''},'officer-count':{textContent:''},accounts:{innerHTML:'',querySelectorAll:()=>[]}};
   const filters=vm.createContext({$:id=>nodes[id],user:{id:1},esc:s=>String(s).replaceAll('<','&lt;').replaceAll('>','&gt;')});
@@ -68,7 +63,7 @@ function button(disabled=false){return {disabled,dataset:{},innerHTML:'<span cla
     document:{querySelectorAll:()=>[brandingNodes['branding-save'],brandingNodes['branding-remove']]},
     CoopVote:{api:async(route,options)=>{brandingRequests.push({route,...options});return {...options.body};}},
     window:{CoopVoteBranding:{apply:data=>applied.push(data)}},refresh:async()=>false,
-    syncPasswordButton(){},syncRequirementButton(){},syncRefreshButtons(){}
+    syncPasswordButton(){},syncRequirementButton(){}
   });
   vm.runInContext('let mutation=false,refreshId=0,imageRevision=7,imageLoading=true,brandingLogo="custom.png",savedBranding={text:"Custom Brand",coopName:"Custom Cooperative",logo:"custom.png"};',branding);
   for(const name of ['brandingHasChanges','syncBrandingButton','loadBranding','previewBranding','resetBranding','busyControls','run'])vm.runInContext(extract(name),branding);

@@ -53,6 +53,11 @@ const appearance = context.window.CoopVoteAppearance;
     "navy",
     "unknown local values use the default",
   );
+  const priorResolver = resolve;
+  await appearance.sync({id: 3, role: "member"}, {theme: "ocean"});
+  assert.equal(resolve, priorResolver, "Authenticated preferences avoid a separate startup request");
+  assert.equal(root.dataset.cvTheme, "ocean");
+  assert.equal(storage.get("cv.theme.user.3"), "ocean");
   const palettes = [
     ...css.matchAll(/:root\[data-cv-theme="([^"]+)"\]\s*\{([^}]+)\}/g),
   ];

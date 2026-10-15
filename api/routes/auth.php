@@ -141,9 +141,12 @@ function auth_route_me(): never
     }
 
     $name = (string) ($u['full_name'] ?? $u['username']);
+    $preference = db()->prepare('SELECT theme FROM user_preferences WHERE user_id = ?');
+    $preference->execute([(int) $u['user_id']]);
 
     json_out([
         'ok'   => true,
+        'preferences' => ['theme' => $preference->fetchColumn() ?: 'navy'],
         'user' => [
             'id'       => (int) $u['user_id'],
             'username' => $u['username'],

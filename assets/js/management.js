@@ -4,7 +4,6 @@
   const user=await CoopVote.guard();
   if(!user)return;
   const isAdmin=user.role==='admin';let accounts=[], overview=null, selected=new URLSearchParams(location.search).get('election')||'', refreshId=0, mutation=false, confirmAction=null;
-  $('identity').textContent=user.name || user.username;
   $('logout').onclick=()=>CoopVote.logout();
   const tabs=isAdmin?[['officers','Officer Management'],['approvals','Election Approvals'],['themes','Themes'],['branding','Branding']]:[['themes','Themes']];
   function closeMenu(){ $('sidebar').classList.remove('open');$('sidebar-overlay').hidden=true;$('menu-toggle').setAttribute('aria-expanded','false');$('sidebar').inert=window.matchMedia('(max-width:900px)').matches; }
@@ -22,15 +21,43 @@
     CoopVoteAppearance.navigation(user);closeMenu();
     await refresh();
   }
-  async function refresh(){
-    const revision=++refreshId, tab=active();error('');
+  const renderedData=new Map();
+  let pendingReads=0;
+  function deferBackgroundRefresh(tab){
+    if(mutation||document.hidden||document.querySelector('dialog[open]')
+        ||document.activeElement?.matches('input,textarea,select,[contenteditable="true"]'))return true;
+    if(tab==='branding')return imageLoading||brandingHasChanges();
+    if(tab==='approvals')return (overview&&Number($('threshold').value)!==Number(overview.requiredApprovals))
+      ||!!$('request-form')?.elements.proposedEnd?.value;
+    return false;
+  }
+  async function refresh({background=false}={}){
+    const tab=active();
+    if(background&&(pendingReads||deferBackgroundRefresh(tab)))return false;
+    const revision=++refreshId;
+    pendingReads++;
+    if(!background)error('');
     try {
-      if(tab==='themes'){const data=await api('preferences');if(revision!==refreshId)return;CoopVoteAppearance.remember(user,data.theme);renderThemes(data.theme);}
-      else if(tab==='officers'){const data=await api('accounts');if(revision!==refreshId)return;accounts=data;renderAccounts();}
-      else if(tab==='branding'){const data=await CoopVote.api('branding');if(revision!==refreshId)return;loadBranding(data);}
-      else{const data=await api('overview');if(revision!==refreshId)return;overview=data;renderApprovals();}
+      const data=tab==='branding'?await CoopVote.api('branding'):await api({themes:'preferences',officers:'accounts',approvals:'overview'}[tab]);
+      // Editing can begin while a slow request is in flight.
+      if(revision!==refreshId||tab!==active()||(background&&deferBackgroundRefresh(tab)))return false;
+      const serialized=JSON.stringify(data);
+      if(!background||renderedData.get(tab)!==serialized){
+        const scrollers=background?[document.scrollingElement,...document.querySelectorAll('main,.table-wrap')].filter(Boolean).map(el=>[el,el.scrollTop,el.scrollLeft]):[];
+        if(tab==='themes'){CoopVoteAppearance.remember(user,data.theme);renderThemes(data.theme);}
+        else if(tab==='officers'){accounts=data;renderAccounts();}
+        else if(tab==='branding'){loadBranding(data);window.CoopVoteBranding?.apply(data);}
+        else{overview=data;renderApprovals();}
+        scrollers.forEach(([el,top,left])=>{el.scrollTop=top;el.scrollLeft=left;});
+        renderedData.set(tab,serialized);
+      }
+      error('');
       return true;
-    }catch(e){if(revision===refreshId)error(e.message);return false;}
+    }catch(e){
+      if(revision===refreshId)error(e.message);
+      if(background)throw e; // Let the shared scheduler back off and retry.
+      return false;
+    }finally{pendingReads--;}
   }
   // Preserve button contents (including theme previews) through errors and retries.
   function busyControls(busy){
@@ -46,17 +73,8 @@
     refreshId++;
     try{const result=await work();if(after)after(result);if(message)toast(message);await refresh();}
     catch(e){const form=button.closest('form'), target=form?.querySelector('.form-error');if(target)target.textContent=e.message;else toast(e.message);}
-    finally{mutation=false;busyControls(false);button.removeAttribute('aria-busy');syncPasswordButton();syncRequirementButton();syncRefreshButtons();syncBrandingButton();}
+    finally{mutation=false;busyControls(false);button.removeAttribute('aria-busy');syncPasswordButton();syncRequirementButton();syncBrandingButton();}
   }
-  let refreshing=false, nextRefresh=0;
-  function syncRefreshButtons(){ $('refresh-page').disabled=mutation||refreshing||Date.now()<nextRefresh; }
-  async function refreshFromButton(button){
-    if(mutation||refreshing||Date.now()<nextRefresh)return;
-    refreshing=true;button.disabled=true;button.setAttribute('aria-busy','true');
-    try{if(await refresh())toast('Latest data loaded.');}
-    finally{refreshing=false;nextRefresh=Date.now()+1500;button.removeAttribute('aria-busy');syncRefreshButtons();setTimeout(syncRefreshButtons,1500);}
-  }
-  $('refresh-page').onclick=e=>refreshFromButton(e.currentTarget);
   document.addEventListener('click',e=>{if(mutation&&e.target.closest('.sidebar a')){e.preventDefault();toast('Wait for the current action to finish.');}},true);
   const previews={navy:['#0b1931','#162a52','#c9a84c'],light:['#f2f5fa','#d6e1f0','#735615'],forest:['#102820','#20483a','#c8c879'],ocean:['#102b38','#1d4b5d','#84d2de'],plum:['#291f35','#493856','#d5b1cd'],slate:['#242b34','#394652','#b7c9df']};
   function renderThemes(current){
@@ -221,4 +239,5 @@
     run(e.submitter,()=>CoopVote.api('branding',{method:'PUT',body:{text,logo:brandingLogo,coopName}}),data=>{loadBranding(data);window.CoopVoteBranding?.apply(data);},'Branding saved.');
   };
   window.addEventListener('hashchange',route);await route();
+  CoopVote.watch(()=>refresh({background:true}),10000);
 })();

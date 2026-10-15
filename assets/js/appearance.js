@@ -39,10 +39,14 @@
     sidebar.querySelectorAll('[data-cv-nav]').forEach(a=>{const current=location.pathname.endsWith('/management.html')&&a.hash===(location.hash|| (user.role==='admin'?'#officers':'#themes'));a.classList.toggle('active',current);if(current)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
     if (window.CoopVoteNavigation) window.CoopVoteNavigation.restore();
   }
-  async function sync(user) {
+  async function sync(user, preferences) {
     const currentRevision = revision;
     navigation(user);
     try { apply(localStorage.getItem('cv.theme.user.'+user.id) || 'navy'); } catch (_) { apply('navy'); }
+    if (preferences && names.includes(preferences.theme)) {
+      remember(user, preferences.theme);
+      return;
+    }
     try { const data=await CoopVote.api('management/preferences');if (currentRevision === revision) remember(user,data.theme); } catch (_) { /* Keep cached preference during a network interruption. */ }
   }
   window.CoopVoteAppearance={names,apply,remember,sync,navigation};

@@ -108,7 +108,27 @@
    * Call the API and return the parsed JSON body.
    * Throws an Error carrying .status, .code and .fields on failure.
    */
-  async function api(route, options) {
+  const pendingReads = new Map();
+  function api(route, options) {
+    // Share only simultaneous default reads, never completed/stale responses
+    // or caller-controlled requests (signals, headers, writes).
+    if (options) {
+      if (String(options.method || 'GET').toUpperCase() !== 'GET') pendingReads.clear();
+      return request(route, options);
+    }
+    const key = url(route);
+    let pending = pendingReads.get(key);
+    if (!pending) {
+      pending = request(route).finally(() => {
+        if (pendingReads.get(key) === pending) pendingReads.delete(key);
+      });
+      pendingReads.set(key, pending);
+    }
+    // Consumers may sort or annotate their own payload.
+    return pending.then(data => JSON.parse(JSON.stringify(data)));
+  }
+
+  async function request(route, options) {
     const opts = Object.assign({ credentials: 'same-origin', headers: {} }, options || {});
 
     /* JSON-encode plain objects, but leave FormData alone so the
@@ -396,11 +416,12 @@
       window.CoopVote.coop = data.coop || {};
       if (window.CoopVoteSidebar) window.CoopVoteSidebar.mount(user);
       applyIdentity(user);
-      if (window.CoopVoteAppearance) window.CoopVoteAppearance.sync(user);
+      if (window.CoopVoteAppearance) window.CoopVoteAppearance.sync(user, data.preferences);
       if (window.CoopVoteVoterNavigation) window.CoopVoteVoterNavigation.init(user);
       applyCoopName(window.CoopVote.coop);
-      initNotifications(user);
       if (user.role === 'member') await initElectionPicker();
+      // Let the guarded page start its data request before background notices.
+      setTimeout(() => { if (!loggingOut) initNotifications(user); }, 0);
       return user;
     } catch (e) {
       /* Bouncing to the sign-in page would just loop when the real

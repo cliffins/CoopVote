@@ -7,10 +7,10 @@
   <title>CoopVote Settings</title>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700;800&display=swap">
-  <link rel="stylesheet" href="assets/css/management.css?v=20260920-module-entry">
+  <link rel="stylesheet" href="assets/css/management.css?v=20261014-header-alignment">
   <link rel="stylesheet" href="assets/css/settings-sidebar.css?v=20260915">
-  <link rel="stylesheet" href="assets/css/themes.css?v=20260915">
-  <script src="assets/js/appearance.js?v=20260923-sidebar-scroll"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=20261014-matching-palette">
+  <script src="assets/js/appearance.js?v=20261015-module-loading"></script>
   <link rel="stylesheet" href="assets/css/navigation.css?v=20261013-stable-sidebar" />
   <script src="assets/js/navigation.js?v=20261013-stable-sidebar"></script>
   <script src="assets/js/branding.js?v=20261013-stable-sidebar"></script>
@@ -34,16 +34,15 @@
           <h1 id="heading">Themes</h1>
           <p id="section-label">Settings</p>
         </div>
-        <div class="header-actions"><span id="identity"></span><button class="hbtn" id="refresh-page" type="button"
-            title="Refresh" aria-label="Refresh current page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2">
-              <path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" />
-            </svg></button><button class="hbtn" type="button" title="Notifications" aria-label="Notifications"><svg
+        <div class="header-actions"><button class="hbtn" type="button" title="Notifications" aria-label="Notifications"><svg
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21h4" />
-            </svg></button><button class="hbtn logout-button" type="button" id="logout" title="Log out"
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg></button><button class="hbtn logout-button" type="button" id="logout" title="Logout"
             aria-label="Log out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg></button></div>
       </header>
       <div class="module-content">
@@ -211,8 +210,8 @@
     </form>
   </dialog>
   <div id="toast" role="status" aria-live="polite" hidden></div>
-  <script src="assets/js/app.js?v=20261013-stable-sidebar"></script>
-  <script src="assets/js/management.js?v=20261011-restored"></script>
+  <script src="assets/js/app.js?v=20261015-module-loading"></script>
+  <script src="assets/js/management.js?v=20261014-loading-reverted"></script>
 </body>
 
 </html>
