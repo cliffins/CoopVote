@@ -2,6 +2,10 @@
 
 PHP and MariaDB cooperative voting application with administrator and voter interfaces.
 
+## Hosting
+
+Production is hosted on Ludom. This repository stores the application source. GitHub Pages is disabled, and the Cloudflare Worker is disconnected from automatic Git builds. Pushing code here does not deploy it to Ludom.
+
 ## Setup
 
 This repository contains the contents of the `public_html` web root. Clone it into your deployment's `public_html` directory and follow [Installation and Deployment](INSTALLATION_DEPLOYMENT.md) for the database schema, private configuration, first administrator, encryption keys, and Apache/PHP setup.
