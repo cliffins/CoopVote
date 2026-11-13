@@ -1,0 +1,72 @@
+/* Compact desktop columns; preserve table structure with local scrolling on phones. */
+.cv-table-container { container-type:inline-size; min-width:0; }
+.cv-responsive-table.cv-data-table,
+.cv-responsive-table.position-table,
+.cv-responsive-table.officer-table { width:100%; min-width:0; table-layout:fixed; }
+.cv-responsive-table :is(th,td) { padding:8px 7px; overflow-wrap:anywhere; white-space:normal; line-height:1.45; }
+.cv-responsive-table th { font-size:.65rem; letter-spacing:.035em; }
+.cv-responsive-table td { font-size:.76rem; }
+.cv-responsive-table :is(.t-name,.v-name) { font-size:.78rem; }
+.cv-responsive-table :is(.t-sub,.v-sub,.position-reason) { font-size:.7rem; }
+.cv-responsive-table :is(.cand-cell,.voter-cell) { gap:6px; min-width:0; }
+.cv-responsive-table :is(.t-avatar,.v-avatar) { width:28px; height:28px; flex:0 0 28px; }
+.cv-responsive-table .badge { white-space:normal; padding:3px 6px; font-size:.65rem; }
+.cv-responsive-table .action-btns { flex-wrap:wrap; gap:4px; }
+.cv-responsive-table .action-btns .icon-btn { flex:0 0 30px; }
+.cv-responsive-table .position-delete { min-width:0; max-width:100%; white-space:normal; }
+/* Keep native table rows and visible column headings on every screen.
+   Narrow screens scroll inside the table region instead of changing to cards. */
+.cv-table-container { max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; }
+.cv-table-container:focus-visible { outline:2px solid var(--gold); outline-offset:-2px; }
+.cv-responsive-table.cv-voters { --cv-table-min:860px; }
+.cv-responsive-table.cv-candidates { --cv-table-min:800px; }
+.cv-responsive-table.cv-report { --cv-table-min:720px; }
+.cv-responsive-table.cv-monitor { --cv-table-min:620px; }
+.cv-responsive-table.cv-activity { --cv-table-min:580px; }
+.cv-responsive-table.officer-table { --cv-table-min:720px; }
+.cv-responsive-table.position-table { --cv-table-min:520px; }
+@container (max-width:700px) {
+  .cv-responsive-table.cv-data-table,
+  .cv-responsive-table.position-table,
+  .cv-responsive-table.officer-table {
+    min-width:var(--cv-table-min,640px);
+  }
+  .cv-responsive-table :is(th,td) { padding:8px 7px; }
+  .cv-responsive-table th { font-size:.65rem; }
+  .cv-responsive-table td { font-size:.76rem; }
+  .cv-responsive-table .action-btns { gap:4px; }
+  .cv-responsive-table .action-btns .icon-btn { width:36px; height:36px; flex-basis:36px; }
+  .cv-responsive-table .position-delete { min-height:36px; }
+  .cv-responsive-table input[type="checkbox"] { min-width:18px; min-height:18px; margin:0; }
+}
+/* The table itself scrolls sideways. Mobile pages can still scroll vertically. */
+@media (max-width:960px) {
+  .app .content > .table-card:has(.cv-responsive-table) { flex:0 0 auto; min-height:0; }
+  .app .table-card:has(.cv-responsive-table) > .table-scroll { flex:none; max-height:none; overflow:auto; }
+}
+/* Reference layout: fixed column proportions, aligned headers and normal insets.
+   Preserve that geometry on phones by scrolling, never squeezing or reflowing columns. */
+.cv-responsive-table.cv-voters { min-width:1120px; }
+.cv-responsive-table.cv-candidates { min-width:1000px; }
+.cv-responsive-table th { overflow-wrap:normal; word-break:normal; }
+.cv-responsive-table:is(.cv-voters,.cv-candidates) :is(th,td) { padding:12px 16px; text-align:left; }
+.cv-responsive-table.cv-voters th { height:42px; }
+.cv-responsive-table.cv-voters td { height:61px; vertical-align:middle; }
+.cv-responsive-table.cv-voters .v-avatar { width:32px; height:32px; flex-basis:32px; }
+.cv-responsive-table.cv-voters .voter-cell { gap:10px; }
+.cv-responsive-table.cv-voters .badge { white-space:nowrap; }
+.cv-responsive-table td:last-child .action-btns {
+  justify-content:flex-start; flex-wrap:nowrap; gap:8px;
+}
+.cv-responsive-table td:last-child .action-btns .icon-btn { width:30px; height:30px; flex:0 0 30px; }
+.cv-responsive-table td:last-child .officer-actions {
+  display:flex; justify-content:flex-start; flex-wrap:nowrap; width:max-content; min-width:0; gap:5px;
+}
+@media print {
+  .cv-responsive-table { display:table !important; min-width:0!important; width:100%!important; }
+  .cv-responsive-table thead { display:table-header-group !important; position:static !important; width:auto !important; height:auto !important; clip-path:none !important; }
+  .cv-responsive-table tbody { display:table-row-group !important; }
+  .cv-responsive-table tr { display:table-row !important; }
+  .cv-responsive-table :is(th,td) { display:table-cell !important; position:static !important; width:auto !important; height:auto !important; max-width:none !important; padding:8px 7px !important; clip-path:none !important; }
+  .cv-responsive-table td::before, .cv-select-heading::after { display:none !important; }
+}

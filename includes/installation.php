@@ -32,6 +32,9 @@ function installation_schema_issues(PDO $pdo, string $database): array
 
 function installation_error(Throwable $e): array
 {
+    if ($e instanceof DatabaseConfigurationException) {
+        return ['code' => $e->reason, 'error' => 'The database connection is unavailable. Please contact the administrator.'];
+    }
     if ($e->getMessage() === 'DB_TLS_REQUIRED') {
         return ['code'=>'DB_TLS_REQUIRED', 'error'=>'The secure database connection is not configured.',
             'fix'=>'Set COOPVOTE_DB_SSL_CA or db_ssl_ca in config/security-local.php to the database CA certificate. See SECURITY_DEPLOYMENT.txt.'];
@@ -48,7 +51,7 @@ function installation_error(Throwable $e): array
     }
     if ($e->getMessage() === 'SESSION_STORAGE_UNAVAILABLE') {
         return ['code'=>'SESSION_STORAGE_UNAVAILABLE', 'error'=>'The server cannot save your sign-in session.',
-            'fix'=>'Open setup.php and check Session storage. Allow PHP to write to its configured session folder or temporary directory.'];
+            'fix'=>'Check the hosting account disk quota, free space, and PHP session-folder permissions, then try again.'];
     }
     if (preg_match('/undefined function (mb_\w+|finfo_\w+|openssl_\w+)\(/i', $e->getMessage())) {
         return ['code'=>'PHP_EXTENSION_MISSING', 'error'=>'A required PHP extension is missing on this computer.',

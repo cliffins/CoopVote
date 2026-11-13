@@ -4,6 +4,7 @@
  * compromise of both the database and signing key. Never signs voter identity.
  */
 declare(strict_types=1);
+require_once __DIR__ . '/ballot-privacy.php';
 
 /** Runtime reads only; installation creates the key explicitly and never replaces it. */
 function integrity_key(): string
@@ -87,11 +88,18 @@ function integrity_record(PDO $pdo, int $eid, array $voteIds, array $state, stri
 /** Insert validated anonymous selections and their signatures within the ballot transaction. */
 function integrity_insert_selections(PDO $pdo, int $eid, array $selections, array $state): void
 {
-    $ins = $pdo->prepare('INSERT INTO votes (election_id, position_id, candidate_id, cast_date) VALUES (?,?,?,CURDATE())');
+    privacy_assert_vote_schema($pdo);
+    $ins = $pdo->prepare('INSERT INTO votes (vote_id, election_id, position_id, candidate_id, cast_date) VALUES (?,?,?,?,NULL)');
     $ids = [];
     foreach ($selections as $positionId => $candidateId) {
-        $ins->execute([$eid, $positionId, $candidateId]);
-        $ids[] = (int) $pdo->lastInsertId();
+        for ($attempt = 0; ; $attempt++) {
+            $id = privacy_vote_id();
+            try { $ins->execute([$id, $eid, $positionId, $candidateId]); break; }
+            catch (PDOException $error) {
+                if ((int)($error->errorInfo[1] ?? 0) !== 1062 || $attempt >= 4) throw $error;
+            }
+        }
+        $ids[] = $id;
     }
     integrity_record($pdo, $eid, $ids, $state);
 }

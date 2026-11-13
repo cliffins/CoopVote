@@ -12,7 +12,7 @@ function election_report_data(array $e): array
     // account changes must not rewrite a historical turnout percentage.
     $cast = vt_votes_cast($eid);
     $positions = [];
-    foreach (vt_grouped_positions($eid, true, true, true) as $p) {
+    foreach (vt_grouped_positions($eid, true, true, true, true) as $p) {
         $candidates = $p['candidates'];
         $top = $candidates ? max(array_column($candidates, 'votes')) : 0;
         $leaders = count(array_filter($candidates, static fn($c) => (int) $c['votes'] === (int) $top));
@@ -93,6 +93,15 @@ function election_reports_due(): void
 function election_report_view(array $report): array
 {
     unset($report['quorum']);
+    // Project through today's disclosure policy; never change signed historical bytes.
+    $allowed = privacy_visible_positions((int)$report['electionId']);
+    $q = db()->prepare('SELECT position_id,position_name FROM positions WHERE election_id=?');
+    $q->execute([(int)$report['electionId']]);
+    $positions = $q->fetchAll(); $nameCounts = array_count_values(array_column($positions, 'position_name'));
+    $names = []; foreach ($positions as $p) if (($nameCounts[$p['position_name']] ?? 0) === 1 && in_array((int)$p['position_id'], $allowed, true)) $names[] = $p['position_name'];
+    $report['positions'] = array_values(array_filter($report['positions'], static fn($p) => in_array($p['name'], $names, true)));
+    $report['integrity'] = ['status'=>$report['integrity']['status']];
+    $report['privacyNotice'] = privacy_message();
     $total = (int) $report['registeredVoters'];
     $report['participationRate'] = $total ? round((int) $report['ballotsCast'] / $total * 100, 2) : 0;
     return $report;
@@ -102,15 +111,16 @@ function election_report_view(array $report): array
 function election_report_download(array $report, string $format): never
 {
     $report = election_report_view($report);
-    $rows = [['Election', $report['title']], ['Election status', $report['electionStatus']],
+    $summaryRows = [['Election', $report['title']], ['Election status', $report['electionStatus']],
         ['Report generated at', $report['generatedAt']],
         ['Voting starts', $report['start']], ['Voting ends', $report['end']],
         ['Registered voters at report generation', $report['registeredVoters']], ['Ballots cast', $report['ballotsCast']],
         ['Participation rate (%)', $report['participationRate']],
         ['Integrity at report generation', $report['integrity']['status']],
-        ['Existing votes protected from migration baseline', $report['integrity']['baselineVotes']], [],
+        ['Privacy', $report['privacyNotice']]];
+    $rows = array_merge($summaryRows, [[],
         ['Candidate results'],
-        ['Position', 'Candidate', 'Votes', 'Result']];
+        ['Position', 'Candidate', 'Votes', 'Result']]);
     foreach ($report['positions'] as $p) foreach ($p['candidates'] as $c) $rows[] = [$p['name'], $c['name'], $c['votes'], $c['result']];
     if ($format === 'csv') {
         // A four-column document keeps summary cells and candidate totals aligned.
@@ -120,16 +130,45 @@ function election_report_download(array $report, string $format): never
     $escape = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');
-    echo '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
-    echo '<title>CoopVote Election Report</title><style>body{background:#fff;color:#142139;font:16px/1.5 Arial,sans-serif;max-width:960px;margin:32px auto;padding:0 20px}h1{font-family:Georgia,serif}table{border-collapse:collapse;width:100%}td{padding:9px;border-bottom:1px solid #d4dbe5;overflow-wrap:anywhere}tr:first-child{font-weight:bold}button{padding:10px 18px;background:#142139;color:#fff;border:0;cursor:pointer}button:focus-visible{outline:3px solid #b68a29} @media print{button{display:none}body{margin:0}} </style>';
+    echo <<<'HTML'
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CoopVote Election Report</title>
+<style>
+body{background:#fff;color:#142139;font:16px/1.5 Arial,sans-serif;max-width:960px;margin:32px auto;padding:0 20px}
+h1{font-family:Georgia,serif;line-height:1.2;overflow-wrap:anywhere}
+h2{font-size:1.25rem;margin:28px 0 12px}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+th,td{padding:10px 12px;border-bottom:1px solid #d4dbe5;text-align:left;vertical-align:top}
+.summary-table{margin-top:24px}
+.summary-table th{width:36%;font-weight:600}
+.summary-table th,.summary-table td,.results-table td{overflow-wrap:anywhere}
+.results-scroll{overflow-x:auto}
+.results-table{min-width:36rem}
+.results-table thead{background:#edf1f6}
+.results-table th{white-space:nowrap}
+.results-table .votes-column{width:5rem}
+.results-table .result-column{width:6rem}
+.results-table .votes,.results-table .result{white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.results-table .votes{text-align:right;font-variant-numeric:tabular-nums}
+button{padding:10px 18px;background:#142139;color:#fff;border:0;border-radius:4px;cursor:pointer;font:inherit}
+button:focus-visible,.results-scroll:focus-visible{outline:3px solid #b68a29;outline-offset:3px}
+@media(max-width:600px){body{margin:20px auto;padding:0 16px}h1{font-size:1.8rem}}
+@media print{button{display:none}body{margin:0;padding:0;font-size:10pt}.results-scroll{overflow:visible}.results-table{min-width:0}thead{display:table-header-group}tr{break-inside:avoid}h2{break-after:avoid}}
+</style></head><body>
+HTML;
     $label = $report['electionStatus'] === 'Closed' ? 'Saved election summary.' : 'Preview of an election still in progress; totals may change.';
     echo '<h1>' . $escape($report['title']) . '</h1><p>' . $label . ' Integrity status applies at generation time. Leading totals are not a certification of election winners.</p>';
-    echo '<button onclick="window.print()">Print / Save as PDF</button><table aria-label="Election report"><tbody>';
-    foreach ($rows as $row) {
-        echo '<tr>';
-        foreach ($row as $cell) echo '<td>' . $escape($cell) . '</td>';
-        echo '</tr>';
+    echo '<button type="button" onclick="window.print()">Print / Save as PDF</button><table class="summary-table" aria-label="Election summary"><tbody>';
+    foreach ($summaryRows as [$label, $value]) {
+        echo '<tr><th scope="row">' . $escape($label) . '</th><td>' . $escape($value) . '</td></tr>';
     }
-    echo '</tbody></table></html>';
+    echo '</tbody></table><h2 id="candidate-results-heading">Candidate results</h2>';
+    echo '<div class="results-scroll" role="region" aria-labelledby="candidate-results-heading" tabindex="0"><table class="results-table" aria-labelledby="candidate-results-heading">';
+    echo '<colgroup><col><col><col class="votes-column"><col class="result-column"></colgroup>';
+    echo '<thead><tr><th scope="col">Position</th><th scope="col">Candidate</th><th scope="col" class="votes">Votes</th><th scope="col" class="result">Result</th></tr></thead><tbody>';
+    foreach ($report['positions'] as $p) foreach ($p['candidates'] as $c) {
+        echo '<tr><td>' . $escape($p['name']) . '</td><td>' . $escape($c['name']) . '</td><td class="votes">' . $escape($c['votes']) . '</td><td class="result">' . $escape($c['result']) . '</td></tr>';
+    }
+    echo '</tbody></table></div></body></html>';
     exit;
 }

@@ -1,0 +1,53 @@
+/* Election Management layout. Candidate Management uses its original styles. */
+.election-management-page .content { gap:24px; }
+.election-management-page .election-scope { border-radius:14px; border:1px solid var(--border); border-left:3px solid var(--gold); padding:22px 24px; box-shadow:none; }
+.election-management-page .election-scope select { flex:1 1 300px; max-width:520px; min-height:46px; }
+.election-management-page .section-title,
+.election-management-page .card-title { font-family:inherit; font-size:1rem; font-weight:700; }
+.election-management-page .section-sub { margin-top:6px; }
+.election-management-page .ec,
+.election-management-page .positions-card,
+.election-management-page .elections-grid,
+.election-management-page .section-head { animation:none; }
+.election-management-page .ec { border-radius:14px; }
+.election-management-page .ec:hover { transform:none; box-shadow:none; }
+.election-management-page .ec-head { padding:24px; }
+.election-management-page .ec-head > div { width:100%; min-width:0; }
+.election-management-page .ec-title { font-family:inherit; font-size:1.35rem; line-height:1.4; margin:12px 0 8px; overflow-wrap:anywhere; }
+.election-status-guide { color:var(--muted2); font-size:.82rem; line-height:1.6; margin:0; }
+.election-schedule { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }
+.election-schedule > div { border:1px solid var(--border); border-radius:10px; padding:13px 15px; min-width:0; }
+.election-schedule span { display:block; color:var(--muted2); font-size:.73rem; margin-bottom:7px; }
+.election-schedule strong { display:block; font-size:.85rem; font-weight:600; line-height:1.5; overflow-wrap:anywhere; }
+.election-management-page .election-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; padding:22px 24px; }
+.election-management-page .election-metrics .ec-row { display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:9px; padding:0 16px; border:0; border-right:1px solid var(--border); }
+.election-management-page .election-metrics .ec-row:first-child { padding-left:0; }
+.election-management-page .election-metrics .ec-row:last-child { border-right:0; }
+.election-management-page .election-metrics .ec-label { font-size:.73rem; line-height:1.5; }
+.election-management-page .election-metrics .ec-val { font-family:inherit; font-size:1.25rem; text-align:left; line-height:1.4; }
+.election-management-page .election-metrics a small { display:block; font-size:.7rem; font-weight:500; margin-top:4px; }
+.election-management-page .election-metrics .ec-row:nth-child(5) { grid-column:1/-1; border-top:1px solid var(--border); padding:16px 0 0; margin-top:18px; flex-direction:row; align-items:center; justify-content:space-between; }
+.election-management-page .election-metrics .ec-row:nth-child(5) .ec-val { font-size:.85rem; }
+.election-management-page .ec-footer { display:flex; flex-wrap:wrap; padding:20px 24px; gap:10px; align-items:center; }
+.election-actions-label { flex-basis:100%; font-size:.72rem; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; margin-bottom:3px; }
+.election-management-page .ec-footer .btn { min-height:40px; padding:9px 14px !important; font-size:.8rem !important; flex:0 1 auto; width:auto; }
+.election-management-page .ec-footer .btn-red { margin-left:auto; }
+.election-management-page .election-delete-hint { flex-basis:100%; margin:2px 0 0; font-size:.74rem; }
+.election-management-page .positions-card { border-radius:14px; }
+.election-management-page .positions-card .card-head { padding:20px 24px; }
+.election-management-page .positions-card td { padding-top:18px; padding-bottom:18px; }
+.election-management-page .positions-card tbody tr:hover { background:rgba(128,140,155,.06); }
+@media (min-width:1100px) {
+ .election-overview:has(#hero-card:not([hidden])) .election-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 0; }
+ .election-overview:has(#hero-card:not([hidden])) .election-metrics .ec-row:nth-child(odd) { padding-left:0; }
+ .election-overview:has(#hero-card:not([hidden])) .election-metrics .ec-row:nth-child(even) { border-right:0; }
+}
+@media (max-width:600px) {
+ .election-management-page .election-scope { padding:18px; }
+ .election-management-page .ec-head, .election-management-page .ec-footer { padding:18px; }
+ .election-schedule { grid-template-columns:1fr; }
+ .election-management-page .election-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); padding:18px; gap:20px 0; }
+ .election-management-page .election-metrics .ec-row:nth-child(odd) { padding-left:0; }
+ .election-management-page .election-metrics .ec-row:nth-child(even) { border-right:0; }
+ .election-management-page .ec-footer .btn { flex:1 1 120px; }
+}

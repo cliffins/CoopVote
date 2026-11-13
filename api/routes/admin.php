@@ -2,7 +2,7 @@
 /**
  * CoopVote — back-office routes
  *   dashboard  voters  candidates  elections
- *   monitor    results reports     security  announcements
+ *   monitor    results reports     security
  *
  * Read and write access: admin. There are two roles on this system, and
  * the other one votes.
@@ -14,6 +14,8 @@ require_once __DIR__ . '/voter.php';   // reuse the tally/grouping helpers
 require_once __DIR__ . '/../../includes/election-operations.php';
 require_once __DIR__ . '/../../includes/security-alerts.php';
 require_once __DIR__ . '/../../includes/admin-candidates.php';
+require_once __DIR__ . '/../../includes/activity-log-filters.php';
+require_once __DIR__ . '/../../includes/database-backup.php';
 
 /** One scope for activity lists, exports and counters; appearance is not operational activity. */
 function admin_activity_scope(): string
@@ -48,10 +50,12 @@ function handle_admin(string $group, array $args): never
         'results'       => admin_results($args),
         'reports'       => admin_reports(),
         'security'      => admin_security($args),
-        'announcements' => admin_announcements($args),
         'settings'      => admin_settings(),
         default         => json_error('That page or action does not exist.', 404, ['code' => 'UNKNOWN_ROUTE', 'endpoint' => $group]),
     };
+
+    // Keep the never contract explicit for analyzers that cannot infer it from match arms.
+    throw new LogicException('An administrator route returned without sending a response.');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -61,8 +65,19 @@ function admin_dashboard(): never
 {
     require_method('GET');
     $pdo = db();
+    if (($_GET['view'] ?? '') === 'overview') {
+        require_once BASE_PATH . '/includes/admin-overview.php';
+        admin_account_overview($pdo);
+    }
 
-    $election    = vt_current_election();
+    $requested = admin_requested_election();
+    $elections = $pdo->query('SELECT * FROM elections ORDER BY start_datetime DESC, election_id DESC')->fetchAll();
+    $election = vt_current_election() ?: ($elections[0] ?? null);
+    if ($requested !== null) {
+        $election = null;
+        foreach ($elections as $row) if ((int)$row['election_id'] === $requested) { $election = $row; break; }
+        if (!$election) json_error('This election no longer exists. Select another election.', 404);
+    }
     $totalVoters = vt_total_voters();
 
     $totalCandidates = (int) $pdo->query('SELECT COUNT(*) FROM candidates')->fetchColumn();
@@ -77,20 +92,9 @@ function admin_dashboard(): never
     $votesCast     = (int) $pdo->query('SELECT COUNT(*) FROM ballots WHERE has_voted = 1')->fetchColumn();
     $activeVotes   = $election ? vt_votes_cast((int) $election['election_id']) : 0;
 
-    /* Votes per position for the bar chart. */
     $positionVotes = [];
-    if ($election) {
-        $s = $pdo->prepare(
-            'SELECT p.position_name AS label,
-                    (SELECT COUNT(*) FROM votes v WHERE v.position_id = p.position_id) AS votes
-               FROM positions p
-              WHERE p.election_id = ?
-              ORDER BY p.sort_order, p.position_id'
-        );
-        $s->execute([(int) $election['election_id']]);
-        foreach ($s->fetchAll() as $r) {
-            $positionVotes[] = ['label' => $r['label'], 'votes' => (int) $r['votes']];
-        }
+    if ($election) foreach (vt_grouped_positions((int)$election['election_id'], true, false, true) as $p) {
+        $positionVotes[] = ['label'=>$p['name'], 'votes'=>array_sum(array_column($p['candidates'],'votes'))];
     }
 
     /* Active election panel. */
@@ -108,26 +112,31 @@ function admin_dashboard(): never
         ];
     }
 
-    /* Who voted recently — names and times only, never their choices. */
-    $recentVoters = [];
+    $selectedElection = null;
     if ($election) {
-        $s = $pdo->prepare(
-            'SELECT m.full_name, m.member_no, b.voted_at
-               FROM ballots b
-               JOIN members m ON m.user_id = b.user_id
-              WHERE b.election_id = ? AND b.has_voted = 1
-              ORDER BY b.voted_at DESC LIMIT 6'
-        );
-        $s->execute([(int) $election['election_id']]);
-        foreach ($s->fetchAll() as $r) {
-            $recentVoters[] = [
-                'name'     => $r['full_name'],
-                'memberId' => $r['member_no'] ?? '—',
-                'time'     => fmt_relative($r['voted_at']),
-                'status'   => 'Voted',
-            ];
-        }
+        $eid = (int)$election['election_id'];
+        $counts = $pdo->prepare('SELECT COUNT(*) AS total, COALESCE(SUM(is_active=1),0) AS active FROM candidates WHERE election_id=?');
+        $counts->execute([$eid]);
+        $candidateCounts = $counts->fetch();
+        // Current active accounts are not a historical voter-roll snapshot.
+        $eligible = $pdo->prepare("SELECT COUNT(*) FROM ballots b JOIN users u ON u.user_id=b.user_id
+            JOIN roles r ON r.role_id=u.role_id
+            WHERE b.election_id=? AND b.has_voted=1 AND u.status='active' AND r.slug='voter'");
+        $eligible->execute([$eid]);
+        $activeVoted = (int)$eligible->fetchColumn();
+        $selectedElection = [
+            'id'=>$eid, 'title'=>$election['title'], 'status'=>election_status($election),
+            'startDate'=>fmt_datetime($election['start_datetime']), 'endDate'=>fmt_datetime($election['end_datetime']),
+            'positions'=>count(vt_positions($eid)), 'candidates'=>(int)$candidateCounts['total'],
+            'activeCandidates'=>(int)$candidateCounts['active'], 'ballotsSubmitted'=>$activeVotes,
+            'activeVoters'=>$totalVoters, 'activeVotersVoted'=>$activeVoted,
+            'activeVotersRemaining'=>max(0,$totalVoters-$activeVoted),
+            'published'=>!empty($election['results_released_at']),
+        ];
     }
+
+    // Live identity/time feeds can be correlated with polling or external observations.
+    $recentVoters = [];
 
     /* Show administrator actions, using the same actor scope as Security & Logs. */
     $recentActivity = [];
@@ -147,6 +156,8 @@ function admin_dashboard(): never
     }
 
     json_out([
+        'elections' => array_map(static fn($e) => ['id'=>(int)$e['election_id'], 'title'=>$e['title'], 'status'=>election_status($e)], $elections),
+        'selectedElection' => $selectedElection,
         'totalVoters'      => $totalVoters,
         'totalCandidates'  => $totalCandidates,
         'votesCast'        => $votesCast,
@@ -230,7 +241,7 @@ function admin_voters_list(): array
 {
     $rows = db()->query(
         "SELECT u.user_id, u.username, u.email, u.status, u.created_at,
-                m.member_id, m.member_no, m.full_name, m.contact_no, m.address,
+                m.member_id, m.member_no, m.full_name, m.address,
                 m.membership_status, m.registered_at, m.date_of_birth,
                 m.id_front_url, m.id_back_url, m.photo_url
            FROM users u
@@ -262,7 +273,6 @@ function admin_voters_list(): array
             'memberId'   => $r['member_no'] ?? '—',
             'username'   => $r['username'],
             'email'      => $r['email'],
-            'phone'      => $r['contact_no'] ?: '',
             'address'    => $r['address'] ?: '',
             /*
              * Voter management knows three states: Active, Suspended and
@@ -361,20 +371,19 @@ function admin_voters_save(int $userId): never
         $registration = admin_voter_registration_state();
         if (!$registration['allowed']) json_error($registration['reason'], 409, ['code' => 'VOTER_REGISTRATION_CLOSED']);
     }
+    $photo = candidate_photo_input();
     $first = input_str('first');
     $last  = input_str('last');
     $email = strtolower(input_str('email'));
-    $phone = input_str('phone');
     $addr  = input_str('address');
     $dob   = input_str('dob');
     $memberNo = input_str('memberId', input_str('memberNo'));
 
-    $errors = person_fields_errors($first, $last, $phone);
+    $errors = person_fields_errors($first, $last);
     if ($error = birth_date_error($dob)) $errors['dob'] = $error;
     if ($first === '') $errors['first'] = 'First name is required.';
     if ($last === '')  $errors['last']  = 'Last name is required.';
     if ($dob === '')   $errors['dob'] = 'Date of birth is required.';
-    if ($phone === '') $errors['phone'] = 'Phone number is required.';
     if ($addr === '')  $errors['address'] = 'Address is required.';
     if ($userId !== 0 && $memberNo === '') $errors['memberId'] = 'Member ID is required.';
     if (mb_strlen($memberNo, 'UTF-8') > 30) $errors['memberId'] = 'Use at most 30 characters for the member ID.';
@@ -439,14 +448,18 @@ function admin_voters_save(int $userId): never
 
             $pdo->prepare(
                 "INSERT INTO members
-                    (user_id, member_no, full_name, date_of_birth, contact_no, address,
+                    (user_id, member_no, full_name, date_of_birth, address,
                      membership_status, approved_by, approved_at)
-                 VALUES (?,?,?,?,?,?,'active',?,NOW())"
+                 VALUES (?,?,?,?,?,'active',?,NOW())"
             )->execute([
                 $userId, $memberNo, $full,
                 $dob !== '' ? $dob : null,
-                $phone ?: null, $addr ?: null, (int) $me['user_id'],
+                $addr ?: null, (int) $me['user_id'],
             ]);
+            if ($photo !== null) {
+                store_member_profile_photo($pdo,(int)$pdo->lastInsertId(),$userId,$photo['bytes'],$photo['mime']);
+                record_admin_profile_update($pdo,(int)$me['user_id'],$userId,true);
+            }
 
             $pdo->commit();
         } catch (Throwable $e) {
@@ -487,8 +500,10 @@ function admin_voters_save(int $userId): never
     try {
         $pdo->prepare('UPDATE users SET email = ? WHERE user_id = ?')->execute([$email, $userId]);
         $pdo->prepare(
-            'UPDATE members SET full_name = ?, contact_no = ?, address = ?, date_of_birth = ?, member_no = ? WHERE user_id = ?'
-        )->execute([$full, $phone, $addr, $dob, $memberNo, $userId]);
+            'UPDATE members SET full_name = ?, address = ?, date_of_birth = ?, member_no = ? WHERE user_id = ?'
+        )->execute([$full, $addr, $dob, $memberNo, $userId]);
+        if ($photo !== null) store_member_profile_photo($pdo,(int)$before['member_id'],$userId,$photo['bytes'],$photo['mime']);
+        record_admin_profile_update($pdo,(int)$me['user_id'],$userId);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -499,8 +514,8 @@ function admin_voters_save(int $userId): never
     }
 
     audit((int) $me['user_id'], 'member.updated', 'user', $userId, 'Updated member ' . audit_subject('user', $userId)
-        . audit_changed_fields($before, ['full_name'=>$full,'email'=>$email,'contact_no'=>$phone,'address'=>$addr,'date_of_birth'=>$dob,'member_no'=>$memberNo],
-            ['full_name'=>'name','email'=>'email','contact_no'=>'phone','address'=>'address','date_of_birth'=>'date of birth','member_no'=>'member ID']));
+        . audit_changed_fields($before, ['full_name'=>$full,'email'=>$email,'address'=>$addr,'date_of_birth'=>$dob,'member_no'=>$memberNo],
+            ['full_name'=>'name','email'=>'email','address'=>'address','date_of_birth'=>'date of birth','member_no'=>'member ID']));
     json_out(['ok' => true, 'id' => $userId]);
 }
 
@@ -583,38 +598,16 @@ function admin_voters_delete(int $userId): never
     $s->execute([$userId]);
     $hasVoted = (int) $s->fetchColumn() > 0;
 
-    $s = db()->prepare(
-        'SELECT COUNT(*) AS candidacies,
-                COALESCE((SELECT COUNT(*) FROM votes v
-                            JOIN candidates c2 ON c2.candidate_id = v.candidate_id
-                            JOIN members m2 ON m2.member_id = c2.member_id
-                           WHERE m2.user_id = ?), 0) AS votes_received
-           FROM candidates c
-           JOIN members m ON m.member_id = c.member_id
-          WHERE m.user_id = ?'
-    );
-    $s->execute([$userId, $userId]);
-    $standing = $s->fetch() ?: ['candidacies' => 0, 'votes_received' => 0];
-
-    $candidacies    = (int) $standing['candidacies'];
-    $votesReceived  = (int) $standing['votes_received'];
+    $s = db()->prepare('SELECT COUNT(*) FROM candidates c JOIN members m ON m.member_id=c.member_id WHERE m.user_id=?');
+    $s->execute([$userId]);
+    $candidacies = (int)$s->fetchColumn();
 
     if ($hasVoted || $candidacies > 0) {
         db()->prepare("UPDATE users SET status = 'deactivated' WHERE user_id = ?")->execute([$userId]);
         db()->prepare("UPDATE members SET membership_status = 'inactive' WHERE user_id = ?")->execute([$userId]);
 
-        $why = match (true) {
-            $votesReceived > 0 => "This member is a candidate holding {$votesReceived} vote(s), so the account was "
-                                . 'deactivated instead of deleted. Deleting it would have erased those votes and changed the result.',
-            $candidacies > 0   => 'This member is standing as a candidate, so the account was deactivated instead of '
-                                . 'deleted. Withdraw them in Candidate Management first if you really want them removed.',
-            default            => 'This member has already voted, so the account was deactivated instead of deleted to '
-                                . 'keep the audit trail intact.',
-        };
-
-        audit((int) $me['user_id'], 'user.status_changed', 'user', $userId,
-            'Deactivated member ' . $subject . ' (voted=' . ($hasVoted ? 'yes' : 'no')
-            . ', candidacies=' . $candidacies . ', votes received=' . $votesReceived . ')');
+        $why = 'Account deactivated to preserve participation and candidate records.';
+        audit((int)$me['user_id'], 'member.deactivated', 'user', $userId, 'Deactivated '.$subject.'; election records preserved');
 
         json_out(['ok' => true, 'deactivated' => true, 'message' => $why]);
     }
@@ -632,14 +625,14 @@ function admin_voters_export(): never
         VOTER_IMPORT_HEADERS,
         array_map(static fn($v) => [
             $v['memberId'], $v['first'], $v['last'], $v['email'],
-            $v['phone'], $v['address'], $v['dobInput'], $v['username'],
+            $v['address'], $v['dobInput'], $v['username'],
         ], admin_voters_list())
     );
 }
 
 /* ═══════════════════════════════════════════════════════════
    elections — GET | POST | PUT {id} | DELETE {id}
-               PATCH {id}/activate|close|reopen|release|unpublish|cancel
+               PATCH {id}/activate|close|reopen|release|unpublish (cancel retired: 410)
    ═══════════════════════════════════════════════════════════ */
 function admin_elections(array $args): never
 {
@@ -700,8 +693,8 @@ function admin_elections_save(int $electionId): never
                 json_error($message, 422, ['fields' => ['positions' => $message]]);
             }
             $name = preg_replace('/\s+/u', ' ', trim_form_text($name));
-            if (mb_strlen($name, 'UTF-8') > 100) {
-                json_error('Use at most 100 characters for each position name.', 422);
+            if ($error = position_name_error($name)) {
+                json_error($error, 422, ['fields' => ['positions' => $error]]);
             }
             $key = mb_strtolower($name, 'UTF-8');
             if (isset($seen[$key])) json_error('Select each position only once.', 422);
@@ -734,18 +727,37 @@ function admin_elections_save(int $electionId): never
     }
 
     $changes = '';
-    $error = db_transaction(static function (PDO $pdo) use ($electionId, $title, $desc, $startSql, $endSql, &$changes): ?array {
+    $rescheduled = false;
+    $error = db_transaction(static function (PDO $pdo) use ($electionId, $title, $desc, $startSql, $endSql, $me, &$changes, &$rescheduled): ?array {
         $existing = $pdo->prepare('SELECT * FROM elections WHERE election_id = ? FOR UPDATE');
         $existing->execute([$electionId]);
         $current = $existing->fetch();
         if (!$current) return ['That election no longer exists. Reload the election list.', 404];
+        if (election_status($current) === 'Active') return ['Election details are locked while voting is live.', 409];
+        if ($current['status'] === 'cancelled') return ['A cancelled election is retained as a record and cannot be edited.', 409];
+        // The browser edits minutes; preserve original seconds when unchanged.
+        if (substr($startSql, 0, 16) === substr($current['start_datetime'], 0, 16)) $startSql = $current['start_datetime'];
+        if (substr($endSql, 0, 16) === substr($current['end_datetime'], 0, 16)) $endSql = $current['end_datetime'];
+        $rescheduled = $startSql !== $current['start_datetime'] || $endSql !== $current['end_datetime'];
+        if ($rescheduled) {
+            if ($error = election_preopening_error($pdo, $current)) return [$error, 409];
+            if (strtotime($startSql) <= time()) return ['The rescheduled start date and time must be in the future.', 422];
+        }
         $locked = $pdo->prepare('SELECT election_id FROM election_reports WHERE election_id = ? AND superseded_at IS NULL');
         $locked->execute([$electionId]);
         if ($locked->fetchColumn() || election_status($current) === 'Closed') {
-            return ['This election has closed. Use Reopen Election with a new deadline before editing it.', 409];
+            return ['This election has closed. Election details are locked to preserve its record.', 409];
         }
         $pdo->prepare('UPDATE elections SET title = ?, description = ?, start_datetime = ?, end_datetime = ? WHERE election_id = ?')
             ->execute([$title, $desc ?: null, $startSql, $endSql, $electionId]);
+        if ($rescheduled) {
+            // Upcoming legacy elections must not auto-open on an unreviewed schedule.
+            $pdo->prepare("UPDATE elections SET status='draft' WHERE election_id=?")->execute([$electionId]);
+            $pdo->prepare("UPDATE election_approval_requests SET state='superseded' WHERE election_id=? AND state='pending'")->execute([$electionId]);
+            $pdo->prepare('INSERT INTO audit_logs (user_id,action,entity_type,entity_id,description,ip_address,user_agent) VALUES (?,?,?,?,?,?,?)')
+                ->execute([(int)$me['user_id'], 'election.rescheduled', 'election', $electionId,
+                    'Start: '.$current['start_datetime'].' -> '.$startSql.'. End: '.$current['end_datetime'].' -> '.$endSql.'. Fresh approval required.', client_ip(), user_agent()]);
+        }
         $changes = audit_changed_fields($current,
             ['title'=>$title,'description'=>$desc,'start_datetime'=>$startSql,'end_datetime'=>$endSql],
             ['title'=>'title','description'=>'description','start_datetime'=>'start date','end_datetime'=>'end date']);
@@ -753,8 +765,8 @@ function admin_elections_save(int $electionId): never
     });
     if ($error) json_error($error[0], $error[1]);
 
-    audit((int) $me['user_id'], 'election.updated', 'election', $electionId, 'Updated election "' . $title . '"' . $changes);
-    json_out(['ok' => true, 'id' => $electionId]);
+    if (!$rescheduled) audit((int) $me['user_id'], 'election.updated', 'election', $electionId, 'Updated election "'.$title.'"'.$changes);
+    json_out(['ok' => true, 'id' => $electionId, 'rescheduled' => $rescheduled]);
 }
 
 
@@ -781,7 +793,7 @@ function admin_elections_action(int $electionId, string $action): never
                 $current = $s->fetch();
                 if (!$current) return ['error' => 'That election no longer exists.', 'code' => 'NOT_FOUND'];
                 $state = election_status($current);
-                if ($state === 'Upcoming') return ['error' => 'This election has not started yet. Cancel it instead, or edit its dates.', 'code' => 'NOT_STARTED'];
+                if ($state === 'Upcoming') return ['error' => 'This election has not started yet. Use Reschedule to change its dates.', 'code' => 'NOT_STARTED'];
                 if ($state !== 'Active') return ['ok' => true, 'status' => $state, 'alreadyClosed' => true];
                 // Closing in the same second as opening must still satisfy end > start.
                 $pdo->prepare('UPDATE elections SET start_datetime = LEAST(start_datetime, DATE_SUB(NOW(), INTERVAL 1 SECOND)), end_datetime = NOW() WHERE election_id = ?')->execute([$electionId]);
@@ -803,6 +815,7 @@ function admin_elections_action(int $electionId, string $action): never
                 if (!$current || $current['status'] !== 'published' || election_status($current) !== 'Closed') {
                     return ['error' => 'Close the voting period first before publishing results.', 'code' => 'STILL_OPEN'];
                 }
+                if (vt_votes_cast($electionId) < PRIVACY_MIN_PARTICIPANTS) return ['error'=>'Results require at least five participants under the approved privacy policy.', 'code'=>'PRIVACY_SMALL_GROUP'];
                 if (integrity_verify($electionId)['status'] !== 'passed') {
                     return ['error' => 'Vote integrity must pass before publishing. Open Reports to review the integrity status.', 'code' => 'INTEGRITY_CHECK_FAILED'];
                 }
@@ -842,11 +855,7 @@ function admin_elections_action(int $electionId, string $action): never
             json_out(['ok' => true, 'published' => false]);
 
         case 'cancel':
-            db()->prepare("UPDATE elections SET status = 'cancelled' WHERE election_id = ?")
-                ->execute([$electionId]);
-            audit((int) $me['user_id'], 'election.cancelled', 'election', $electionId,
-                'Cancelled election "' . $e['title'] . '"');
-            json_out(['ok' => true, 'status' => 'Cancelled']);
+            json_error('Election cancellation is no longer available.', 410, ['code' => 'CANCELLATION_REMOVED']);
 
         default:
             json_error('Unknown election action: ' . $action, 404);
@@ -856,16 +865,21 @@ function admin_elections_action(int $electionId, string $action): never
 function admin_elections_delete(int $electionId): never
 {
     $me = current_user();
-    $subject = audit_subject('election', $electionId);
+    $error = db_transaction(static function (PDO $pdo) use ($electionId, $me): ?string {
+        $lock = $pdo->prepare('SELECT * FROM elections WHERE election_id=? FOR UPDATE');
+        $lock->execute([$electionId]);
+        $election = $lock->fetch();
+        if (!$election) return 'This election no longer exists.';
+        if ($blocked = election_deletion_error($pdo, $election)) return $blocked;
+        $pdo->prepare('DELETE FROM elections WHERE election_id=?')->execute([$electionId]);
+        // A successful deletion must always have its audit event; failure rolls back both.
+        $pdo->prepare('INSERT INTO audit_logs (user_id,action,entity_type,entity_id,description,ip_address,user_agent) VALUES (?,?,?,?,?,?,?)')
+            ->execute([(int)$me['user_id'], 'election.deleted', 'election', $electionId,
+                mb_strcut('Deleted unopened election "'.$election['title'].'".', 0, 255, 'UTF-8'), client_ip(), user_agent()]);
+        return null;
+    });
+    if ($error) json_error($error, 409);
 
-    $s = db()->prepare('SELECT COUNT(*) FROM votes WHERE election_id = ?');
-    $s->execute([$electionId]);
-    if ((int) $s->fetchColumn() > 0) {
-        json_error('This election already has votes and cannot be deleted. Cancel it instead.', 409);
-    }
-
-    db()->prepare('DELETE FROM elections WHERE election_id = ?')->execute([$electionId]);
-    audit((int) $me['user_id'], 'election.deleted', 'election', $electionId, 'Deleted election ' . $subject);
     json_out(['ok' => true, 'deleted' => true]);
 }
 
@@ -908,9 +922,7 @@ function admin_positions(array $args): never
         $desc       = input_str('description');
 
         if (!$electionId) json_error('Please choose an election.', 422);
-        if ($name === '') json_error('Please enter a position name.', 422, ['fields' => ['name' => 'Required.']]);
-        if (mb_strlen($name, 'UTF-8') > 100) json_error('Use at most 100 characters for the position name.', 422,
-            ['fields' => ['name' => 'Too long.']]);
+        if ($error = position_name_error($name)) json_error($error, 422, ['fields' => ['name' => $error]]);
 
         $order = (int) db()->query(
             "SELECT COALESCE(MAX(sort_order),0)+1 FROM positions WHERE election_id = $electionId"
@@ -946,6 +958,7 @@ function admin_positions(array $args): never
             $election->execute([$eid]);
             $row = $election->fetch();
             if (!$row) return ['This election no longer exists.', 404];
+            if (vt_votes_cast($eid) > 0) return ['Positions cannot be removed after participation has been recorded.',409];
             if (election_status($row) === 'Closed') return ['Reopen the election before deleting a position.', 409];
             $positions = $pdo->prepare('SELECT position_id FROM positions WHERE election_id = ? FOR UPDATE');
             $positions->execute([$eid]);
@@ -976,66 +989,56 @@ function admin_monitor(): never
 {
     require_method('GET');
 
+    // Explicit owner-approved exception: live totals are restricted to admin monitoring.
+    require_admin();
+    $requested = admin_requested_election();
+    $published = vt_published_elections();
     $election = vt_current_election();
+    if ($requested !== null) {
+        $election = null;
+        foreach ($published as $row) {
+            if ((int) $row['election_id'] === $requested) { $election = $row; break; }
+        }
+        if (!$election) json_error('This published election is unavailable. Select another election.', 404);
+    }
+    $options = array_map(static fn($row) => [
+        'id' => (int) $row['election_id'], 'title' => $row['title'], 'status' => election_status($row),
+    ], $published);
+    $selectedId = $election ? (int) $election['election_id'] : null;
     if (!$election || !is_election_live($election)) {
-        json_out(['election' => null, 'positionBreakdown' => [], 'recentVotes' => [], 'activityFeed' => []]);
+        json_out(['election' => null, 'elections' => $options, 'selectedElectionId' => $selectedId, 'candidateTally' => []]);
     }
 
-    $eid         = (int) $election['election_id'];
+    $eid = (int) $election['election_id'];
     $totalVoters = vt_total_voters();
-    $votesCast   = vt_votes_cast($eid);
-
-    $positionBreakdown = [];
-    foreach (vt_positions($eid) as $p) {
-        $s = db()->prepare('SELECT COUNT(*) FROM votes WHERE position_id = ?');
-        $s->execute([(int) $p['position_id']]);
-        $positionBreakdown[] = [
-            'name'        => $p['position_name'],
-            'votesCast'   => (int) $s->fetchColumn(),
-            'totalVoters' => $totalVoters,
-        ];
-    }
-
-    /*
-     * Recent ballots: who voted and when. The position column deliberately
-     * reads "Complete ballot" — linking a member to their choices would
-     * break ballot secrecy, and `votes` stores no user_id to allow it.
-     */
-    $s = db()->prepare(
-        'SELECT b.ballot_id, b.voted_at, m.full_name, m.member_no
-           FROM ballots b JOIN members m ON m.user_id = b.user_id
-          WHERE b.election_id = ? AND b.has_voted = 1
-          ORDER BY b.voted_at DESC LIMIT 12'
+    $votesCast = vt_votes_cast($eid);
+    // Count selections only within this election and position. Include zero-vote
+    // and inactive candidates so already-cast selections remain visible.
+    $query = db()->prepare(
+        'SELECT c.candidate_id, c.position_id, m.full_name, c.is_active, COALESCE(t.total, 0) AS votes
+           FROM candidates c
+           JOIN members m ON m.member_id = c.member_id
+           JOIN positions p ON p.position_id = c.position_id AND p.election_id = c.election_id
+           LEFT JOIN (
+               SELECT candidate_id, position_id, COUNT(*) AS total
+                 FROM votes WHERE election_id = ? GROUP BY candidate_id, position_id
+           ) t ON t.candidate_id = c.candidate_id AND t.position_id = c.position_id
+          WHERE c.election_id = ?
+          ORDER BY p.sort_order, p.position_id, c.sort_order, c.candidate_id'
     );
-    $s->execute([$eid]);
-
-    $recentVotes = [];
-    foreach ($s->fetchAll() as $r) {
-        $recentVotes[] = [
-            'id'       => (int) $r['ballot_id'],
-            'name'     => $r['full_name'],
-            'memberId' => $r['member_no'] ?? '—',
-            'position' => 'Complete ballot',
-            'time'     => fmt_relative($r['voted_at']),
-            'status'   => 'Verified',
+    $query->execute([$eid, $eid]);
+    $grouped = [];
+    foreach ($query->fetchAll() as $row) {
+        $grouped[(int) $row['position_id']][] = [
+            'id' => (int) $row['candidate_id'], 'name' => $row['full_name'],
+            'votes' => (int) $row['votes'], 'status' => (int) $row['is_active'] === 1 ? 'Active' : 'Inactive',
         ];
     }
-
-    $activityFeed = [];
-    foreach (db()->query(
-        "SELECT a.action, a.description, a.timestamp
-           FROM audit_logs a
-           JOIN users u ON u.user_id = a.user_id
-           JOIN roles r ON r.role_id = u.role_id
-          WHERE " . admin_activity_scope() . "
-          ORDER BY a.log_id DESC LIMIT 10"
-    )->fetchAll() as $r) {
-        $activityFeed[] = [
-            'type'  => audit_type($r['action']),
-            'title' => audit_event_text($r),
-            'time'  => fmt_relative($r['timestamp']),
-        ];
-    }
+    $positions = vt_positions($eid);
+    $tally = array_map(static fn($position) => [
+        'id' => (int) $position['position_id'], 'name' => $position['position_name'],
+        'candidates' => $grouped[(int) $position['position_id']] ?? [],
+    ], $positions);
 
     json_out([
         'election' => [
@@ -1046,11 +1049,11 @@ function admin_monitor(): never
             'endDateISO'  => fmt_iso($election['end_datetime']),
             'totalVoters' => $totalVoters,
             'votesCast'   => $votesCast,
-            'positions'   => count($positionBreakdown),
+            'positions'   => count($positions),
         ],
-        'positionBreakdown' => $positionBreakdown,
-        'recentVotes'       => $recentVotes,
-        'activityFeed'      => $activityFeed,
+        'elections' => $options,
+        'selectedElectionId' => $selectedId,
+        'candidateTally' => $tally,
     ]);
 }
 
@@ -1069,7 +1072,7 @@ function admin_results(array $args): never
     $rows = db()->query(
         'SELECT e.* FROM elections e
           ORDER BY (e.results_released_at IS NULL),
-                   ((SELECT COUNT(*) FROM votes v WHERE v.election_id = e.election_id) = 0),
+                   ((SELECT COUNT(*) FROM ballots b WHERE b.election_id = e.election_id AND b.has_voted=1) = 0),
                    e.start_datetime DESC'
     )->fetchAll();
 
@@ -1082,7 +1085,7 @@ function admin_results(array $args): never
         $elections[] = [
             'id'          => $eid,
             'title'       => $e['title'],
-            /* Officers see live tallies; the UI marks them Final once released. */
+            /* The Results page retains final-release disclosure rules; admin monitoring is separate. */
             'status'      => !empty($e['results_released_at']) ? 'Final' : ($status === 'Active' ? 'Live' : $status),
             'published'   => !empty($e['results_released_at']),
             'totalVoters' => vt_total_voters(),
@@ -1090,6 +1093,7 @@ function admin_results(array $args): never
             'startDate'   => fmt_date($e['start_datetime']),
             'endDate'     => fmt_date($e['end_datetime']),
             'positions'   => vt_grouped_positions($eid, true, true, true),
+            'privacyNotice' => privacy_message(),
         ];
     }
 
@@ -1105,6 +1109,7 @@ function admin_results_export(): never
         $eid = $e ? (int) $e['election_id'] : 0;
     }
     if (!$eid) json_error('No election to export.', 404);
+    if (!privacy_results_available($eid)) json_error(privacy_message(), 409, ['code'=>'RESULTS_PRIVATE']);
 
     $rows = [];
     foreach (vt_grouped_positions($eid, true, true, true) as $pos) {
@@ -1202,6 +1207,9 @@ function admin_reports(): never
             'status'            => election_status($e),
             'positionBreakdown' => $positionBreakdown,
             'candidateResults'  => $candidateResults,
+            'privacyNotice' => privacy_message(),
+            'canPrint' => privacy_results_available($eid),
+            'resultsReleased' => !empty($e['results_released_at']),
         ],
     ]);
 }
@@ -1214,31 +1222,36 @@ function admin_security(array $args): never
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     $first  = $args[0] ?? '';
 
+    if ($first === 'backup') admin_database_backup();
     if ($first === 'review-alert') security_review_alert();
 
     if ($first === 'block-ip') {
+        require_method('POST','DELETE');
         require_writer();
+        require_json_request();
         $me = current_user();
-        $ip = input_str('ip');
-        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+        $ip = normalized_ip(input_str('ip'));
+        if ($ip === null) {
             json_error('Please supply a valid IP address.', 422);
         }
 
         if ($method === 'DELETE') {
-            db()->prepare('DELETE FROM blocked_ips WHERE ip_address = ?')->execute([$ip]);
+            db()->prepare('DELETE FROM blocked_ips WHERE ip_address = ? OR INET6_ATON(ip_address) = INET6_ATON(?)')->execute([$ip,$ip]);
             audit((int) $me['user_id'], 'security.ip_unblocked', 'ip', null, 'Unblocked ' . $ip);
             json_out(['ok' => true, 'blocked' => false]);
         }
 
         require_method('POST');
-        if ($ip === client_ip()) {
+        if ($ip === normalized_ip(client_ip())) {
             json_error('That is your own address — blocking it would lock you out.', 409);
         }
 
+        $reason=input_str('reason') ?: 'Blocked by administrator';
+        if (mb_strlen($reason)>255) json_error('Keep the reason within 255 characters.',422);
         db()->prepare(
             'INSERT INTO blocked_ips (ip_address, reason, blocked_by) VALUES (?,?,?)
              ON DUPLICATE KEY UPDATE reason = VALUES(reason), blocked_by = VALUES(blocked_by)'
-        )->execute([$ip, input_str('reason') ?: 'Blocked by administrator', (int) $me['user_id']]);
+        )->execute([$ip, $reason, (int) $me['user_id']]);
 
         audit((int) $me['user_id'], 'security.ip_blocked', 'ip', null, 'Blocked ' . $ip);
         json_out(['ok' => true, 'blocked' => true], 201);
@@ -1246,15 +1259,17 @@ function admin_security(array $args): never
 
     if ($first === 'logs' && ($args[1] ?? '') === 'export') {
         require_method('GET');
-        $rows = [];
-        foreach (security_logs(500) as $l) {
-            $rows[] = [$l['time'], $l['type'], $l['event'], $l['ip'], $l['flagged'] ? 'FLAGGED' : ''];
-        }
-        csv_out('coopvote-security-logs.csv', ['Time', 'Type', 'Event', 'IP Address', 'Flag'], $rows);
+        activity_log_export(activity_log_filters());
     }
 
     require_method('GET');
+    $activity = activity_log_page(activity_log_filters());
     $pdo = db();
+    $lastBackup = $pdo->query("SELECT a.timestamp AS preparedAt,
+        COALESCE(NULLIF(p.display_name,''),u.username) AS actor
+        FROM audit_logs a JOIN users u ON u.user_id=a.user_id
+        LEFT JOIN admin_profiles p ON p.user_id=u.user_id
+        WHERE a.action='security.database_backup' ORDER BY a.log_id DESC LIMIT 1")->fetch() ?: null;
 
     $votesVerified = (int) $pdo->query('SELECT COUNT(*) FROM ballots WHERE has_voted = 1')->fetchColumn();
     $blockedIPs    = (int) $pdo->query('SELECT COUNT(*) FROM blocked_ips')->fetchColumn();
@@ -1336,7 +1351,12 @@ function admin_security(array $args): never
             'failedLogins'   => $failedLogins,
             'blockedIPs'     => $blockedIPs,
         ],
-        'logs' => security_logs(120),
+        'logs' => $activity['logs'],
+        'logPagination' => $activity['logPagination'],
+        'logOptions' => $activity['logOptions'],
+        'lastBackup' => $lastBackup,
+        'currentIP' => normalized_ip(client_ip()),
+        'blockedAddresses' => $pdo->query('SELECT ip_address AS ip,reason,created_at AS blockedAt FROM blocked_ips ORDER BY created_at DESC,block_id DESC')->fetchAll(),
     ]);
 }
 
@@ -1365,88 +1385,7 @@ function admin_security(array $args): never
  */
 function security_logs(int $limit = 120): array
 {
-    $s = db()->prepare(
-        "SELECT a.action, a.description, a.ip_address, a.user_agent, a.timestamp,
-                u.username, m.full_name, r.role_name, r.slug AS role_slug
-           FROM audit_logs a
-           JOIN users u ON u.user_id = a.user_id
-           JOIN roles r ON r.role_id = u.role_id
-           LEFT JOIN members m ON m.user_id = a.user_id
-          WHERE " . admin_activity_scope() . "
-          ORDER BY a.log_id DESC
-          LIMIT ?"
-    );
-
-    $s->bindValue(1, $limit, PDO::PARAM_INT);
-    $s->execute();
-
-    $out = [];
-    foreach ($s->fetchAll() as $r) {
-        $flagged = in_array($r['action'], [
-            'auth.login_failed', 'auth.password_change_failed', 'security.ip_blocked',
-        ], true);
-
-        /* Who did it. An administrator reading an audit trail needs this
-           more than anything else on the row, and it was not there. */
-        $who = $r['full_name'] ?: $r['username'];
-
-        $out[] = [
-            'type'    => audit_type($r['action']),
-            'event'   => audit_event_text($r),
-            'time'    => fmt_datetime($r['timestamp']),
-            'ip'      => $r['ip_address'] ?: '—',
-            'userAgent' => trim((string) ($r['user_agent'] ?? '')),
-            'actor'   => $who ?: 'Not signed in',
-            'role'    => $r['role_name'] ?: '—',
-            'flagged' => $flagged,
-        ];
-    }
-    return $out;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   announcements — GET | POST | DELETE {id}
-   ═══════════════════════════════════════════════════════════ */
-function admin_announcements(array $args): never
-{
-    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-
-    if ($method === 'GET') {
-        json_out(db()->query(
-            'SELECT announcement_id AS id, title, message, is_active AS active, created_at
-               FROM announcements ORDER BY created_at DESC'
-        )->fetchAll());
-    }
-
-    require_writer();
-    $me = current_user();
-
-    if ($method === 'POST') {
-        $title   = input_str('title');
-        $message = input_str('message');
-        if ($title === '' || $message === '') {
-            json_error('A title and message are both required.', 422);
-        }
-
-        /* One active notice at a time keeps the dashboard banner predictable. */
-        db()->query('UPDATE announcements SET is_active = 0');
-        db()->prepare(
-            'INSERT INTO announcements (title, message, is_active, created_by) VALUES (?,?,1,?)'
-        )->execute([$title, $message, (int) $me['user_id']]);
-
-        $id = (int) db()->lastInsertId();
-        audit((int) $me['user_id'], 'announcement.created', 'announcement', $id, 'Posted notice "' . $title . '"');
-        json_out(['ok' => true, 'id' => $id], 201);
-    }
-
-    if ($method === 'DELETE' && ($id = (int) ($args[0] ?? 0))) {
-        $subject = audit_subject('announcement', $id);
-        db()->prepare('DELETE FROM announcements WHERE announcement_id = ?')->execute([$id]);
-        audit((int) $me['user_id'], 'announcement.deleted', 'announcement', $id, 'Removed notice ' . $subject);
-        json_out(['ok' => true, 'deleted' => true]);
-    }
-
-    json_error('Unsupported announcements request.', 405);
+    return array_map('activity_log_row', activity_log_query([], $limit)->fetchAll());
 }
 
 /* ═══════════════════════════════════════════════════════════

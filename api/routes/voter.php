@@ -10,7 +10,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/validation.php';
 require_once __DIR__ . '/../../includes/profile-photo.php';
+require_once __DIR__ . '/../../includes/candidate-photo.php';
+require_once __DIR__ . '/../../includes/candidate-display.php';
 require_once __DIR__ . '/../../includes/vote-integrity.php';
+require_once __DIR__ . '/../../includes/ballot-privacy.php';
 
 function handle_voter(array $args): never
 {
@@ -27,6 +30,7 @@ function handle_voter(array $args): never
         'receipts'        => voter_route_receipts(),
         'profile'         => voter_route_profile(),
         'profile-photo'   => voter_route_profile_photo(array_slice($args, 1)),
+        'candidate-photo' => voter_stream_candidate_photo((int) ($args[1] ?? 0)),
         'change-password' => voter_route_change_password(),
         default           => json_error('That page or action does not exist.', 404, ['code' => 'UNKNOWN_ROUTE', 'endpoint' => $action]),
     };
@@ -171,16 +175,17 @@ function vt_contested_count(int $electionId): int
  * Candidates of an election joined with their member record.
  * `$withVotes` adds a tally column — only use it once results may be shown.
  */
-function vt_candidates(int $electionId, bool $withVotes = false): array
+function vt_candidates(int $electionId, bool $withVotes = false, bool $internalSnapshot = false): array
 {
+    $visible = $withVotes && !$internalSnapshot ? privacy_visible_positions($electionId) : [];
     $votes = $withVotes
         ? '(SELECT COUNT(*) FROM votes v WHERE v.candidate_id = c.candidate_id)'
         : '0';
 
     $s = db()->prepare(
         "SELECT c.candidate_id, c.member_id, c.position_id, c.platform, c.bio,
-                c.photo_url, c.sort_order, c.is_active,
-                m.full_name, m.member_no, m.occupation, m.years_in_coop, m.date_of_birth,
+                c.photo_url, c.sort_order, c.is_active, c.section, c.year_level, c.department, c.course,
+                m.full_name, m.member_no, m.occupation, m.years_in_coop,
                 m.photo_url AS member_photo,
                 p.position_name, p.sort_order AS position_order,
                 $votes AS vote_count
@@ -191,7 +196,11 @@ function vt_candidates(int $electionId, bool $withVotes = false): array
           ORDER BY p.sort_order, p.position_id, c.sort_order, c.candidate_id"
     );
     $s->execute([$electionId]);
-    return $s->fetchAll();
+    $rows = $s->fetchAll();
+    if ($withVotes && !$internalSnapshot) foreach ($rows as &$row) {
+        if (!in_array((int)$row['position_id'], $visible, true)) $row['vote_count'] = null;
+    }
+    return $rows;
 }
 
 /** Shape one candidate row the way the UI expects. */
@@ -204,16 +213,19 @@ function vt_candidate_dto(array $c, bool $withVotes = false): array
         'last'        => $n['last'],
         'name'        => $c['full_name'],
         'position'    => $c['position_name'],
-        'age'         => age_from_dob($c['date_of_birth'] ?? null),
+        'section'     => candidate_show_year_section() ? ($c['section'] ?? '') : '',
+        'year'        => candidate_show_year_section() ? ($c['year_level'] ?? '') : '',
+        'department'  => $c['department'] ?? '',
+        'course'      => $c['course'] ?? '',
         'occ'         => $c['occupation'] ?: 'Cooperative Member',
         'bio'         => $c['bio'] ?: '',
         'platform'    => $c['platform'] ?: '',
-        'photoUrl'    => $c['photo_url'] ?: profile_photo_url($c['member_photo'] ?: null, (int) $c['member_id']),
+        'photoUrl'    => profile_photo_url($c['member_photo'] ?: null, (int) $c['member_id']),
         'yearsInCoop' => $c['years_in_coop'] !== null ? (int) $c['years_in_coop'] : null,
         'status'      => ((int) ($c['is_active'] ?? 1)) === 1 ? 'Active' : 'Inactive',
     ];
     if ($withVotes) {
-        $dto['votes'] = (int) $c['vote_count'];
+        $dto['votes'] = $c['vote_count'] === null ? null : (int) $c['vote_count'];
     }
     return $dto;
 }
@@ -228,14 +240,16 @@ function vt_grouped_positions(
     int $electionId,
     bool $withVotes = false,
     bool $sortByVotes = false,
-    bool $onlyContested = false
+    bool $onlyContested = false,
+    bool $internalSnapshot = false
 ): array {
     $positions = vt_positions($electionId);
-    $cands     = vt_candidates($electionId, $withVotes);
+    $cands     = vt_candidates($electionId, $withVotes, $internalSnapshot);
 
     $byPosition = [];
     foreach ($cands as $c) {
-        if ((int) ($c['is_active'] ?? 1) !== 1) continue;
+        if (!$withVotes && (int) ($c['is_active'] ?? 1) !== 1) continue;
+        if ($withVotes && $c['vote_count'] === null) continue;
         $byPosition[(int) $c['position_id']][] = vt_candidate_dto($c, $withVotes);
     }
 
@@ -413,19 +427,12 @@ function voter_route_dashboard(): never
         }
     }
 
-    /* Most recent active announcement. */
-    $ann = db()->query(
-        'SELECT title, message FROM announcements
-          WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1'
-    )->fetch() ?: null;
-
     json_out([
         'member'       => $member,
         'election'     => $electionDto,
         'candidates'   => $candidates,
         'results'      => $results,
         'resultsElection' => $resultsElection,
-        'announcement' => $ann ? ['title' => $ann['title'], 'message' => $ann['message']] : null,
     ]);
 }
 
@@ -522,7 +529,7 @@ function voter_route_ballot(): never
 
     /* Issue the ballot record on first visit (idempotent). */
     db()->prepare(
-        'INSERT IGNORE INTO ballots (election_id, user_id, has_voted) VALUES (?,?,0)'
+        'INSERT IGNORE INTO ballots (election_id, user_id, has_voted, issued_at) VALUES (?,?,0,NULL)'
     )->execute([$eid, (int) $u['user_id']]);
 
     json_out([
@@ -551,7 +558,7 @@ function voter_route_vote(): never
     $votes      = input('votes', []);
 
     if (!is_array($votes) || $votes === []) {
-        json_error('Your ballot is empty. Please choose at least one candidate.');
+        json_error('Your ballot is empty. Please choose a candidate or abstain for each position.');
     }
 
     $pdo = db();
@@ -571,34 +578,53 @@ function voter_route_vote(): never
 
     $candidates = [];
     foreach (vt_candidates($electionId) as $c) {
+        if ((int) $c['is_active'] !== 1) continue;
         $candidates[(int) $c['candidate_id']] = $c;
     }
 
     /* ── Validate every selection before writing anything ── */
     $clean = [];
+    $answered = [];
     foreach ($votes as $v) {
-        $candidateId = (int) ($v['candidateId'] ?? 0);
-        if ($candidateId === 0) continue;
+        if (!is_array($v) || (isset($v['abstain']) && !is_bool($v['abstain']))) {
+            json_error('One of your ballot choices is invalid.', 422);
+        }
+        $abstain = ($v['abstain'] ?? false) === true;
+        $positionId = 0;
+        if ($abstain) {
+            if (($v['candidateId'] ?? null) !== null) {
+                json_error('Choose a candidate or abstain, not both.', 422);
+            }
+            $positionId = filter_var($v['positionId'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
+            if (!isset($positions[$positionId])) {
+                json_error('One of your abstentions has an invalid position.', 422);
+            }
+        } else {
+            $candidateId = filter_var($v['candidateId'] ?? 0, FILTER_VALIDATE_INT) ?: 0;
 
-        if (!isset($candidates[$candidateId])) {
-            json_error('One of your selections is not a candidate in this election.', 422);
+            if (!isset($candidates[$candidateId])) {
+                json_error('One of your selections is not an active candidate in this election.', 422);
+            }
+            $positionId = (int) $candidates[$candidateId]['position_id'];
         }
 
-        $cand       = $candidates[$candidateId];
-        $positionId = (int) $cand['position_id'];
-
-        if (!isset($positions[$positionId])) {
+        if (!isset($positions[$positionId])
+            || (isset($v['positionId']) && (string) $v['positionId'] !== (string) $positionId)
+            || (isset($v['position']) && $v['position'] !== $positions[$positionId]['position_name'])) {
             json_error('One of your selections has an invalid position.', 422);
         }
-        /* max_vote is 1 per position — reject a second pick for the same seat. */
-        if (isset($clean[$positionId])) {
-            json_error('You may only choose one candidate for ' . $positions[$positionId]['position_name'] . '.', 422);
+        if (isset($answered[$positionId])) {
+            json_error('Choose a candidate or abstain only once for ' . $positions[$positionId]['position_name'] . '.', 422);
         }
-        $clean[$positionId] = $candidateId;
+        $answered[$positionId] = true;
+        // Abstentions complete the ballot without awarding a candidate a vote.
+        if (!$abstain) $clean[$positionId] = $candidateId;
     }
 
-    if ($clean === []) {
-        json_error('Your ballot is empty. Please choose at least one candidate.');
+    foreach ($candidates as $candidate) {
+        if (!isset($answered[(int) $candidate['position_id']])) {
+            json_error('Please choose a candidate or abstain for each position with candidates.', 422);
+        }
     }
 
     $receipt = generate_receipt();
@@ -624,23 +650,23 @@ function voter_route_vote(): never
          * requests arrive at the same instant.
          */
         $pdo->prepare(
-            'INSERT IGNORE INTO ballots (election_id, user_id, has_voted) VALUES (?,?,0)'
+            'INSERT IGNORE INTO ballots (election_id, user_id, has_voted, issued_at) VALUES (?,?,0,NULL)'
         )->execute([$electionId, $userId]);
 
         $claim = $pdo->prepare(
             'UPDATE ballots
-                SET has_voted = 1, receipt_code = ?, voted_at = NOW(), ip_address = ?, user_agent = ?
+                SET has_voted = 1, receipt_code = ?, voted_at = NULL, ip_address = NULL, user_agent = NULL, issued_at = NULL
               WHERE user_id = ? AND election_id = ? AND has_voted = 0'
         );
-        $claim->execute([$receipt, client_ip(), user_agent(), $userId, $electionId]);
+        $claim->execute([$receipt, $userId, $electionId]);
 
         if ($claim->rowCount() === 0) {
             return false;
         }
 
         /*
-         * Store the choices with no reference back to the voter — the votes
-         * table deliberately has no user_id, so the ballot stays secret.
+         * Store choices separately, without voter IDs, dates or sequential IDs.
+         * A trusted server is still required: live transaction inspection can correlate writes.
          */
         integrity_insert_selections($pdo, $electionId, $clean, $integrityState);
 
@@ -651,20 +677,8 @@ function voter_route_vote(): never
         json_error('You have already voted in this election.', 409, ['code' => 'ALREADY_VOTED']);
     }
 
-    /*
-     * Log that they voted — never what they chose, and never their receipt.
-     *
-     * The receipt used to be written here. Audit descriptions are shown in
-     * the back office activity feed and the security log, so every member's
-     * receipt was on display to anyone in the back office who opened those
-     * pages. It is the member's own confirmation that their ballot was
-     * counted and it belongs to them alone; the audit trail needs to record
-     * that a ballot was cast, which it still does. The code remains stored
-     * against the ballot, so the office can look one up deliberately when a
-     * member asks for help.
-     */
-    audit($userId, 'ballot.cast', 'election', $electionId,
-        'Ballot cast (' . count($clean) . ' selections)');
+    // The participation register is the duplicate-vote audit. Do not log identity,
+    // selection counts, IP or casting time alongside a ballot-cast event.
 
     /*
      * Receipt email. The ballot is already committed above, so this runs
@@ -675,7 +689,7 @@ function voter_route_vote(): never
      * seconds, and on election day that would be five seconds of frozen
      * screen for every member at the moment they cast their vote.
      */
-    $castAt = fmt_datetime(date('Y-m-d H:i:s'));
+    $castAt = 'Recorded (time withheld for voter privacy)';
     $email  = (string) $u['email'];
     $voter  = (string) ($u['full_name'] ?? $u['username']);
     $title  = (string) $election['title'];
@@ -687,6 +701,7 @@ function voter_route_vote(): never
             'receiptCode' => $receipt,
             'castAt'      => $castAt,
             'selections'  => $count,
+            'abstentions' => count($answered) - $count,
         ],
         static function () use ($email, $voter, $title, $receipt, $castAt, $count): void {
             require_once BASE_PATH . '/includes/mailer.php';
@@ -720,7 +735,7 @@ function voter_route_receipts(): never
             'electionId' => (int) $row['election_id'],
             'electionTitle' => $row['title'],
             'receiptCode' => $row['receipt_code'],
-            'castAt' => fmt_datetime($row['voted_at']),
+            'castAt' => 'Recorded (time withheld for voter privacy)',
             'published' => $row['status'] === 'published' && !empty($row['results_released_at']),
         ];
     }
@@ -777,13 +792,16 @@ function voter_route_results(): never
          * voted. What they chose is not stored against them anywhere, so
          * the secret ballot is untouched by this check.
          */
-        if (!vt_has_voted($userId, $eid)) {
+        $ballot = vt_ballot($userId, $eid);
+        if (!$ballot || (int) $ballot['has_voted'] !== 1) {
             $withheld++;
             continue;
         }
 
         $elections[] = [
             'id'          => $eid,
+            'hasVoted'    => true,
+            'receiptCode' => $ballot['receipt_code'] ?? null,
             'title'       => $e['title'],
             'startDate'   => fmt_date($e['start_datetime']),
             'endDate'     => fmt_date($e['end_datetime']),
@@ -793,6 +811,7 @@ function voter_route_results(): never
                 ? 'Final'
                 : ($status === 'Active' ? 'Live' : ($status === 'Closed' ? 'Closed' : 'Pending')),
             'published'   => $published,
+            'privacyNotice' => privacy_message(),
             'totalVoters' => vt_total_voters(),
             'votesCast'   => vt_votes_cast($eid),
             /* Tallies are withheld until an administrator releases them. */
@@ -801,10 +820,6 @@ function voter_route_results(): never
     }
 
     $member = vt_member_dto($u, $current);
-    if ($current) {
-        $ballot = vt_ballot($userId, (int) $current['election_id']);
-        $member['receiptCode'] = $ballot['receipt_code'] ?? null;
-    }
 
     /*
      * Say how many results exist that this member cannot open, so the page
@@ -845,7 +860,6 @@ function voter_route_profile(): never
             'memberId'    => $u['member_no'] ?? '—',
             'dob'         => $u['date_of_birth'],
             'email'       => $u['email'],
-            'phone'       => $u['contact_no'] ?: '',
             'address'     => $u['address'] ?: '',
             'memberSince' => fmt_month_year($u['registered_at'] ?? $u['created_at']),
             'status'      => ucfirst((string) ($u['membership_status'] ?? 'active')),
@@ -868,14 +882,12 @@ function voter_update_profile(array $u): array
     $first   = input_str('first');
     $last    = input_str('last');
     $email   = strtolower(input_str('email'));
-    $phone   = input_str('phone');
     $address = input_str('address');
     $dob     = input_str('dob');
 
-    $errors = person_fields_errors($first, $last, $phone);
+    $errors = person_fields_errors($first, $last);
     if ($error = birth_date_error($dob)) $errors['dob'] = $error;
     if ($dob === '') $errors['dob'] = 'Date of birth is required.';
-    if ($phone === '') $errors['phone'] = 'Phone number is required.';
     if ($address === '') $errors['address'] = 'Home address is required.';
     if ($first === '') $errors['first'] = 'First name is required.';
     if ($last === '')  $errors['last']  = 'Last name is required.';
@@ -896,13 +908,13 @@ function voter_update_profile(array $u): array
     db()->prepare('UPDATE users SET email = ? WHERE user_id = ?')
         ->execute([$email, (int) $u['user_id']]);
 
+    // Phone is no longer editable here; leave the stored contact number intact.
     db()->prepare(
         'UPDATE members
-            SET full_name = ?, contact_no = ?, address = ?, date_of_birth = ?
+            SET full_name = ?, address = ?, date_of_birth = ?
           WHERE user_id = ?'
     )->execute([
         trim($first . ' ' . $last),
-        $phone !== '' ? $phone : null,
         $address !== '' ? $address : null,
         $dob !== '' ? $dob : null,
         (int) $u['user_id'],
@@ -915,7 +927,6 @@ function voter_update_profile(array $u): array
     return array_replace($u, [
         'full_name' => trim($first . ' ' . $last),
         'email' => $email,
-        'contact_no' => $phone !== '' ? $phone : null,
         'address' => $address !== '' ? $address : null,
         'date_of_birth' => $dob !== '' ? $dob : null,
     ]);

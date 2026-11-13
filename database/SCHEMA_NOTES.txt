@@ -4,7 +4,7 @@ Use schema_only.sql for STRUCTURE ONLY. It contains 25 tables and zero rows:
 no INSERT statements, sample accounts, passwords, photos, votes, or seed data.
 DEFAULT expressions and ENUM choices are column rules, not stored records.
 Import it once into a NEW EMPTY database selected in phpMyAdmin. It does not
-overwrite tables or select a database. The existing live database was not changed.
+overwrite tables or select a database. Importing this schema does not migrate an existing database.
 
 An empty schema is not a ready-to-login installation. The admin/voter role
 records, first administrator, and governance_config singleton must be initialized
@@ -55,8 +55,21 @@ A strict 3NF conversion of these exceptions requires coordinated API changes
 and versioned integrity/signature migration, not only a schema import.
 
 Validation
-tools/export_schema_only.php reads source DDL only, removes sequence counters,
-and validates all 25 empty tables in a uniquely named disposable database before
-writing schema_only.sql. It never alters the source database.
-tests/schema-only.test.php checks actual constraint enforcement and secrecy.
-tests/run.php exercises the application against coopvote_test, with mail off.
+The current test runner is tests/run.py. It creates a disposable socket-only
+MariaDB database, imports schema_only.sql, and uses synthetic records with mail
+sending disabled. tests/relational-constraints.php checks migration 15, rejection
+of inconsistent writes, rollback, and preservation of rows and vote signatures.
+The remaining suites exercise API features, backups, privacy and receipt rendering.
+
+Announcements removal
+The announcement banner and API have been retired. Existing installations
+should back up the announcements table before applying migration_14_remove_announcements.sql.
+Fresh installations omit that table. Election notifications remain supported.
+
+Existing-installation constraints
+migration_15_relational_constraints.sql adds constraints already included in
+schema_only.sql. It was applied to the live database on 9 November 2026 after
+backup restoration, migration/rollback checks and feature regression testing.
+Do not apply it again to a fresh import or an already updated database.
+See ../docs/DATABASE_CONSTRAINTS_REPORT_2026-11-09.md for evidence and limits.
+This is a relational integrity repair, not a strict 3NF conversion.

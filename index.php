@@ -9,7 +9,7 @@
  *
  * This is the missing piece: the address people actually type now lands on
  * the sign-in page. Somebody already signed in is sent on to their own
- * dashboard by login.html, so there is no need to decide that here.
+ * dashboard by login.php, so there is no need to decide that here.
  *
  * The redirect is relative, so it keeps working whatever the project folder
  * is called on the computer it was unzipped onto.
@@ -17,7 +17,7 @@
 
 declare(strict_types=1);
 
-header('Location: login.html', true, 302);
+header('Location: login.php', true, 302);
 header('Cache-Control: no-store');
 
 /* A browser that ignores the redirect still gets somewhere to click. */
@@ -41,5 +41,5 @@ header('Cache-Control: no-store');
 </style>
 <div>
   <p>Taking you to the CoopVote sign-in page&hellip;</p>
-  <p><a href="login.html">Continue to sign in</a></p>
+  <p><a href="login.php">Continue to sign in</a></p>
 </div>

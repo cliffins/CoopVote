@@ -1,11 +1,9 @@
 (function () {
   'use strict';
-  // Runs in the head before the browser captures the incoming document.
-  // Keep this flag after the transition so the fallback does not play a second time.
-  window.addEventListener('pagereveal', function (event) {
-    document.documentElement.classList.toggle('cv-native-transition', !!event.viewTransition);
-  });
-
+  // HTML can paint between network chunks, even before the inline bootstrap
+  // directly after the aside. Keep the shell's geometry, but reveal its contents
+  // only after identity, branding, all links and the saved scroll are ready.
+  document.documentElement.classList.add('cv-navigation-loading');
   // The same sidebar is rebuilt on each page, and settings mounts it after login.
   // Keep the requested offset even while its links, branding and fonts are loading.
   const rootPath = new URL(document.currentScript.src).pathname.replace(/assets\/js\/navigation\.js$/, '');
@@ -14,7 +12,7 @@
   function identity(user) {
     if (!user || !['admin', 'member'].includes(user.role) || !Number.isSafeInteger(user.id) || user.id < 1) return null;
     return { id: user.id, role: user.role, name: String(user.name || ''),
-      memberId: String(user.memberId || ''), roleName: String(user.roleName || '') };
+      memberId: String(user.memberId || ''), roleName: String(user.roleName || ''), photoUrl: user.photoUrl ? String(user.photoUrl) : null };
   }
   function paintIdentity(user) {
     const name = document.getElementById('sidebar-name');
@@ -22,7 +20,17 @@
     const avatar = document.getElementById('sidebar-avatar');
     if (name) name.textContent = user.name;
     if (label) label.textContent = user.memberId && user.memberId !== '\u2014' ? user.memberId : user.roleName;
-    if (avatar) avatar.textContent = user.name.trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
+    if (avatar) {
+      const fallback = user.name.trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
+      if (user.photoUrl && avatar.querySelector('img')?.getAttribute('src') === user.photoUrl) return;
+      avatar.textContent = fallback;
+      if (user.photoUrl) {
+        const img = document.createElement('img');img.alt = 'Your profile picture';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit';
+        img.onerror = () => {if(img.parentElement===avatar)avatar.textContent=fallback;};
+        img.src=user.photoUrl;avatar.replaceChildren(img);
+      }
+    }
   }
   // Presentation only: guards and API permissions must still use auth/me.
   function remember(user) {
@@ -33,19 +41,24 @@
   function clear() {
     try { sessionStorage.removeItem(identityKey); } catch (_) {}
   }
-  // Called directly after the aside, before the first paint and before API calls.
-  function bootstrap() {
-    let user;
-    try { user = identity(JSON.parse(sessionStorage.getItem(identityKey))); } catch (_) {}
+  // Called directly after the aside, before revealing it and before API calls.
+  function bootstrap(data) {
+    let user = identity(data?.user);
+    if (!user) {
+      try { user = identity(JSON.parse(sessionStorage.getItem(identityKey))); } catch (_) {}
+    }
     const expected = location.pathname.startsWith(rootPath + 'admin/') ? 'admin'
       : location.pathname.startsWith(rootPath + 'voter/') ? 'member' : null;
     if (user && (!expected || expected === user.role)) {
       if (window.CoopVoteSidebar) window.CoopVoteSidebar.mount(user);
       paintIdentity(user);
+      remember(user);
+      if (data?.branding && window.CoopVoteBranding) window.CoopVoteBranding.apply(data.branding);
       if (window.CoopVoteAppearance) window.CoopVoteAppearance.navigation(user);
     }
-    if (window.CoopVoteBranding) window.CoopVoteBranding.preview();
+    if (!data?.branding && window.CoopVoteBranding) window.CoopVoteBranding.preview();
     restore();
+    document.documentElement.classList.remove('cv-navigation-loading');
   }
   function read() {
     try {
@@ -106,5 +119,5 @@
     if (event.persisted && key) target = read();
     restore();
   });
-  window.CoopVoteNavigation = { bind, restore, bootstrap, remember, clear };
+  window.CoopVoteNavigation = { bind, restore, bootstrap, remember, clear, paintIdentity };
 })();

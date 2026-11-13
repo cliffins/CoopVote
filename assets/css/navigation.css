@@ -1,6 +1,13 @@
 /* Shared navigation geometry for the existing admin, voter and settings pages. */
-.sidebar,
+/* A streamed document may paint a partially parsed aside. Reserve its normal
+   space and background, without exposing defaults or a temporary scroll offset.
+   Visibility does not change geometry, so restoration can finish while hidden. */
+.cv-navigation-loading .sidebar > * { visibility: hidden !important; }
+
+.app .sidebar,
 .settings-shell .sidebar {
+  flex: 0 0 var(--sidebar-w, 260px);
+  max-width: var(--sidebar-w, 260px);
   width: var(--sidebar-w, 260px);
   min-width: var(--sidebar-w, 260px);
   height: var(--cv-visible-height, 100dvh);
@@ -16,9 +23,24 @@
   overscroll-behavior-y: contain;
   scroll-behavior: auto;
 }
-.sidebar .sidebar-logo { padding: 28px 22px 22px; gap: 12px; flex-shrink: 0; }
+.sidebar .sidebar-logo {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-rows: 40px 30px;
+  padding: 28px 22px 22px;
+  gap: 20px 12px;
+  flex-shrink: 0;
+}
+.sidebar #cv-coop-name {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
 .sidebar .logo-mark { width: 40px; height: 40px; flex: 0 0 40px; }
-.sidebar .logo-text { font: 800 20px/26px 'Playfair Display', Georgia, serif; }
+.sidebar .logo-text { font: 800 20px/26px 'Playfair Display', Georgia, serif; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sidebar .sidebar-section { padding: 20px 14px 8px; font-size: 10.88px; line-height: 14px; flex-shrink: 0; }
 .sidebar .nav-item {
   flex: 0 0 auto;
@@ -50,39 +72,11 @@
 .sidebar::-webkit-scrollbar-track { background: transparent; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
 
-/* Keep normal links, history and page guards while the browser blends modules. */
-@view-transition { navigation: auto; }
-
-/* Also soften entry when a browser skips or does not support page transitions. */
-@keyframes cv-module-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* Preserve the sidebar geometry while the next document replaces the content.
+   Whole-document snapshots and nested entry fades made menu clicks flicker. */
+@view-transition { navigation: none; }
 .app > .main,
-.settings-shell > main { animation: cv-module-enter 180ms ease-out; }
-:root.cv-native-transition .app > .main,
-:root.cv-native-transition .settings-shell > main { animation: none; }
-
-::view-transition-group(root),
-::view-transition-group(cv-sidebar) {
-  animation-duration: 180ms;
-  animation-timing-function: ease-out;
-}
-::view-transition-old(root),
-::view-transition-new(root),
-::view-transition-old(cv-sidebar),
-::view-transition-new(cv-sidebar) {
-  animation-duration: 180ms;
-}
-
-/* The desktop navigation stays anchored while the content changes. */
-@media (min-width: 901px) {
-  .sidebar { view-transition-name: cv-sidebar; }
-  ::view-transition-group(cv-sidebar) { animation: none; }
-  /* The incoming sidebar is already complete; never crossfade its text/links. */
-  ::view-transition-old(cv-sidebar) { display: none; }
-  ::view-transition-new(cv-sidebar) { animation: none; mix-blend-mode: normal; }
-}
+.settings-shell > main { animation: none; }
 
 .sidebar .nav-item {
   transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;

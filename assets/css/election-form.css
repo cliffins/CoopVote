@@ -1,0 +1,70 @@
+/* Create/edit election only; shared dialogs keep their existing layout. */
+#election-modal:not(.show) { visibility: hidden; }
+#election-modal > .modal { max-width: 660px; }
+#election-modal .modal-head { padding: 20px 24px; }
+#election-modal .modal-title { font-size: 1.25rem; }
+#election-modal .modal-close { background: var(--navy3); color: var(--muted2); }
+#election-modal .modal-close:hover { color: var(--danger); }
+#election-modal .modal-body { display: flex; flex-direction: column; gap: 22px; padding: 22px 24px; }
+#election-modal .modal-body > * { flex-shrink: 0; }
+#election-modal .election-status-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--navy);
+}
+#election-modal .election-status-panel > label { font-size: .8rem; color: var(--white); font-weight: 600; }
+#election-modal #f-status { font-size: .75rem; padding: 5px 10px; margin: 0; }
+#election-modal #f-status-hint { grid-column: 1 / -1; margin: 0; font-size: .8rem; line-height: 1.55; color: var(--muted2); }
+#election-modal .election-form-section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+#election-modal .election-form-section + .election-form-section { border-top: 1px solid var(--border); padding-top: 20px; }
+#election-modal .election-form-section h3 { margin: 0; font-size: .9rem; font-weight: 600; color: var(--white); }
+#election-modal .election-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+#election-modal .election-year { display: inline-flex; align-items: center; gap: 8px; font-size: .75rem; padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; }
+#election-modal .election-year label { color: var(--muted); }
+#election-modal #f-year { color: var(--white); font-weight: 600; font-variant-numeric: tabular-nums; }
+#election-modal .election-section-note { font-size: .76rem; line-height: 1.5; color: var(--muted); margin: -4px 0 0; }
+#election-modal .form-row { margin: 0; gap: 14px; }
+#election-modal .field label { font-size: .75rem; letter-spacing: .1px; text-transform: none; color: var(--muted2); margin-bottom: 7px; }
+#election-modal .field label .opt { color: var(--muted); font-size: .72rem; font-weight: 400; letter-spacing: 0; }
+#election-modal .field :is(input, textarea) { background: var(--navy); border-width: 1px; padding: 11px 12px; }
+#election-modal .field :is(input, textarea)::placeholder { color: var(--muted); opacity: .75; }
+#election-modal .field input { min-height: 44px; }
+#election-modal .field textarea { min-height: 78px; resize: vertical; }
+#election-modal .pos-checklist { gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#election-modal .pos-check { min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); margin: 0; background: var(--navy); color: var(--white); }
+#election-modal .pos-check:hover { border-color: var(--gold); background: var(--navy3); }
+#election-modal .pos-check.checked { border-color: var(--gold); background: var(--navy3); }
+#election-modal .pos-check span { font-size: .8rem; overflow-wrap: anywhere; }
+#election-modal .pos-check input { width: 16px; height: 16px; }
+#election-modal .election-results-note { display: flex; align-items: flex-start; gap: 10px; padding: 14px 0 0; border-top: 1px solid var(--border); color: var(--muted); }
+#election-modal .election-results-note svg { flex: 0 0 auto; margin-top: 2px; color: var(--gold); }
+#election-modal .election-results-note p { font-size: .75rem; line-height: 1.6; margin: 0; }
+#election-modal .election-results-note strong { font-weight: 500; color: var(--muted2); }
+#election-modal .modal-foot { border-top: 1px solid var(--border); padding: 16px 24px; background: var(--navy2); }
+#election-modal .modal-foot .btn { min-height: 44px; padding-inline: 20px; }
+#election-modal .modal-foot .btn-ghost { color: var(--muted2); background: var(--navy); border-color: var(--border); }
+#election-modal .modal-foot .btn-ghost:hover { color: var(--white); background: var(--navy3); }
+@media (max-width: 600px) {
+  #election-modal .modal-head { padding: 16px; }
+  #election-modal .modal-title { font-size: 1.1rem; }
+  #election-modal .modal-body { padding: 18px 16px; gap: 20px; }
+  #election-modal .election-status-panel { padding: 12px; }
+  #election-modal .election-schedule-row { grid-template-columns: minmax(0, 1fr); }
+  #election-modal .modal-foot { padding: 12px 16px; }
+  #election-modal .modal-foot .btn { flex: 1; padding-inline: 12px; }
+}
+@media (max-width: 380px) {
+  #election-modal .pos-checklist { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Historical cancelled records remain readable. */
+.ec [hidden] { display: none !important; }
+.ec-status.cancelled { background: rgba(224,92,92,.12); color: var(--danger); }
+.cancelled-election-note { grid-column: 1 / -1; color: var(--muted2); font-size: .8rem; line-height: 1.5; }
+.election-delete-hint { grid-column: 1 / -1; color: var(--muted2); font-size: .72rem; line-height: 1.5; margin: 2px 0; }
+#election-modal input:disabled { opacity: .7; cursor: not-allowed; }

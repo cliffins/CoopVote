@@ -13,6 +13,7 @@
   function clean(type, value) {
     const text = String(value);
     if (type === 'name') return text.replace(nameChars, '');
+    if (type === 'position') return text.replace(/[^\p{L}\p{M} ]/gu, '');
     if (type === 'phone') return text.replace(/[^0-9+ ()-]/g, '').replace(/(?!^)\+/g, '');
     if (type === 'integer' || type === 'digits') return text.replace(/[^0-9]/g, '');
     return text;
@@ -23,6 +24,8 @@
     if (!text) return '';
     if (type === 'name' && (clean(type, text) !== text || !/\p{L}/u.test(text)))
       return 'Use letters, spaces, apostrophes, periods or hyphens. Numbers are not allowed in names.';
+    if (type === 'position' && (clean(type, text) !== text || !/\p{L}/u.test(text)))
+      return 'Use letters and spaces only for the position name.';
     if (type === 'phone') {
       if (!/^\+?[0-9 ()-]+$/.test(text)) return 'Phone numbers cannot contain letters. Use digits and an optional leading +.';
       const digits = text.replace(/[^0-9]/g, '');
@@ -35,7 +38,7 @@
 
   function configure(field) {
     const type = kind(field);
-    if (type === 'name') { field.inputMode = 'text'; field.autocapitalize = 'words'; }
+    if (type === 'name' || type === 'position') { field.inputMode = 'text'; field.autocapitalize = 'words'; }
     if (type === 'phone') field.inputMode = 'tel';
     if (type === 'integer' || type === 'digits') field.inputMode = 'numeric';
   }

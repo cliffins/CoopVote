@@ -12,9 +12,9 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/installation.php';
-
+// Catch initialization failures before loading deployment configuration.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 /* Turn warnings/errors into JSON instead of HTML that breaks the client. */
 set_error_handler(static function (int $no, string $str, string $file, int $line): bool {
     if (!(error_reporting() & $no)) return false;
@@ -22,14 +22,28 @@ set_error_handler(static function (int $no, string $str, string $file, int $line
 });
 
 set_exception_handler(static function (Throwable $e): void {
-    error_log('[CoopVote] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    $reason = $e instanceof DatabaseConfigurationException ? $e->reason : 'SERVER_ERROR';
+    $privateVote = ($GLOBALS['route'] ?? '') === 'voter/vote';
+    error_log($privateVote ? '[CoopVote][VOTE_REQUEST_FAILED] ' . get_class($e)
+        : '[CoopVote][' . $reason . '] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     if (!headers_sent()) {
         http_response_code(500);
         header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
     }
-    echo json_encode(array_merge(installation_error($e), [
+    // An incomplete upload can fail before the installation helper is available.
+    $error = ['code' => 'SERVER_ERROR', 'error' => 'The server could not complete that request.'];
+    if (function_exists('installation_error')) {
+        try {
+            $error = installation_error($e);
+        } catch (Throwable $classificationError) {
+            error_log('[CoopVote][ERROR_HANDLER_FAILED] ' . $classificationError->getMessage());
+        }
+    }
+    echo json_encode(array_merge($error, [
         'ok'     => false,
-        'detail' => DEBUG ? $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine() : null,
+        'detail' => !$privateVote && defined('DEBUG') && DEBUG && !($e instanceof DatabaseConfigurationException)
+            ? $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine() : null,
     ]));
     exit;
 });
@@ -50,7 +64,8 @@ register_shutdown_function(static function (): void {
         return;
     }
 
-    error_log('[CoopVote] FATAL ' . $fatal['message'] . ' @ ' . $fatal['file'] . ':' . $fatal['line']);
+    $privateVote = ($GLOBALS['route'] ?? '') === 'voter/vote';
+    error_log($privateVote ? '[CoopVote][VOTE_REQUEST_FATAL]' : '[CoopVote] FATAL ' . $fatal['message'] . ' @ ' . $fatal['file'] . ':' . $fatal['line']);
 
     if (!headers_sent()) {
         http_response_code(500);
@@ -61,13 +76,16 @@ register_shutdown_function(static function (): void {
         'ok'     => false,
         'error'  => 'The server stopped part-way through that request.',
         'code'   => 'SERVER_FATAL',
-        'detail' => DEBUG
+        'detail' => !$privateVote && defined('DEBUG') && DEBUG
             ? $fatal['message'] . ' @ ' . basename($fatal['file']) . ':' . $fatal['line']
             : null,
     ]);
 });
 
 /* ── Same-origin only ───────────────────────────────────── */
+require_once __DIR__ . '/../includes/installation.php';
+require_once __DIR__ . '/../includes/auth.php';
+
 header('X-Content-Type-Options: nosniff');
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
@@ -104,7 +122,7 @@ $group = preg_replace('/[^a-z0-9_-]/i', '', $segments[0] ?? '');
 if ($group === '') {
     json_out([
         'ok'      => true,
-        'service' => APP_NAME . ' API',
+        'service' => (defined('APP_NAME') ? APP_NAME : 'CoopVote') . ' API',
         'usage'   => 'api/index.php?r=<route>',
         'routes'  => [
             'auth'  => ['POST auth/login', 'POST auth/logout', 'GET auth/me', 'POST auth/register'],
@@ -155,6 +173,10 @@ switch ($group) {
         handle_voter($args);
         break;
 
+    case 'announcements':
+        json_error('Announcements are no longer available.', 410, ['code' => 'ANNOUNCEMENTS_REMOVED']);
+        break;
+
     /* Everything else is back-office. */
     case 'dashboard':
     case 'voters':
@@ -166,7 +188,6 @@ switch ($group) {
     case 'reports':
     case 'operations':
     case 'security':
-    case 'announcements':
     case 'settings':
         require __DIR__ . '/routes/admin.php';
         handle_admin($group, $args);

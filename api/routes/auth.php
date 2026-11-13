@@ -8,8 +8,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/validation.php';
+require_once __DIR__ . '/../../includes/profile-photo.php';
 
-function handle_auth(array $args): never
+function handle_auth(array $args)
 {
     $action = $args[0] ?? '';
 
@@ -31,6 +32,16 @@ function handle_auth(array $args): never
         );
     }
 
+    if ($action === 'password-recovery') {
+        require_once BASE_PATH . '/includes/password-recovery.php';
+        handle_password_recovery();
+    }
+
+    if ($action === 'officer-verification') {
+        require_once BASE_PATH . '/includes/officer-verification.php';
+        handle_officer_verification();
+    }
+
     match ($action) {
         'login'          => auth_route_login(),
         'logout'         => auth_route_logout(),
@@ -42,7 +53,7 @@ function handle_auth(array $args): never
 }
 
 /* ── POST auth/login ────────────────────────────────────── */
-function auth_route_login(): never
+function auth_route_login()
 {
     require_method('POST');
 
@@ -53,6 +64,7 @@ function auth_route_login(): never
     if (blank_form_value($password)) json_error('Please enter your password.');
 
     $result = auth_attempt($identifier, $password);
+    persist_login_session();
 
     /*
      * Right password, unverified address: send a fresh code and let the page
@@ -76,6 +88,7 @@ function auth_route_login(): never
 
         auth_boot();
         $_SESSION['pending_verify_user'] = $userId;
+        persist_login_session();
 
         json_out([
             'ok'                => false,
@@ -135,13 +148,14 @@ function auth_route_logout(): never
 /* ── GET auth/me ────────────────────────────────────────── */
 function auth_route_me(): never
 {
+    $pdo = db();
     $u = current_user();
     if (!$u) {
         json_error('Not signed in.', 401, ['code' => 'UNAUTHENTICATED']);
     }
 
     $name = (string) ($u['full_name'] ?? $u['username']);
-    $preference = db()->prepare('SELECT theme FROM user_preferences WHERE user_id = ?');
+    $preference = $pdo->prepare('SELECT theme FROM user_preferences WHERE user_id = ?');
     $preference->execute([(int) $u['user_id']]);
 
     json_out([
@@ -153,6 +167,7 @@ function auth_route_me(): never
             'email'    => $u['email'],
             'name'     => $name,
             'memberId' => $u['member_no'] ?? '—',
+            'photoUrl' => profile_photo_url($u['photo_url'] ?? null, isset($u['member_id']) ? (int)$u['member_id'] : null),
             'roleSlug' => $u['role_slug'],
             'roleName' => $u['role_name'],
             'role'     => $u['role_slug'] === 'voter' ? 'member' : 'admin',

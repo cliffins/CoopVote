@@ -20,7 +20,7 @@ use PHPMailer\PHPMailer\Exception as MailException;
 /** Append one line to logs/mail.log. Silent if logging is off. */
 function mail_log(string $line): void
 {
-    if (!MAIL_DEBUG_LOG) {
+    if (!MAIL_DEBUG_LOG || getenv('COOPVOTE_ENV') === 'test') {
         return;
     }
     try {
@@ -57,7 +57,8 @@ function send_mail(
     string $heading,
     string $intro,
     array $rows = [],
-    string $closing = ''
+    string $closing = '',
+    ?array $action = null
 ): bool {
     if (!MAIL_ENABLED) {
         mail_log("SKIPPED (MAIL_ENABLED is false) -> {$to} | {$subject}");
@@ -106,8 +107,8 @@ function send_mail(
 
         $m->isHTML(true);
         $m->Subject = $subject;
-        $m->Body = mail_html($heading, $intro, $rows, $closing);
-        $m->AltBody = mail_text($heading, $intro, $rows, $closing);
+        $m->Body = mail_html($heading, $intro, $rows, $closing, $action);
+        $m->AltBody = mail_text($heading, $intro, $rows, $closing) . ($action ? "\n\n" . $action['label'] . ': ' . $action['url'] : '');
 
         $m->send();
         mail_log("SENT -> {$to} | {$subject}");
@@ -122,7 +123,7 @@ function send_mail(
 }
 
 /** The HTML body, in the app's navy-and-gold colours. */
-function mail_html(string $heading, string $intro, array $rows, string $closing): string
+function mail_html(string $heading, string $intro, array $rows, string $closing, ?array $action = null): string
 {
     $esc = static fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 
@@ -156,6 +157,7 @@ function mail_html(string $heading, string $intro, array $rows, string $closing)
             ? '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" '
             . 'style="margin:20px 0 0;border-top:1px solid #e4e9f0">' . $table . '</table>'
             : '')
+        . ($action ? '<p><a style="display:inline-block;padding:12px 18px;background:#17365d;color:#fff;border-radius:6px" href="' . $esc($action['url']) . '">' . $esc($action['label']) . '</a></p>' : '')
         . $closingHtml
         . '</td></tr>'
 
@@ -321,13 +323,11 @@ function mail_vote_receipt(
         'Your CoopVote voting receipt — ' . $receipt,
         'Your vote has been recorded',
         'Thank you for voting. Keep this receipt as proof that your ballot was '
-        . 'counted. It does not reveal who you voted for — the cooperative cannot '
-        . 'link a ballot back to a member.',
+        . 'counted. This receipt confirms participation and does not contain candidate selections.',
         [
             'Election' => $electionTitle,
             'Receipt code' => $receipt,
-            'Date recorded' => $castAt,
-            'Positions' => (string) $selections,
+            'Status' => 'Participation recorded',
         ],
         'Your vote cannot be changed or withdrawn once submitted.'
     );

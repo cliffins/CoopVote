@@ -29,7 +29,7 @@
       $('import-rows').innerHTML=(done?batch.created:batch.rows).map(r=>{
         const d=r.data||r, name=done?r.name:d.first+' '+d.last;
         const detail=done?'Member ID: '+r.memberNo+' ? Username: '+r.username:'Member ID: '+(d.memberId||'Automatic')+' · Username: '+(d.username||'Automatic');
-        const more=done?'':`<details><summary>Voter details</summary><p>${esc(d.phone)}<br>${esc(d.address)}<br>Date of birth: ${esc(d.dob)}</p></details>`;
+        const more=done?'':`<details><summary>Voter details</summary><p>${esc(d.address)}<br>Date of birth (YYYY-MM-DD): ${esc(d.dob)}</p></details>`;
         const labels={unknown:'Delivery unconfirmed ? check the inbox or hand over credentials',pending:'Waiting to send',sending:'Sending — refresh to check',sent:'Sent to mail server',failed:'Failed — retry email',disabled:'Email disabled — download credentials'};
         return `<tr><td>${r.row}</td><td><strong>${esc(name)}</strong><p class="import-hint">${esc(detail)}</p>${more}</td><td>${esc(d.email)}</td><td>${done?esc(labels[r.delivery]||r.delivery):Object.keys(r.errors).length?'<div class="import-errors">'+Object.entries(r.errors).map(([k,v])=>esc(k+': '+v)).join('\n')+'</div>':'<span class="import-ready">Ready</span>'}</td></tr>`;
       }).join('');

@@ -1,0 +1,14 @@
+-- REVIEW COPY ONLY. Do not execute this file alone against production.
+-- The complete up/down migration is tools/nfr19-migrate.php: it verifies
+-- existing integrity, requires a restored backup matching current rows,
+-- writes an authenticated encrypted rollback archive outside the website,
+-- randomizes vote IDs, removes cast dates, re-signs rows, sanitizes
+-- participation metadata and ballot.cast audit records, then verifies totals.
+-- No vote, ballot, report, election, or audit row is deleted.
+-- DDL is listed for review; MySQL/MariaDB DDL auto-commits separately.
+-- ALTER TABLE votes MODIFY vote_id BIGINT NOT NULL, MODIFY cast_date DATE NULL DEFAULT NULL;
+-- ALTER TABLE ballots MODIFY issued_at DATETIME NULL DEFAULT NULL;
+-- ALTER TABLE audit_logs MODIFY timestamp DATETIME NULL DEFAULT CURRENT_TIMESTAMP;
+-- Down: use the authenticated rollback archive. Refuse if new votes exist.
+-- Nullable participation/audit columns remain for compatibility; restoring
+-- precise metadata deliberately restores the old privacy risk.

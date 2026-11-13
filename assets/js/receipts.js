@@ -60,7 +60,7 @@ function closeSidebar() {
         const content = document.querySelector('.content'), top = content.scrollTop;
         list.innerHTML = data.receipts.length
           ? data.receipts.map(receipt => receiptMarkup(receipt, data.member)).join('')
-          : '<section class="receipt-empty"><h2>No vote receipts yet</h2><p>Your receipt will appear here after you submit a vote.</p><a class="receipt-button" href="ballot.html">Go to Cast My Vote</a></section>';
+          : '<section class="receipt-empty"><h2>No vote receipts yet</h2><p>Your receipt will appear here after you submit a vote.</p><a class="receipt-button" href="ballot.php">Go to Cast My Vote</a></section>';
         content.scrollTop = top;
         previous = serialized;
       }

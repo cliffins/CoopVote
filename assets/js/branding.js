@@ -11,11 +11,11 @@
     const logo=document.querySelector('.sidebar-logo');
     if(logo && typeof data.coopName==='string'){
       let name=document.getElementById('cv-coop-name');
-      if(!name){name=document.createElement('div');name.id='cv-coop-name';name.style.cssText='width:100%;margin-top:8px;font-size:.68rem;line-height:1.35;color:var(--muted);letter-spacing:.02em;overflow-wrap:anywhere';logo.style.flexWrap='wrap';logo.appendChild(name);}
+      if(!name){name=document.createElement('div');name.id='cv-coop-name';name.style.cssText='width:100%;margin-top:0;grid-column:1/-1;font-size:.68rem;line-height:1.35;color:var(--muted);letter-spacing:.02em;overflow-wrap:anywhere';logo.style.flexWrap='wrap';logo.appendChild(name);}
       if(name.textContent!==data.coopName)name.textContent=data.coopName;
       name.title=data.coopName;
     }
-    document.querySelectorAll('.logo-text,.brand-name').forEach(el=>{if(el.textContent!==data.text)el.textContent=data.text;el.style.overflowWrap='anywhere';el.style.minWidth='0';});
+    document.querySelectorAll('.logo-text,.brand-name').forEach(el=>{if(el.textContent!==data.text)el.textContent=data.text;el.style.overflowWrap='anywhere';el.style.minWidth='0';el.title=data.text;});
     document.querySelectorAll('.logo-mark,.brand-icon').forEach(el=>{
       if(!original.has(el))original.set(el,el.innerHTML);
       if(data.logo){

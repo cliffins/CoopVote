@@ -1,0 +1,37 @@
+/* Candidate View dialog only; separate from nomination/edit and list layouts. */
+#view-modal > .modal { width:600px; max-width:calc(100vw - 24px); border-radius:16px; }
+#view-modal .modal-head { padding:14px 18px; }
+#view-modal .modal-title { font-family:inherit; font-size:1rem; }
+#view-modal #view-body { padding:18px; display:flex; flex-direction:column; gap:16px; }
+#view-modal #view-body > * { flex-shrink:0; min-width:0; }
+#view-modal .candidate-profile-header { display:flex; align-items:center; gap:18px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+#view-modal .candidate-profile-photo { position:relative; display:flex; align-items:center; justify-content:center; width:88px; height:88px; flex:0 0 88px; margin:0; padding:0; border:1px solid var(--border); border-radius:16px; overflow:hidden; background:var(--navy3); color:var(--gold); }
+#view-modal button.candidate-profile-photo { cursor:zoom-in; }
+#view-modal .candidate-profile-photo img { display:block; width:100%; height:100%; object-fit:cover; }
+#view-modal .candidate-profile-initials { font-size:1.7rem; font-weight:600; }
+#view-modal .candidate-photo-expand { position:absolute; right:5px; bottom:5px; width:24px; height:24px; display:grid; place-items:center; border-radius:6px; background:rgba(11,25,49,.85); color:#fff; }
+#view-modal .candidate-photo-expand svg { width:14px; height:14px; }
+#view-modal .candidate-profile-identity { min-width:0; }
+#view-modal .candidate-profile-identity h2 { font-size:clamp(1.05rem,2vw,1.3rem); font-weight:600; line-height:1.4; margin:0; overflow-wrap:anywhere; }
+#view-modal .candidate-profile-identity p { color:var(--muted2); font-size:.84rem; line-height:1.5; margin:4px 0 8px; overflow-wrap:anywhere; }
+#view-modal .candidate-profile-status { display:flex; }
+#view-modal .candidate-profile-status .badge { white-space:normal; }
+#view-modal .candidate-profile-election { background:var(--navy); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+#view-modal :is(.candidate-profile-election,.candidate-profile-about) h3,
+#view-modal .candidate-profile-facts dt { font-size:.72rem; font-weight:600; color:var(--muted2); line-height:1.5; margin:0 0 5px; }
+#view-modal .candidate-profile-election p { font-size:.88rem; font-weight:500; line-height:1.5; overflow-wrap:anywhere; margin:0; }
+#view-modal .candidate-profile-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0; padding:0 0 16px; border-bottom:1px solid var(--border); }
+#view-modal .candidate-profile-facts > div { min-width:0; }
+#view-modal .candidate-profile-facts dd { margin:0; font-size:.85rem; font-weight:500; line-height:1.55; overflow-wrap:anywhere; }
+#view-modal .candidate-profile-about p { margin:0; font-size:.82rem; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+#view-modal .candidate-profile-about .candidate-profile-empty { color:var(--muted2); }
+#view-modal .modal-foot { padding:12px 18px; justify-content:flex-end; gap:8px; }
+#view-modal .modal-foot .btn { min-height:40px; padding:9px 14px; }
+@media(max-width:600px) {
+  #view-modal .modal-head, #view-modal .modal-foot { padding:10px 12px; }
+  #view-modal #view-body { padding:14px; gap:14px; }
+  #view-modal .candidate-profile-header { gap:12px; padding-bottom:14px; }
+  #view-modal .candidate-profile-photo { width:72px; height:72px; flex-basis:72px; border-radius:12px; }
+  #view-modal .candidate-profile-facts { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding-bottom:14px; }
+  #view-modal .modal-foot .btn { min-height:44px; }
+}

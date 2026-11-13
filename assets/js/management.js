@@ -1,11 +1,11 @@
 (async function () {
   'use strict';
   const $=id=>document.getElementById(id), api=(route,method='GET',body)=>CoopVote.api('management/'+route,{method,body});
-  const user=await CoopVote.guard();
+  const user=await CoopVote.guard(document.body.dataset.managementRole);
   if(!user)return;
   const isAdmin=user.role==='admin';let accounts=[], overview=null, selected=new URLSearchParams(location.search).get('election')||'', refreshId=0, mutation=false, confirmAction=null;
   $('logout').onclick=()=>CoopVote.logout();
-  const tabs=isAdmin?[['officers','Officer Management'],['approvals','Election Approvals'],['themes','Themes'],['branding','Branding']]:[['themes','Themes']];
+  const tabs=isAdmin?[['officers','Officer Management'],['approvals','Election Approvals'],['themes','Themes'],['branding','Settings']]:[['themes','Themes']];
   function closeMenu(){ $('sidebar').classList.remove('open');$('sidebar-overlay').hidden=true;$('menu-toggle').setAttribute('aria-expanded','false');$('sidebar').inert=window.matchMedia('(max-width:900px)').matches; }
   $('menu-toggle').onclick=()=>{const open=!$('sidebar').classList.contains('open');$('sidebar').classList.toggle('open',open);$('sidebar').inert=!open&&window.matchMedia('(max-width:900px)').matches;$('sidebar-overlay').hidden=!open;$('menu-toggle').setAttribute('aria-expanded',String(open));if(open)$('sidebar').querySelector('a')?.focus({preventScroll:true});};
   $('sidebar-overlay').onclick=closeMenu;
@@ -13,7 +13,7 @@
   window.matchMedia('(max-width:900px)').addEventListener('change',closeMenu);closeMenu();
   function toast(message){$('toast').textContent=message;CoopVote.presentToast($('toast'),4500,()=>{$('toast').hidden=true;});}
   function error(message){$('page-error').textContent=message;$('page-error').hidden=!message;}
-  function active(){return tabs.some(t=>t[0]===location.hash.slice(1))?location.hash.slice(1):tabs[0][0];}
+  function active(){return document.body.dataset.managementPage;}
   async function route(){
     const tab=active();$('heading').textContent=tabs.find(t=>t[0]===tab)[1];document.title='CoopVote '+$('heading').textContent;
     ['themes','officers','approvals','branding'].forEach(id=>$(id).hidden=id!==tab);
@@ -26,7 +26,7 @@
   function deferBackgroundRefresh(tab){
     if(mutation||document.hidden||document.querySelector('dialog[open]')
         ||document.activeElement?.matches('input,textarea,select,[contenteditable="true"]'))return true;
-    if(tab==='branding')return imageLoading||brandingHasChanges();
+    if(tab==='branding')return imageLoading||brandingHasChanges()||candidateDisplayHasChanges();
     if(tab==='approvals')return (overview&&Number($('threshold').value)!==Number(overview.requiredApprovals))
       ||!!$('request-form')?.elements.proposedEnd?.value;
     return false;
@@ -38,15 +38,16 @@
     pendingReads++;
     if(!background)error('');
     try {
-      const data=tab==='branding'?await CoopVote.api('branding'):await api({themes:'preferences',officers:'accounts',approvals:'overview'}[tab]);
+      const data=tab==='themes'?{theme:CoopVoteAppearance.current()}
+        :tab==='branding'?await Promise.all([CoopVote.api('branding'),CoopVote.api('candidates/display-settings')]).then(([identity,display])=>({identity,display})):await api({officers:'accounts',approvals:'overview'}[tab]);
       // Editing can begin while a slow request is in flight.
       if(revision!==refreshId||tab!==active()||(background&&deferBackgroundRefresh(tab)))return false;
       const serialized=JSON.stringify(data);
       if(!background||renderedData.get(tab)!==serialized){
         const scrollers=background?[document.scrollingElement,...document.querySelectorAll('main,.table-wrap')].filter(Boolean).map(el=>[el,el.scrollTop,el.scrollLeft]):[];
-        if(tab==='themes'){CoopVoteAppearance.remember(user,data.theme);renderThemes(data.theme);}
+        if(tab==='themes'){renderThemes(data.theme);}
         else if(tab==='officers'){accounts=data;renderAccounts();}
-        else if(tab==='branding'){loadBranding(data);window.CoopVoteBranding?.apply(data);}
+        else if(tab==='branding'){if(!brandingHasChanges())loadBranding(data.identity);if(!candidateDisplayHasChanges())loadCandidateDisplay(data.display);window.CoopVoteBranding?.apply(data.identity);}
         else{overview=data;renderApprovals();}
         scrollers.forEach(([el,top,left])=>{el.scrollTop=top;el.scrollLeft=left;});
         renderedData.set(tab,serialized);
@@ -73,7 +74,7 @@
     refreshId++;
     try{const result=await work();if(after)after(result);if(message)toast(message);await refresh();}
     catch(e){const form=button.closest('form'), target=form?.querySelector('.form-error');if(target)target.textContent=e.message;else toast(e.message);}
-    finally{mutation=false;busyControls(false);button.removeAttribute('aria-busy');syncPasswordButton();syncRequirementButton();syncBrandingButton();}
+    finally{mutation=false;busyControls(false);button.removeAttribute('aria-busy');syncPasswordButton();syncRequirementButton();syncBrandingButton();syncCandidateDisplayButton();}
   }
   document.addEventListener('click',e=>{if(mutation&&e.target.closest('.sidebar a')){e.preventDefault();toast('Wait for the current action to finish.');}},true);
   const previews={navy:['#0b1931','#162a52','#c9a84c'],light:['#f2f5fa','#d6e1f0','#735615'],forest:['#102820','#20483a','#c8c879'],ocean:['#102b38','#1d4b5d','#84d2de'],plum:['#291f35','#493856','#d5b1cd'],slate:['#242b34','#394652','#b7c9df']};
@@ -82,33 +83,36 @@
     $('theme-grid').querySelectorAll('button').forEach(b=>{
       if(b.dataset.theme==='navy'){
         b.querySelector('strong').textContent='Default (Navy)';
-        if(isAdmin){b.querySelector('.theme-state').textContent='Restore defaults';b.setAttribute('aria-label','Restore default theme, logo, logo text, and cooperative name');}
       }
       b.onclick=()=>chooseTheme(b,current);
     });
   }
   function chooseTheme(button,current){
-    const theme=button.dataset.theme,resetBranding=isAdmin&&theme==='navy';
-    if(mutation||(theme===current&&!resetBranding))return;
-    return run(button,()=>api('preferences','PUT',{theme,...(resetBranding?{resetBranding:true}:{})}),data=>{
-      CoopVoteAppearance.remember(user,data.theme);
-      if(data.branding){loadBranding(data.branding);window.CoopVoteBranding?.apply(data.branding);}
-    },resetBranding?'Default theme and branding restored.':'Theme saved.');
+    const theme=button.dataset.theme;
+    if(mutation||theme===current)return;
+    const saved=CoopVoteAppearance.remember(theme);
+    renderThemes(CoopVoteAppearance.current());
+    toast(saved?'Theme saved for this browser.':'Theme applied for this page. Browser storage is unavailable.');
   }
+  window.addEventListener('storage',event=>{
+    if((event.key==='cv.theme.device'||event.key===null)&&active()==='themes')renderThemes(CoopVoteAppearance.current());
+  });
   function renderAccounts(){
     const query=$('officer-search').value.trim().toLocaleLowerCase(),status=$('officer-status').value;
     const visible=accounts.filter(a=>(!status||a.status===status)&&(!query||[a.name,a.username,a.email].join(' ').toLocaleLowerCase().includes(query)));
     $('officer-count').textContent=visible.length+' of '+accounts.length+' accounts';
-    $('accounts').innerHTML=visible.map(a=>`<tr><td>${esc(a.name)}${a.id===user.id?' (you)':''}</td><td>${esc(a.username)}</td><td>${esc(a.email)}</td><td><span class="status ${a.status==='active'?'good':''}">${esc(a.status)}</span></td><td><div class="row-actions officer-actions"><button type="button" class="officer-action" data-edit="${a.id}">Edit</button>${a.id!==user.id?`<button type="button" class="officer-action ${a.status==='active'?'danger-outline':''}" data-status="${a.id}">${a.status==='active'?'Deactivate':'Activate'}</button>`:''}</div></td></tr>`).join('')||'<tr><td colspan="5" class="empty-cell">No officers match your filters.</td></tr>';
-    $('accounts').querySelectorAll('.status').forEach(b=>{const active=b.classList.contains('good');b.className='badge '+(active?'badge-green':'badge-muted');b.textContent=active?'Active':'Deactivated';});
+    $('accounts').innerHTML=visible.map(a=>`<tr><td>${esc(a.name)}${a.id===user.id?' (you)':''}</td><td>${esc(a.username)}</td><td>${esc(a.email)}<div class="officer-verification-note">${a.verification==='verified'?'Email verified':a.verification==='pending'?'Pending verification':'Existing account — verification rollout pending'}${a.pendingEmail && a.purpose==='email_change'?`<br>Pending new email: ${esc(a.pendingEmail)}`:''}${a.canResend && a.deliveryStatus==='failed'?'<br>Email delivery failed. Use Resend Verification.':''}</div>${a.canResend?`<button type="button" class="verification-action" data-resend="${a.id}">Resend Verification</button>`:''}${a.canCancelEmailChange?`<button type="button" class="verification-action" data-cancel-email="${a.id}">Cancel Email Change</button>`:''}</td><td><span class="status ${a.status==='active'?'good':''}">${esc(a.status)}</span></td><td><div class="row-actions officer-actions"><button type="button" class="officer-action" data-edit="${a.id}">Edit</button>${a.id!==user.id && (a.status==='active'||a.status==='pending_verification'||a.canActivate)?`<button type="button" class="officer-action ${a.status==='active'?'danger-outline':''}" data-status="${a.id}">${a.status==='active'||a.status==='pending_verification'?'Deactivate':'Activate'}</button>`:''}</div></td></tr>`).join('')||'<tr><td colspan="5" class="empty-cell">No officers match your filters.</td></tr>';
+    $('accounts').querySelectorAll('.status').forEach(b=>{const active=b.classList.contains('good');b.className='badge '+(active?'badge-green':'badge-muted');b.textContent=active?'Active':b.textContent==='pending_verification'?'Pending Verification':'Deactivated';});
     $('accounts').querySelectorAll('[data-edit]').forEach(b=>{
       b.className='icon-btn edit';b.title='Edit officer';b.setAttribute('aria-label','Edit officer');
       b.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg>';
       b.onclick=()=>openOfficer(accounts.find(a=>a.id===Number(b.dataset.edit)));
     });
     $('accounts').querySelectorAll('tr').forEach(row=>row.querySelectorAll('td').forEach((cell,i)=>{if(cell.colSpan===1)cell.dataset.label=['Name','Username','Email','Status','Actions'][i];}));
+    $('accounts').querySelectorAll('[data-resend]').forEach(b=>b.onclick=()=>run(b,()=>api('accounts/'+b.dataset.resend+'/resend-verification','POST',{}),data=>toast(data.message)));
+    $('accounts').querySelectorAll('[data-cancel-email]').forEach(b=>b.onclick=()=>ask('Cancel Email Change','Keep the current email and invalidate the pending verification link?',false,()=>api('accounts/'+b.dataset.cancelEmail+'/cancel-email-change','POST',{}),'Pending email change cancelled.'));
     $('accounts').querySelectorAll('[data-status]').forEach(b=>{
-      const a=accounts.find(a=>a.id===Number(b.dataset.status)),status=a.status==='active'?'deactivated':'active',label=status==='active'?'Activate':'Deactivate';
+      const a=accounts.find(a=>a.id===Number(b.dataset.status)),status=(a.status==='active'||a.status==='pending_verification')?'deactivated':'active',label=status==='active'?'Activate':'Deactivate';
       b.className='icon-btn '+(status==='active'?'activate':'deactivate');b.title=label+' officer';b.setAttribute('aria-label',label+' '+a.name);
       b.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10M6.3 5.7a9 9 0 1 0 11.4 0"/></svg>';
       b.onclick=()=>ask(label+' Officer',`${label} ${a.name}'s Administrator account?`,false,()=>api('accounts/'+a.id,'POST',{status}),status==='active'?'Officer activated.':'Officer deactivated.',status!=='active');
@@ -124,11 +128,9 @@
     const body={name:f.elements.name.value.trim(),username:f.elements.username.value.trim(),email:f.elements.email.value.trim()};
     if(!body.name||!body.email||(!id&&!body.username)){f.querySelector('.form-error').textContent='Complete all required fields.';return;}
     run(e.submitter,()=>api('accounts'+(id?'/'+id:''),id?'PUT':'POST',body),data=>{
-      $('officer-dialog').close();if(!id){$('credentials').textContent='Username: '+data.username+'\nPassword: '+data.password;$('credentials-dialog').showModal();}
-    },id?'Officer updated.':'Officer created.');
+      $('officer-dialog').close();toast(data.message);
+    });
   };
-  $('copy-credentials').onclick=async()=>{try{await navigator.clipboard.writeText($('credentials').textContent);toast('Credentials copied.');}catch(_){toast('Select the credentials and copy them manually.');}};
-  $('credentials-dialog').addEventListener('close',()=>$('credentials').textContent='');
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{if(!mutation)$(b.dataset.close).close();});
   document.querySelectorAll('dialog').forEach(d=>d.addEventListener('cancel',e=>{if(mutation)e.preventDefault();}));
   function ask(title,message,reason,work,success,danger=false){
@@ -139,6 +141,18 @@
   }
   $('confirm-dialog').addEventListener('close',()=>{confirmAction=null;});
   $('confirm-form').onsubmit=e=>{e.preventDefault();const note=e.currentTarget.elements.note.value.trim();if(e.currentTarget.elements.note.required&&!note){e.currentTarget.querySelector('.form-error').textContent='Enter a reason for rejection.';return;}const action=confirmAction;if(action)run(e.submitter,()=>action.work(note),()=>$('confirm-dialog').close(),action.success);};
+  function setPasswordVisibility(button,visible){
+    const input=$(button.dataset.passwordTarget);
+    input.type=visible?'text':'password';
+    button.setAttribute('aria-label',(visible?'Hide ':'Show ')+button.dataset.passwordLabel);
+    button.setAttribute('aria-pressed',String(visible));
+    button.querySelector('.password-eye-slash').toggleAttribute('hidden',!visible);
+  }
+  function hidePasswords(){ $('password-form').querySelectorAll('.password-visibility').forEach(button=>setPasswordVisibility(button,false)); }
+  $('password-form').querySelectorAll('.password-visibility').forEach(button=>{
+    button.onclick=()=>{if(!mutation)setPasswordVisibility(button,$(button.dataset.passwordTarget).type==='password');};
+  });
+  $('password-form').addEventListener('reset',hidePasswords);
   function passwordIssue(){
     const f=$('password-form'), password=f.elements.newPassword.value;
     if(!f.elements.currentPassword.value.trim())return 'Enter your current password.';
@@ -159,7 +173,7 @@
   }
   function syncPasswordButton(){ $('save-password').disabled=mutation||!!passwordIssue();updatePasswordStrength(); }
   $('password-form').addEventListener('input',()=>{const f=$('password-form');f.querySelector('.form-error').textContent=f.elements.currentPassword.value&&f.elements.newPassword.value&&f.elements.confirmPassword.value?passwordIssue():'';syncPasswordButton();});
-  $('cancel-password').onclick=()=>{if(mutation)return;$('password-form').reset();$('password-form').querySelector('.form-error').textContent='';syncPasswordButton();document.querySelector('.password-settings').open=false;};
+  $('cancel-password').onclick=()=>{if(mutation)return;$('password-form').reset();$('password-form').querySelector('.form-error').textContent='';syncPasswordButton();};
   $('password-form').onsubmit=e=>{e.preventDefault();const f=e.currentTarget,issue=passwordIssue();if(issue){f.querySelector('.form-error').textContent=issue;return;}const body={currentPassword:f.elements.currentPassword.value,newPassword:f.elements.newPassword.value};run(e.submitter,()=>CoopVote.api('voter/change-password',{method:'POST',body}),()=>f.reset(),'Password updated.');};
   function syncRequirementButton(){ $('save-requirement').disabled=mutation||!overview||Number($('threshold').value)===Number(overview.requiredApprovals); }
   $('threshold').onchange=syncRequirementButton;
@@ -186,6 +200,22 @@
     if($('reject'))$('reject').onclick=()=>ask('Reject Election',`Explain what needs to change in ${e.title}.`,true,note=>api('elections/'+e.id+'/decide','POST',{requestId:r.request_id,decision:'reject',note}),'Election rejected.',true);
     if($('open-election'))$('open-election').onclick=()=>ask(e.status==='Closed'?'Reopen Election':'Open Election',`Open ${e.title} for voting now?`,false,()=>CoopVote.api('elections/'+e.id+'/'+(e.status==='Closed'?'reopen':'activate'),{method:'PATCH',body:e.status==='Closed'?{endDate:r.proposed_end.replace(' ','T').slice(0,16)}:{}}),'Election is open for voting.');
   }
+  let savedCandidateDisplay=null;
+  function candidateDisplayHasChanges(){return savedCandidateDisplay!==null&&$('show-year-section').checked!==savedCandidateDisplay;}
+  function syncCandidateDisplayButton(){
+    $('show-year-section').disabled=mutation||savedCandidateDisplay===null;
+    $('candidate-display-save').disabled=mutation||!candidateDisplayHasChanges();
+  }
+  function loadCandidateDisplay(data){
+    savedCandidateDisplay=data.showYearSection===true;
+    $('show-year-section').checked=savedCandidateDisplay;
+    syncCandidateDisplayButton();
+  }
+  $('show-year-section').onchange=syncCandidateDisplayButton;
+  $('candidate-display-form').onsubmit=e=>{
+    e.preventDefault();if(mutation||!candidateDisplayHasChanges())return;
+    run(e.submitter,()=>CoopVote.api('candidates/display-settings',{method:'PUT',body:{showYearSection:$('show-year-section').checked}}),loadCandidateDisplay,'Candidate display settings saved.');
+  };
   let brandingLogo=null, savedBranding=null, imageRevision=0, imageLoading=false;
   function loadBranding(data){
     savedBranding={text:data.text.trim(),coopName:(data.coopName||'Santiago City Multi-Purpose Cooperative').trim(),logo:data.logo||null};
@@ -238,6 +268,9 @@
     const text=$('branding-text').value.trim(),coopName=$('branding-coop-name').value.trim();if(!text||!coopName)return;
     run(e.submitter,()=>CoopVote.api('branding',{method:'PUT',body:{text,logo:brandingLogo,coopName}}),data=>{loadBranding(data);window.CoopVoteBranding?.apply(data);},'Branding saved.');
   };
-  window.addEventListener('hashchange',route);await route();
+  await route();
+  if(active()==='officers' && new URLSearchParams(location.search).get('action')==='add'){
+    const url=new URL(location.href);url.searchParams.delete('action');history.replaceState(null,'',url);openOfficer();
+  }
   CoopVote.watch(()=>refresh({background:true}),10000);
 })();

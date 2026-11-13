@@ -1,0 +1,41 @@
+/* Keep report values readable and contain wide results within their own scroll area. */
+.hbar-meta { align-items: flex-start; flex-wrap: wrap; gap: 6px 12px; }
+.hbar-name { flex: 1 1 12rem; min-width: 0; align-items: flex-start; }
+.hbar-name span { min-width: 0; overflow-wrap: anywhere; }
+.hbar-dot { margin-top: .4em; }
+.hbar-count { flex: 0 0 auto; margin-left: auto; white-space: nowrap; }
+.donut-legend { min-width: 0; }
+.leg-label { min-width: 0; overflow-wrap: anywhere; }
+.leg-val { flex-shrink: 0; white-space: nowrap; }
+.section-head > * { min-width: 0; max-width: 100%; }
+.cv-data-table.cv-report { min-width: 960px; }
+.cv-report td:nth-child(3) .badge { overflow-wrap: anywhere; }
+.cv-report .badge::before { flex-shrink: 0; }
+.cv-report td:is(:nth-child(4), :nth-child(5), :nth-child(7)) { white-space: nowrap; overflow-wrap: normal; }
+.cv-report-results .table-scroll:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; }
+.report-scroll-hint { color: var(--muted2); font-size: .75rem; }
+@media (max-width: 1100px) {
+  .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .filter-bar .date-range { display: grid; grid-template-columns: 14px minmax(0, 1fr) 10px minmax(0, 1fr); width: 100%; min-width: 0; gap: 5px; }
+  .date-range input { width: 100%; min-width: 0; max-width: 100%; }
+  .donut-wrap { justify-content: center; }
+  .donut-legend { flex-basis: 100%; }
+}
+@media (max-width: 359px) {
+  /* Native date fields need room for the complete date and calendar control. */
+  .filter-bar .date-range { grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; }
+  .date-range > svg { grid-row: 1 / 4; }
+  .date-range input, .date-range .date-sep { grid-column: 2; }
+  .date-range .date-sep { justify-self: center; line-height: 1; }
+}
+@media print { .report-scroll-hint { display: none; } }
+
+/* Date inputs share their enclosing filter surface instead of separate dark blocks. */
+html[data-cv-theme] .filter-bar .date-range,
+html[data-cv-theme] .filter-bar .el-select { background-color:var(--navy2); }
+html[data-cv-theme] .filter-bar .date-range input[type="date"] {
+  background:transparent; color:var(--white); box-shadow:none; color-scheme:inherit;
+}
+.filter-bar .date-range input::-webkit-calendar-picker-indicator { filter:none; opacity:.75; cursor:pointer; }

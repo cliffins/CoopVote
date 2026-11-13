@@ -1,5 +1,5 @@
 /* Inherit CoopVote's theme palettes and existing button typography. */
-.voter-import { margin:auto; width:min(980px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); padding:0; border:1px solid var(--border); border-radius:14px; background:var(--navy2); color:var(--white); font-family:'DM Sans',sans-serif; }
+.voter-import { margin:auto; width:min(760px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); padding:0; border:1px solid var(--border); border-radius:14px; background:var(--navy2); color:var(--white); font-family:'DM Sans',sans-serif; }
 .voter-import::backdrop { background:color-mix(in srgb,var(--navy) 75%,transparent); }
 .voter-import[open] { display:flex; flex-direction:column; }
 .voter-import header,.voter-import footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 22px; flex-wrap:wrap; flex-shrink:0; }
@@ -28,3 +28,14 @@
 @media(max-width:600px) { .voter-import header,.voter-import footer,.voter-import .import-body { padding:14px; } .voter-import table { min-width:590px; } .voter-import .import-controls>* { flex:1 1 180px; } }
 
 .voter-import .import-errors:empty { display:none; }
+
+/* Keep file requirements readable without widening the upload dialog. */
+.voter-import .import-note { min-width:0; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--navy); color:var(--muted2); font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.voter-import .import-note h3 { margin:0 0 10px; font-size:14px; color:var(--white); }
+.voter-import .import-note dl { display:grid; gap:8px; margin:0; }
+.voter-import .import-note dt { font-weight:600; color:var(--white); }
+.voter-import .import-note dd { margin:2px 0 0; }
+.voter-import .import-note p { margin:10px 0 0; }
+.voter-import .import-note strong { color:var(--white); font-weight:600; }
+.voter-import .import-note code { display:block; margin-top:6px; white-space:normal; font-size:12px; }
+.voter-import .import-note .import-note-next { padding-top:10px; border-top:1px solid var(--border); }

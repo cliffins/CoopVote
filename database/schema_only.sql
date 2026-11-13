@@ -15,19 +15,6 @@ CREATE TABLE `admin_profiles` (
   CONSTRAINT `admin_profiles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `announcements` (
-  `announcement_id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(150) NOT NULL,
-  `message` text NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT 1,
-  `created_by` int(11) DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`announcement_id`),
-  KEY `idx_ann_active` (`is_active`,`created_at`),
-  KEY `fk_ann_creator` (`created_by`),
-  CONSTRAINT `fk_ann_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE `audit_logs` (
   `log_id` bigint(20) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
@@ -37,7 +24,7 @@ CREATE TABLE `audit_logs` (
   `description` varchar(255) DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
   `user_agent` varchar(255) DEFAULT NULL,
-  `timestamp` datetime NOT NULL DEFAULT current_timestamp(),
+  `timestamp` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`log_id`),
   KEY `idx_audit_time` (`timestamp`),
   KEY `idx_audit_action` (`action`),
@@ -55,7 +42,7 @@ CREATE TABLE `ballots` (
   `voted_at` datetime DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
   `user_agent` varchar(255) DEFAULT NULL,
-  `issued_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `issued_at` datetime DEFAULT NULL,
   PRIMARY KEY (`ballot_id`),
   UNIQUE KEY `uq_ballot_per_voter` (`user_id`,`election_id`),
   UNIQUE KEY `receipt_code` (`receipt_code`),
@@ -81,6 +68,10 @@ CREATE TABLE `candidates` (
   `member_id` int(11) NOT NULL,
   `position_id` int(11) NOT NULL,
   `election_id` int(11) NOT NULL,
+  `section` varchar(100) NOT NULL DEFAULT '',
+  `year_level` varchar(32) NOT NULL DEFAULT '',
+  `department` varchar(150) NOT NULL DEFAULT '',
+  `course` varchar(150) NOT NULL DEFAULT '',
   `platform` text DEFAULT NULL,
   `bio` text DEFAULT NULL,
   `photo_url` varchar(255) DEFAULT NULL,
@@ -291,6 +282,7 @@ CREATE TABLE `user_preferences` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `users` (
+  `auth_version` int unsigned NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
@@ -326,11 +318,11 @@ CREATE TABLE `vote_integrity` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `votes` (
-  `vote_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `vote_id` bigint(20) NOT NULL,
   `election_id` int(11) NOT NULL,
   `position_id` int(11) NOT NULL,
   `candidate_id` int(11) NOT NULL,
-  `cast_date` date NOT NULL,
+  `cast_date` date DEFAULT NULL,
   PRIMARY KEY (`vote_id`),
   KEY `fk_votes_position` (`position_id`),
   KEY `fk_votes_candidate` (`candidate_id`),
@@ -359,4 +351,52 @@ ALTER TABLE governance_config
 ALTER TABLE election_approval_requests
   ADD CONSTRAINT chk_request_approvals CHECK (required_approvals >= 1);
 
+CREATE TABLE `candidate_photo_chunks` (
+    `candidate_id` INT(11) NOT NULL,
+    `chunk_no` INT UNSIGNED NOT NULL,
+    `mime` VARCHAR(32) NOT NULL,
+    `photo_data` MEDIUMBLOB NOT NULL,
+    PRIMARY KEY (`candidate_id`, `chunk_no`),
+    CONSTRAINT `fk_candidate_photo_chunks_candidate` FOREIGN KEY (`candidate_id`)
+        REFERENCES `candidates` (`candidate_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Additive migration. Existing accounts, votes and election records are unchanged.
+CREATE TABLE `officer_email_verifications` (
+    `user_id` INT(11) NOT NULL,
+    `purpose` ENUM('invite','email_change') NOT NULL,
+    `pending_email` VARCHAR(100) NOT NULL,
+    `token_hash` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    `expires_at` DATETIME NOT NULL,
+    `requested_by` INT(11) DEFAULT NULL,
+    `requested_at` DATETIME NOT NULL,
+    `window_started_at` DATETIME NOT NULL,
+    `send_count` SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+    `failed_attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    `delivery_status` ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
+    `consumed_at` DATETIME DEFAULT NULL,
+    `verified_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (user_id),
+    UNIQUE KEY uq_officer_verification_token (token_hash),
+    CONSTRAINT fk_officer_verification_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_officer_verification_requester FOREIGN KEY (requested_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = @COOPVOTE_OLD_FK_CHECKS;
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+ user_id INT(11) NOT NULL PRIMARY KEY,
+ token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL UNIQUE,
+ email VARCHAR(254) NOT NULL,
+ password_fingerprint CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ expires_at DATETIME NOT NULL,
+ consumed_at DATETIME NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ CONSTRAINT fk_password_reset_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS password_reset_limits (
+ key_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY,
+ window_start DATETIME NOT NULL,
+ last_request DATETIME NULL,
+ attempts INT UNSIGNED NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -168,10 +168,16 @@
 .summary-strip .s-card > div:last-child { min-width: 0; }
 .summary-strip .s-val {
   min-height: 1.8rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
+}
+.summary-strip .s-label { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  /* Values use the full card width instead of competing with the icon. */
+  .summary-strip .s-card { flex-direction: column; align-items: flex-start; padding: 14px; gap: 10px; }
+  .summary-strip .s-card > div:last-child { width: 100%; }
 }
 @media (max-width: 700px) {
   .app .candidate-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -265,13 +271,42 @@
   .app .header { height: auto; min-height: var(--header-h, 64px); padding-block: 8px; gap: 8px; }
   .app .header-title { min-width: 0; }
   .app .header-title h1, .app .header-title p { white-space: normal; overflow-wrap: anywhere; }
-  .profile-hero { align-items: flex-start; }
+  .app .profile-hero { flex-direction: column; align-items: center; }
+  .profile-hero .profile-picture { flex-basis: auto; margin-inline: auto; }
+  .profile-hero .hero-body { width: 100%; text-align: center; align-items: center; }
+  .profile-hero .hero-tags { justify-content: center; }
   .photo-upload { flex-wrap: wrap; }
   .photo-upload-text { min-width: 0; overflow-wrap: anywhere; }
   .section-head, .card-head, .save-bar { align-items: flex-start; }
   .section-head > :last-child, .save-actions { margin-left: 0; }
   .save-actions { width: 100%; }
   .save-actions > button { flex: 1 1 140px; }
+}
+/* Keep directory controls in predictable rows on phones and tablets. */
+@media (max-width: 900px) {
+  /* Monitoring has more actions than other headers. Give them a separate row
+     so they cannot squeeze the title into a tall, single-character column. */
+  .app .header.monitor-header { display: grid; grid-template-columns: 36px minmax(0, 1fr); height: auto; padding-block: 10px; gap: 10px 8px; }
+  .monitor-header .header-actions { grid-column: 1 / -1; width: 100%; min-width: 0; flex-wrap: nowrap; gap: 6px; }
+  .monitor-header .header-actions > .btn { flex: 1; min-width: 0; justify-content: center; padding-inline: 8px; }
+  .monitor-header .header-actions > .live-badge { flex-shrink: 0; }
+}
+@media (max-width: 768px) {
+  .app .voter-toolbar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .app .voter-toolbar > .search-wrap { grid-column: 1 / -1; width: 100%; max-width: none; min-width: 0; }
+  .app .voter-toolbar > .filter-select { grid-column: span 3; width: 100%; min-width: 0; }
+  .app .voter-toolbar > .btn { grid-column: span 2; min-width: 0; min-height: 44px; padding-inline: 8px; justify-content: center; white-space: normal; }
+  .app .voter-toolbar .search-wrap input { min-width: 0; height: 44px; }
+  .app .candidate-browser-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .app .candidate-browser-toolbar .search-wrap { min-width: 0; max-width: none; width: 100%; }
+  .app .candidate-browser-toolbar .search-wrap input { min-width: 0; height: 44px; }
+  .candidate-browser-toolbar .pos-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .candidate-browser-toolbar .pos-tab { min-width: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 8px; white-space: normal; overflow-wrap: anywhere; }
+  .candidate-browser-toolbar .count-badge { flex-shrink: 0; }
+}
+@media (max-width: 400px) {
+  .app .voter-toolbar > .btn { grid-column: span 3; }
+  .app .voter-toolbar > #add-voter-btn { grid-column: 1 / -1; }
 }
 /* Very short viewports need the entire dialog, including actions, to scroll. */
 @media (max-height: 400px) {

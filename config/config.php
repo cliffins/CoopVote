@@ -5,31 +5,50 @@
 
 declare(strict_types=1);
 
+// CoopVote application constants.
+defined('APP_NAME') || define('APP_NAME', 'CoopVote');
+defined('SESSION_NAME') || define('SESSION_NAME', 'coopvote_session');
+defined('BASE_PATH') || define('BASE_PATH', dirname(__DIR__));
+defined('UPLOAD_PATH') || define('UPLOAD_PATH', BASE_PATH . DIRECTORY_SEPARATOR . 'uploads');
+defined('MAX_UPLOAD_BYTES') || define('MAX_UPLOAD_BYTES', 5 * 1024 * 1024);
+
+
 /* ── Database ───────────────────────────────────────────── */
-const DB_HOST    = '127.0.0.1';
-const DB_PORT    = 3306;
-/**
- * The live database. COOPVOTE_DB overrides it so the automated test suite
- * can run against a scratch copy and never touch real member data.
- * Nothing else sets this variable.
- */
-define('DB_NAME', getenv('COOPVOTE_DB') ?: 'coopvote');
-const DB_USER    = 'root';
-const DB_PASS    = '';          // default XAMPP root password is empty
-const DB_CHARSET = 'utf8mb4';
+require_once __DIR__ . '/runtime.php';
 
-/* ── Application ────────────────────────────────────────── */
-const APP_NAME    = 'CoopVote';
-const SESSION_NAME = 'coopvote_session';
-
-/** Absolute path to the project root (…/htdocs/CoopVote). */
-define('BASE_PATH', dirname(__DIR__));
-
-/** Where legacy registration ID uploads land; profile pictures live in MariaDB. */
-define('UPLOAD_PATH', BASE_PATH . DIRECTORY_SEPARATOR . 'uploads');
-
-/** Max upload size for legacy registration ID photos (5 MB). */
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+// Test processes supply their own settings and never load production credentials.
+$dbSettings = deployment_settings();
+if (getenv('COOPVOTE_ENV') !== 'test') {
+    $dbPath = dirname(BASE_PATH) . '/private/coopvote-db.php';
+    if (!is_readable($dbPath)) {
+        config_failure('CONFIG_FILE_UNREADABLE', 'The private database configuration is not readable.');
+    }
+    ob_start();
+    try {
+        $dbConfig = require $dbPath;
+        $dbOutput = ob_get_clean();
+    } catch (Throwable) {
+        ob_end_clean();
+        config_failure('CONFIG_FILE_INVALID', 'The private database configuration could not be loaded.');
+    }
+    if ($dbOutput !== '' || !is_array($dbConfig)) {
+        config_failure('CONFIG_FILE_INVALID', 'The private database configuration must return an array without output.');
+    }
+    foreach (['host'=>'db_host', 'port'=>'db_port', 'name'=>'db_name', 'user'=>'db_user', 'pass'=>'db_password'] as $key=>$setting) {
+        if (!array_key_exists($key, $dbConfig)) {
+            config_failure('DB_CONFIG_INVALID', 'A required private database setting is missing.');
+        }
+        $dbSettings[$setting] = $dbConfig[$key];
+    }
+}
+define('DB_SETTINGS', database_settings($dbSettings, 'getenv'));
+define('DB_HOST', DB_SETTINGS['host']);
+define('DB_PORT', DB_SETTINGS['port']);
+define('DB_NAME', DB_SETTINGS['name']);
+define('DB_USER', DB_SETTINGS['user']);
+define('DB_PASS', DB_SETTINGS['password']);
+define('DB_CHARSET', 'utf8mb4');
+unset($dbConfig, $dbSettings, $dbPath, $dbOutput, $key, $setting);
 
 /**
  * Role slugs that may reach /api/admin/* endpoints.
@@ -68,16 +87,16 @@ const WRITE_ROLES = ['admin'];
  * exercise registration and voting without posting real mail to real
  * addresses through the cooperative's Gmail account.
  */
-define('MAIL_ENABLED', getenv('COOPVOTE_MAIL') !== '0');
+define('MAIL_ENABLED', getenv('COOPVOTE_MAIL') === '1');
 
 const MAIL_HOST     = 'smtp.gmail.com';
 const MAIL_PORT     = 587;             // 587 = STARTTLS, 465 = SMTPS
 const MAIL_SECURE   = 'tls';           // 'tls' for 587, 'ssl' for 465
-const MAIL_USERNAME = 'coopvote5@gmail.com';              // your full Gmail address
-const MAIL_PASSWORD = 'wtionnbnnjrunviq';              // 16-character App Password, no spaces
+define('MAIL_USERNAME', getenv('COOPVOTE_MAIL_USERNAME') ?: '');              // your full Gmail address
+define('MAIL_PASSWORD', getenv('COOPVOTE_MAIL_PASSWORD') ?: '');              // 16-character App Password, no spaces
 
 /* Shown as the sender. Gmail rewrites the address to MAIL_USERNAME. */
-const MAIL_FROM_ADDRESS = 'coopvote5@gmail.com';
+define('MAIL_FROM_ADDRESS', getenv('COOPVOTE_MAIL_FROM_ADDRESS') ?: MAIL_USERNAME);
 const MAIL_FROM_NAME    = 'CoopVote';
 
 /** Where members are told to reply; blank uses the from address. */
