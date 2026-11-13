@@ -17,7 +17,7 @@
   /* ── Work out where the app lives ──────────────────────────
      This file is always at <root>/assets/js/app.js, so the
      project root can be derived from its own URL. That keeps
-     every page working whether it sits at the root (login.html)
+     every page working whether it sits at the root (login.php)
      or one level down (admin/…, voter/…).                     */
   const scriptEl = document.currentScript ||
     Array.prototype.slice.call(document.getElementsByTagName('script'))
@@ -67,8 +67,8 @@
   function loginDestination(user) {
     const id = requestedElection();
     return id && (user.role === 'member' || user.roleSlug === 'voter')
-      ? ROOT + 'voter/election.html?election=' + id
-      : ROOT + (user.home || user.redirect || (user.role === 'admin' ? 'admin/dashboard.html' : 'voter/dashboard.html'));
+      ? ROOT + 'voter/election.php?election=' + id
+      : ROOT + (user.home || user.redirect || (user.role === 'admin' ? 'admin/dashboard.php' : 'voter/dashboard.php'));
   }
 
   function selectedElection() {
@@ -83,6 +83,7 @@
       const link = new URL(window.location.href);
       link.searchParams.set('election', String(id));
       window.history.replaceState(null, '', link.href);
+      rememberAllowedPage();
     }
     try {
       if (id) localStorage.setItem(ELECTION_KEY, String(id));
@@ -256,18 +257,18 @@
      * not visible to the browser. Return null rather than a guess: a
      * previous version put the words "<your project folder>" into the
      * address, the page parsed them as an HTML tag and dropped them, and
-     * the result was a link to http://localhost//login.html that answered
+     * the result was a link to http://localhost//login.php that answered
      * Forbidden when anyone clicked it.
      */
     if (!folder) {
       return null;
     }
-    return 'http://localhost/' + folder + '/' + (page || 'login.html');
+    return 'http://localhost/' + folder + '/' + (page || 'login.php');
   }
 
   /** The page's own filename, for telling somebody what to open. */
   function currentPageFile() {
-    return window.location.pathname.split('/').filter(Boolean).pop() || 'login.html';
+    return window.location.pathname.split('/').filter(Boolean).pop() || 'login.php';
   }
 
   function staticServerMessage() {
@@ -335,7 +336,7 @@
     if (here.indexOf('login') === 0) return;
     /* replace(), not href: the signed-out page must not stay in history. */
     const id = isElectionPickerPage() ? requestedElection() : '';
-    window.location.replace(ROOT + 'login.html?' + (id ? 'election=' + id : 'expired=1'));
+    window.location.replace(ROOT + 'login.php?' + (id ? 'election=' + id : 'expired=1'));
   }
 
   /* ── Back-button protection ────────────────────────────────
@@ -401,6 +402,21 @@
   /* Remembered so the page can re-check itself after a Back navigation. */
   let guardedRole = null;
 
+  function rememberAllowedPage() {
+    const user = window.CoopVote?.user;
+    if (!user) return;
+    const base = new URL(ROOT);
+    const here = new URL(window.location.href);
+    if (here.origin !== base.origin || !here.pathname.startsWith(base.pathname)) return;
+    const page = here.pathname.slice(base.pathname.length) + here.search + here.hash;
+    if (!/^(?:admin\/|voter\/|management\.(?:php|html)(?:[?#]|$))/.test(page)) return;
+    try { document.cookie = 'cv_last_page=' + encodeURIComponent(JSON.stringify({userId:user.id,page}))
+      + '; Path=/; SameSite=Lax' + (here.protocol === 'https:' ? '; Secure' : '');
+    } catch (_) { /* Server session still remembers the last allowed page. */ }
+  }
+  window.addEventListener('hashchange', rememberAllowedPage);
+  window.addEventListener('popstate', rememberAllowedPage);
+
   async function guard(expected) {
     guardedRole = expected || null;
     try {
@@ -412,6 +428,7 @@
         return new Promise(() => {});     // stop the page rendering
       }
       window.CoopVote.user = user;
+      rememberAllowedPage();
       if (window.CoopVoteNavigation) window.CoopVoteNavigation.remember(user);
       window.CoopVote.coop = data.coop || {};
       if (window.CoopVoteSidebar) window.CoopVoteSidebar.mount(user);
@@ -443,13 +460,14 @@
     };
     set('sidebar-name', user.name);
     set('sidebar-id', user.memberId && user.memberId !== '—' ? user.memberId : user.roleName);
-    set('sidebar-avatar', initials(user.name));
+    if (window.CoopVoteNavigation) window.CoopVoteNavigation.paintIdentity(user);
+    else set('sidebar-avatar', initials(user.name));
     set('topbar-user', user.name);
   }
 
   /** Election details, candidate browsing and voting share one selection. */
   function isElectionPickerPage() {
-    return /(^|\/)(election|ballot|candidates)\.html$/i.test(window.location.pathname);
+    return /(^|\/)(election|ballot|candidates)\.(?:html|php)$/i.test(window.location.pathname);
   }
 
   /**
@@ -883,11 +901,13 @@
     };
     const refresh = async () => {
       unread = await buildNotices(user);
+      const identity = (await api('auth/me')).user;
+      if (identity.id === user.id) {Object.assign(user,identity);applyIdentity(user);window.CoopVoteNavigation?.remember(user);window.dispatchEvent(new CustomEvent('coopvote:identity-updated',{detail:user}));}
       restoreAnnouncements();
       const fresh = unread.filter(n => !announced.has(n.id));
       unread.forEach(n => announced.add(n.id));
       try { localStorage.setItem(announcementKey, JSON.stringify(Array.from(announced).slice(-1000))); } catch (e) { /* Storage may be disabled. */ }
-      if (fresh.length) toast(fresh.length + ' unread election notification' + (fresh.length === 1 ? '' : 's') + '. Open the bell to read.', 'info');
+      if (fresh.length) toast(fresh.length + ' unread notification' + (fresh.length === 1 ? '' : 's') + '. Open the bell to read.', 'info');
       paint();
     };
     try { await refresh(); } catch (e) { /* Retry without breaking login. */ }
@@ -895,7 +915,7 @@
     bell.addEventListener('click', e => {
       e.stopPropagation();
       const open = document.getElementById('cv-notif');
-      if (open) { open.remove(); return; }
+      if (open) { open.dispatchEvent(new Event('cv-close')); return; }
       openNoticePanel(bell, unread, async n => {
         await api('notifications', { method: 'POST', body: { id: n.id } });
         if (n.electionId && user.role !== 'admin') setSelectedElection(n.electionId);
@@ -912,10 +932,14 @@
   function openNoticePanel(bell, unread, onRead) {
     const box = document.createElement('div');
     box.id = 'cv-notif';
+    box.className = 'notice-panel';
+    box.setAttribute('role', 'region');
+    box.setAttribute('aria-label', 'Notifications');
     box.style.cssText =
-      'position:absolute;top:calc(100% + 8px);right:0;width:300px;z-index:4000;'
+      'position:fixed;width:320px;box-sizing:border-box;z-index:4000;'
       + 'background:var(--navy2);border:1px solid rgba(255,255,255,.12);border-radius:12px;'
-      + 'box-shadow:0 18px 44px rgba(0,0,0,.55);padding:6px;text-align:left';
+      + 'box-shadow:0 18px 44px rgba(0,0,0,.55);padding:6px;text-align:left;'
+      + 'white-space:normal;overflow-wrap:anywhere;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain';
 
     if (!unread.length) {
       box.innerHTML =
@@ -927,13 +951,13 @@
       const a = document.createElement('a');
       a.href = n.href;
       a.style.cssText =
-        'display:flex;gap:9px;align-items:flex-start;padding:11px 12px;'
+        'display:flex;gap:9px;align-items:flex-start;padding:11px 12px;min-width:0;white-space:normal;'
         + 'border-radius:8px;color:var(--muted2);font-size:.8rem;line-height:1.5;'
         + 'text-decoration:none';
       a.innerHTML =
         '<span style="width:6px;height:6px;border-radius:50%;margin-top:6px;'
         + 'flex-shrink:0;background:var(--gold)"></span>'
-        + '<span>' + escapeHtml(n.text) + '</span>';
+        + '<span style="flex:1;min-width:0;overflow-wrap:anywhere">' + escapeHtml(n.text) + '</span>';
 
       a.addEventListener('mouseenter', () => {
         a.style.background = 'rgba(255,255,255,.07)'; a.style.color = '#fff';
@@ -962,11 +986,43 @@
       box.appendChild(a);
     });
 
-    bell.appendChild(box);
-    setTimeout(() => document.addEventListener('click', function close() {
+    // Keep links outside the bell button and clamp the panel to the viewport.
+    // Button styles (especially white-space:nowrap) must not reach message text.
+    function position() {
+      const viewport = window.visualViewport;
+      const left = viewport?.offsetLeft || 0, top = viewport?.offsetTop || 0;
+      const width = viewport?.width || window.innerWidth;
+      const height = viewport?.height || window.innerHeight;
+      const anchor = bell.getBoundingClientRect();
+      const panelWidth = Math.min(320, Math.max(0, width - 24));
+      const panelTop = Math.max(top + 12, anchor.bottom + 8);
+      box.style.width = panelWidth + 'px';
+      box.style.left = Math.max(left + 12, Math.min(anchor.right - panelWidth, left + width - panelWidth - 12)) + 'px';
+      box.style.top = panelTop + 'px';
+      box.style.maxHeight = Math.max(0, Math.min(420, top + height - panelTop - 12)) + 'px';
+    }
+    function close() {
       box.remove();
       document.removeEventListener('click', close);
-    }, { once: true }), 0);
+      document.removeEventListener('keydown', escape);
+      window.removeEventListener('resize', position);
+      window.visualViewport?.removeEventListener('resize', position);
+      window.visualViewport?.removeEventListener('scroll', position);
+      bell.setAttribute('aria-expanded', 'false');
+    }
+    function escape(event) {
+      if (event.key === 'Escape') { close(); bell.focus(); }
+    }
+    box.addEventListener('cv-close', close, { once: true });
+    box.addEventListener('click', event => event.stopPropagation());
+    document.body.appendChild(box);
+    bell.setAttribute('aria-expanded', 'true');
+    position();
+    document.addEventListener('click', close);
+    document.addEventListener('keydown', escape);
+    window.addEventListener('resize', position);
+    window.visualViewport?.addEventListener('resize', position);
+    window.visualViewport?.addEventListener('scroll', position);
   }
 
   function initials(name) {
@@ -1010,18 +1066,56 @@
      */
     guardedRole = null;
     if (window.CoopVoteNavigation) window.CoopVoteNavigation.clear();
-    window.location.replace(ROOT + 'login.html?bye=1');
+    window.location.replace(ROOT + 'login.php?bye=1');
   }
 
   const pendingDownloads = new Set();
+  /** Validate the actual report response before navigating a printable tab. */
+  async function previewReport(route, options) {
+    if (pendingDownloads.has(route)) return false;
+    // Reserve a tab within the click gesture so browsers do not block it after fetch.
+    const preview = window.open('about:blank', '_blank');
+    if (!preview) { toast('Allow pop-ups to open the printable report.', 'error'); return false; }
+    preview.opener = null;
+    preview.document.title = 'Preparing election report';
+    preview.document.body.textContent = 'Preparing your report…';
+    pendingDownloads.add(route);
+    const button = options.button, label = button?.innerHTML;
+    if (button) { button.disabled = true; button.textContent = 'Preparing…'; button.setAttribute('aria-busy', 'true'); }
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch(url(route), { credentials:'same-origin', signal:controller.signal,
+        headers:{'X-Requested-With':'XMLHttpRequest', 'Accept':'text/html'} });
+      const type = response.headers.get('Content-Type') || '';
+      if (!response.ok || response.redirected || !/^text\/html\b/i.test(type)) {
+        let message = 'Could not open the printable report. Please try again.';
+        if (/application\/json/i.test(type)) {
+          const data = await response.json();
+          message = data.code === 'RESULTS_PRIVATE'
+            ? 'Print / PDF is not available yet. Results must be released and meet voter privacy requirements.'
+            : (data.error || message);
+        }
+        throw new Error(message);
+      }
+      const blob = await response.blob();
+      if (!blob.size) throw new Error('The report was empty. Please try again.');
+      if (preview.closed) return false;
+      const objectUrl = URL.createObjectURL(blob);
+      preview.location.replace(objectUrl);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+      return true;
+    } catch (error) {
+      if (!preview.closed) preview.close();
+      toast(error.name === 'AbortError' ? 'Preparing the report took too long. Please try again.' : error.message, 'warn');
+      return false;
+    } finally {
+      clearTimeout(timer); pendingDownloads.delete(route);
+      if (button) { button.disabled = false; button.innerHTML = label; button.removeAttribute('aria-busy'); }
+    }
+  }
   /** Download attachments without navigating away; printable previews opt into a tab. */
   async function download(route, options = {}) {
-    if (options.preview) {
-      const preview = window.open(url(route), '_blank');
-      if (!preview) { toast('Allow pop-ups to open the printable report.', 'error'); return false; }
-      preview.opener = null;
-      return true;
-    }
+    if (options.preview) return previewReport(route, options);
     if (pendingDownloads.has(route)) return false;
     pendingDownloads.add(route);
     const button = options.button, label = button?.textContent;
@@ -1068,6 +1162,67 @@
 
   // Share only motion and lifetime; each page keeps its existing toast design.
   const toastMotion = new WeakMap();
+  const activeToasts = new Set();
+  const toastRoots = new Map();
+  let toastDialogObserver;
+
+  // Native modal dialogs occupy the browser top layer, above every z-index.
+  // Keep notifications in the active dialog's accessible subtree and promote
+  // their existing container as a non-interactive manual popover when supported.
+  function syncToastLayers() {
+    let dialogs;
+    try { dialogs = [...document.querySelectorAll('dialog:modal')]; }
+    catch (_) { dialogs = [...document.querySelectorAll('dialog[open]')]; }
+    const focused = document.activeElement?.closest('dialog[open]');
+    const dialog = dialogs.includes(focused) ? focused : dialogs[dialogs.length - 1];
+    let top = 12;
+    for (const [root, home] of toastRoots) {
+      const visible = [...activeToasts].some(el => el.isConnected && !el.hidden && root.contains(el));
+      const popover = typeof root.showPopover === 'function';
+      if (!visible) {
+        if (popover && root.matches(':popover-open')) root.hidePopover();
+        continue;
+      }
+      const parent = dialog || (home.parent.isConnected ? home.parent : document.body);
+      if (root.parentElement !== parent) {
+        if (popover && root.matches(':popover-open')) root.hidePopover();
+        parent.insertBefore(root, parent === home.parent && home.next?.parentNode === parent ? home.next : null);
+      }
+      root.style.top = top + 'px';
+      if (popover && !root.matches(':popover-open')) root.showPopover();
+      top += root.getBoundingClientRect().height + 6;
+    }
+  }
+
+  function registerToastLayer(element) {
+    const root = element.closest('.toast-wrap, #cv-toast-wrap') || element;
+    if (!toastRoots.has(root)) {
+      toastRoots.set(root, { parent: root.parentElement, next: root.nextSibling });
+      if (typeof root.showPopover === 'function') root.setAttribute('popover', 'manual');
+      // Keep a compact stack aligned to the top-right edge.
+      Object.assign(root.style, {
+        position: 'fixed', top: '12px', right: '12px', left: 'auto', bottom: 'auto', margin: '0',
+        width: '280px', maxWidth: 'calc(100vw - 24px)', maxHeight: 'calc(100dvh - 24px)',
+        overflow: 'visible', pointerEvents: 'none', zIndex: '2147483647'
+      });
+      if (root !== element) Object.assign(root.style, {
+        padding: '0', border: '0', background: 'transparent', height: 'auto', gap: '6px'
+      });
+    }
+    if (root !== element) element.style.maxWidth = '100%';
+    Object.assign(element.style, {
+      boxSizing: 'border-box', minWidth: '0', padding: '9px 11px',
+      fontSize: '.78rem', lineHeight: '1.45', borderRadius: '9px',
+      gap: '7px', overflowWrap: 'anywhere'
+    });
+    activeToasts.add(element);
+    if (!toastDialogObserver) {
+      toastDialogObserver = new MutationObserver(syncToastLayers);
+      toastDialogObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });
+      window.addEventListener('resize', syncToastLayers);
+    }
+    syncToastLayers();
+  }
   function presentToast(element, duration = 4200, dismiss = () => element.remove()) {
     const previous = toastMotion.get(element);
     const start = previous && !element.hidden ? window.getComputedStyle(element) : null;
@@ -1078,7 +1233,7 @@
     const cancel = () => {
       clearTimeout(timer);
       if (animation) animation.cancel();
-      if (toastMotion.get(element) === cancel) toastMotion.delete(element);
+      if (toastMotion.get(element) === cancel) { toastMotion.delete(element); activeToasts.delete(element); }
     };
     toastMotion.set(element, cancel);
     element.hidden = false;
@@ -1089,6 +1244,7 @@
     element.style.transform = 'none';
     if (!element.hasAttribute('role')) element.setAttribute('role', 'status');
     element.setAttribute('aria-atomic', 'true');
+    registerToastLayer(element);
     const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (element.animate && !reduced()) {
       animation = element.animate([from, { opacity: 1, transform: 'none' }],
@@ -1097,7 +1253,7 @@
     if (duration > 0) timer = setTimeout(() => {
       const finish = () => {
         if (toastMotion.get(element) !== cancel) return;
-        cancel(); dismiss();
+        cancel(); dismiss(); syncToastLayers();
       };
       if (!element.animate || reduced()) { finish(); return; }
       animation = element.animate([{ opacity: 1, transform: 'none' },
@@ -1139,7 +1295,7 @@
   }
 
   window.CoopVote = {
-    api, guard, logout, download, toast, presentToast, initials, url, ROOT, watch, user: null,
+    api, guard, logout, download, applyIdentity, toast, presentToast, initials, url, ROOT, watch, user: null,
     /* Election selection, for pages that want to read or change it. */
     selectedElection, setSelectedElection, requestedElection, loginDestination, elections: [],
     paginate, paginationPages, renderPagination, escapeHtml, esc, coop: {},

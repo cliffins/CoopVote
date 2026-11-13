@@ -36,6 +36,24 @@ function election_notices(array $user, ?int $now = null): array
     return $notices;
 }
 
+/** Only the account whose profile changed receives this event. Never expose audit descriptions or IPs. */
+function profile_update_notices(array $user): array
+{
+    $q = db()->prepare("SELECT a.log_id,a.timestamp,u.username,p.display_name
+        FROM audit_logs a LEFT JOIN users u ON u.user_id=a.user_id
+        LEFT JOIN admin_profiles p ON p.user_id=a.user_id
+        WHERE a.action='member.profile_updated' AND a.entity_type='user' AND a.entity_id=?
+        AND NOT EXISTS (SELECT 1 FROM notification_reads nr WHERE nr.user_id=? AND nr.notice_id=CONCAT('profile:',a.log_id))
+        ORDER BY a.log_id DESC LIMIT 100");
+    $q->execute([(int)$user['user_id'],(int)$user['user_id']]);
+    return array_map(static function(array $row): array {
+        $actor = $row['username'] ?: 'removed admin account';
+        if (!empty($row['display_name'])) $actor = $row['display_name'] . ' (@' . $actor . ')';
+        return ['id'=>'profile:'.$row['log_id'], 'text'=>'The admin updated your profile — '.$actor.'.',
+            'href'=>'profile.php','createdAt'=>$row['timestamp']];
+    }, $q->fetchAll());
+}
+
 function handle_election_notifications(): never
 {
     $u = require_login();
@@ -50,6 +68,6 @@ function handle_election_notifications(): never
     $s = db()->prepare('SELECT notice_id FROM notification_reads WHERE user_id = ?');
     $s->execute([(int) $u['user_id']]);
     $read = array_fill_keys($s->fetchAll(PDO::FETCH_COLUMN), true);
-    $notices = array_values(array_filter(election_notices($u), static fn($n) => !isset($read[$n['id']])));
+    $notices = array_values(array_filter(array_merge(profile_update_notices($u), election_notices($u)), static fn($n) => !isset($read[$n['id']])));
     json_out(['notices' => $notices, 'serverTime' => date('c')]);
 }

@@ -1,0 +1,184 @@
+/* Shared compact presentation; keep the root font size and browser zoom intact. */
+body { --cv-content-pad:clamp(10px,1.3vw,18px); --cv-form-gap:8px; }
+.app, .settings-shell { font-size:.875rem; }
+.app .content, .settings-shell .module-content { padding:var(--cv-content-pad); padding-bottom:max(20px,env(safe-area-inset-bottom,0px)); gap:8px; }
+.app .header, .settings-shell .page-heading { padding-inline:var(--cv-content-pad); }
+.app .header-title h1, .settings-shell .heading-text h1 { font-size:clamp(1rem,.95rem + .2vw,1.125rem); line-height:1.35; }
+.app .header-title p, .settings-shell .heading-text p { font-size:.72rem; line-height:1.45; }
+.app :is(.section-title,.card-title), .settings-shell .section-heading h2 { font-size:.95rem; line-height:1.4; }
+.app :is(.section-sub,.card-sub), .settings-shell .hint { font-size:.75rem; line-height:1.5; }
+.app :is(.s-card,.stat-card,.summary-card) { padding:12px; gap:8px; }
+.app :is(.s-val,.stat-val) { font-size:clamp(1.35rem,1.1rem + .5vw,1.65rem); line-height:1.25; }
+.app :is(.s-label,.stat-label) { font-size:.7rem; line-height:1.45; }
+.app :is(.summary-strip,.stats-strip,.stats-grid) { gap:8px; }
+.app .card-head { padding:10px 12px; }
+.settings-shell .panel { padding:12px; gap:8px; }
+.settings-shell .officer-directory { padding:0; gap:0; }
+.app .toolbar, .settings-shell .module-toolbar { gap:8px; }
+.app :is(.btn,.filter-select), .settings-shell :is(.primary,.danger-outline,.filter-select) { font-size:.8rem; }
+.app .btn { padding:8px 10px; }
+.app .field, .settings-shell form label { min-width:0; }
+.app .field label, .modal .field label, .settings-shell form label { font-size:.75rem; line-height:1.5; }
+.app .form-row, .modal .form-row { gap:var(--cv-form-gap); }
+.app :is(.profile-fields,.password-fields) { gap:var(--cv-form-gap); }
+.app .field :is(input,select,textarea), .modal .field :is(input,select,textarea),
+.settings-shell form :is(input,select,textarea), body[data-management-page] dialog form :is(input,select,textarea) {
+  box-sizing:border-box; min-width:0; max-width:100%; font-size:.875rem;
+}
+.app .field input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.app .field select, .modal .field input:not([type=checkbox]):not([type=radio]):not([type=file]), .modal .field select {
+  min-height:40px; padding-block:7px;
+}
+.app :is(.field-hint,.field-note,.field-error), .modal :is(.field-hint,.field-note,.field-error) { font-size:.72rem; line-height:1.5; }
+/* Constrain the width to the viewport without replacing each dialog's
+   own max-width (especially the smaller confirmation dialogs). */
+.modal-backdrop > .modal { width:min(100%, calc(100vw - 24px)); }
+.modal > .modal-head { padding:10px 12px; }
+.modal > .modal-body { padding:12px; }
+.modal > .modal-foot { padding:8px 12px; gap:8px; }
+.modal .modal-title { font-size:1.05rem; line-height:1.4; }
+.modal .field { margin-bottom:8px; }
+.modal .form-row { margin-bottom:8px; }
+.modal .form-row .field { margin-bottom:0; }
+.modal .modal-foot :is(button,a) { font-size:.8rem; min-height:40px; }
+#cand-modal .candidate-form-layout { gap:8px; }
+#cand-modal .candidate-form-column { padding:12px; gap:8px; }
+#cand-modal .candidate-form-heading { font-size:.875rem; padding-bottom:10px; }
+body[data-management-page] dialog { padding:12px; max-height:calc(100dvh - 24px); max-width:calc(100vw - 24px); }
+body[data-management-page] #confirm-dialog { width:min(400px, calc(100vw - 24px)); }
+body[data-management-page] dialog[open], body[data-management-page] dialog form { gap:8px; }
+body[data-management-page] dialog h2 { font-size:1.05rem; }
+body[data-management-page] dialog .form-actions { flex-wrap:wrap; padding-top:8px; }
+/* Login keeps its identity and password-icon geometry, with less empty space. */
+.auth-page .page { padding:12px; }
+.auth-page .login-card { max-width:390px; padding:22px 22px 18px; border-radius:22px; }
+.auth-page .brand { margin-bottom:12px; gap:8px; }
+.auth-page .brand-icon { width:38px; height:38px; border-radius:11px; }
+.auth-page .brand-name { font-size:1.3rem; }
+.auth-page .headline-wrap { margin-bottom:12px; }
+.auth-page .headline { font-size:clamp(1.4rem,4vw,1.7rem); margin-bottom:8px; }
+.auth-page .tagline { font-size:.78rem; line-height:1.5; }
+.auth-page .divider { margin-bottom:12px; }
+.auth-page .field { margin-bottom:10px; }
+.auth-page .field input { padding-block:10px; min-height:44px; font-size:.875rem; }
+.auth-page .tw-placeholder { font-size:.875rem; right:44px; text-overflow:ellipsis; }
+.auth-page .btn-login { min-height:44px; padding-block:11px; font-size:.875rem; }
+.auth-page .sec-footer { margin-top:12px; padding-top:10px; }
+@media (max-width:600px) {
+  .app .content, .settings-shell .module-content { gap:8px; }
+  .app .header, .settings-shell .page-heading { min-height:60px; height:auto; padding-block:8px; }
+  .app :is(.s-card,.stat-card,.summary-card) { padding:12px; }
+  .app .card-head, .settings-shell .panel { padding:12px; }
+  .settings-shell .officer-directory { padding:0; }
+  .modal > .modal-body { padding:12px; }
+  #cand-modal .candidate-form-column { padding:12px; }
+  .app .form-row, .modal .form-row { grid-template-columns:minmax(0,1fr); }
+  .app .modal-foot :is(button,a), .modal .modal-foot :is(button,a), .settings-shell .form-actions > button { min-height:44px; }
+  .settings-shell .form-actions { flex-wrap:wrap; }
+  .settings-shell .form-actions > button { flex:1 1 110px; min-width:0; white-space:normal; }
+  .auth-page .login-card { padding:18px 16px; }
+}
+/* Keep touch entry readable and avoid automatic input zoom on mobile browsers. */
+@media (max-width:600px), (pointer:coarse) {
+  .app .field :is(input,select,textarea), .modal .field :is(input,select,textarea),
+  .settings-shell form :is(input,select,textarea), body[data-management-page] dialog form :is(input,select,textarea),
+  .auth-page .field input { font-size:1rem; }
+  .app .field input:not([type=checkbox]):not([type=radio]):not([type=file]), .app .field select,
+  .modal .field input:not([type=checkbox]):not([type=radio]):not([type=file]), .modal .field select { min-height:44px; }
+  .auth-page .tw-placeholder { font-size:1rem; }
+}
+@media (max-height:600px) {
+  .auth-page .login-card { padding-block:18px; }
+  .auth-page .brand, .auth-page .headline-wrap, .auth-page .divider { margin-bottom:8px; }
+  .auth-page .sec-footer { margin-top:12px; padding-top:10px; }
+}
+/* Page-specific form rules use IDs; keep their spacing compact as well. */
+#election-modal .modal-head { padding:10px 12px; }
+#election-modal .modal-body { padding:12px; gap:8px; }
+#election-modal .modal-title, #cand-modal .modal-title { font-size:1.05rem; }
+.app .card-body:is(.profile-fields,.password-fields) { padding:12px; }
+@media (max-width:600px) {
+  #election-modal .modal-body, .app .card-body:is(.profile-fields,.password-fields) { padding:12px; }
+  #cand-modal .field :is(input,select,textarea) { font-size:1rem; }
+  #cand-modal .field :is(input,select) { min-height:44px; }
+}
+
+/* Consistent compact action groups; allow wrapping only when space runs out. */
+.app :is(.modal-foot,.save-actions,.page-actions), .settings-shell .form-actions {
+  align-items:center; justify-content:flex-end; gap:8px;
+}
+.app .modal-foot > :is(button,a), .settings-shell .form-actions > button {
+  flex:0 1 auto; min-width:88px; justify-content:center; white-space:normal;
+}
+.app .modal-foot > :is(button,a):only-child { margin-left:auto; }
+.app .action-btns, .settings-shell .row-actions { align-items:center; justify-content:flex-start; gap:5px; }
+.app .table-card > .pagination { min-height:48px; padding:8px 12px; gap:8px; }
+/* Voter toolbar responds to the actual space left beside the sidebar. */
+.app .content:has(> .voter-toolbar) { container-type:inline-size; }
+.app .voter-toolbar {
+  display:grid; grid-template-columns:minmax(140px,1fr) 100px 115px repeat(3,max-content);
+  gap:6px; align-items:center;
+}
+.app .voter-toolbar > :is(.search-wrap,.filter-select,.btn) {
+  grid-column:auto; min-width:0; width:100%; max-width:none; margin:0;
+}
+.app .voter-toolbar > :is(.filter-select,.btn), .app .voter-toolbar .search-wrap input {
+  height:38px; min-height:38px; font-size:.76rem; border-radius:8px;
+}
+.app .voter-toolbar > :is(.filter-select,.btn) { padding:7px 9px; }
+.app .voter-toolbar > .btn { justify-content:center; gap:5px; white-space:nowrap; }
+.app .voter-toolbar .btn svg { width:14px; height:14px; flex-shrink:0; }
+.app .voter-toolbar .search-wrap input { padding:7px 10px 7px 32px; text-overflow:ellipsis; }
+.app .voter-toolbar .search-wrap svg { left:10px; width:14px; height:14px; }
+.app #voter-registration-status { min-height:0!important; font-size:.75rem!important; line-height:1.45; }
+.app #voter-registration-status:empty { display:none; }
+@container (max-width:720px) {
+  .app .voter-toolbar { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .app .voter-toolbar > .search-wrap { grid-column:span 2; }
+  .app .voter-toolbar > .filter-select { grid-column:span 2; }
+  .app .voter-toolbar > .btn { grid-column:span 2; }
+}
+@container (max-width:430px) {
+  .app .voter-toolbar > .search-wrap { grid-column:1 / -1; }
+  .app .voter-toolbar > .filter-select { grid-column:span 3; }
+  .app .voter-toolbar > .btn { grid-column:span 2; font-size:.72rem; padding-inline:5px; gap:4px; }
+}
+@media (max-width:600px), (pointer:coarse) {
+  .app .voter-toolbar > :is(.filter-select,.btn), .app .voter-toolbar .search-wrap input { height:44px; min-height:44px; }
+  .app .voter-toolbar > .filter-select, .app .voter-toolbar .search-wrap input { font-size:1rem; }
+}
+/* Override the earlier narrow-phone rule that placed Add Voter on its own row. */
+.app .voter-toolbar > #add-voter-btn { grid-column:auto; }
+@container (max-width:720px) {
+  .app .voter-toolbar > #add-voter-btn { grid-column:span 2; }
+}
+
+/* A new voter has no photo yet; do not reserve an empty thumbnail area. */
+#voter-photo-preview:empty { display:none; }
+
+/* Let long identifiers and descriptions wrap within their own text column.
+   Leave table cells, action toolbars and password controls to their scoped layouts. */
+.app :is(.panel-head,.card-head,.section-head,.ov-panel-head),
+.settings-shell :is(.section-heading,.dialog-heading) { flex-wrap:wrap; gap:8px 12px; }
+.app :is(.panel-head,.card-head,.section-head,.ov-panel-head) > div,
+.settings-shell :is(.section-heading,.dialog-heading) > :is(div,h2) { min-width:0; max-width:100%; }
+.app :is(.panel-title,.panel-sub,.card-sub,.log-title,.log-subtitle,.log-event,.log-ip,.log-time,.feed-title,.feed-info,.threat-content,.ov-attention-item strong,.ov-attention-item small,.ov-actions strong,.ov-actions small),
+.settings-shell :is(.section-heading h2,.hint,.intro) { min-width:0; overflow-wrap:anywhere; }
+.app :is(.panel-head,.ov-panel-head) > :is(span,a) { max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.app :is(.ec-row,.panel-stat-row) { gap:8px 12px; }
+.app :is(.ec-val,.panel-stat-val) { min-width:0; overflow-wrap:anywhere; }
+.modal .detail-row { display:grid; grid-template-columns:minmax(80px,.4fr) minmax(0,1fr); gap:8px 12px; }
+.modal .detail-row > :is(.detail-label,.detail-val) { min-width:0; margin-right:0; overflow-wrap:anywhere; word-break:normal; }
+.app .blocked-address { flex-wrap:wrap; }
+.app .blocked-address > div { flex:1 1 140px; }
+
+/* Uploaded brand artwork should not inherit the decorative default-icon effects. */
+.sidebar .logo-mark:has(> img), .brand-icon:has(> img), .branding-mark:has(> img:not([hidden])) {
+  background:transparent; box-shadow:none; border-radius:0;
+}
+.sidebar .logo-mark:has(> img)::after, .brand-icon:has(> img)::after {
+  content:none; animation:none;
+}
+.sidebar .logo-mark > img, .brand-icon > img, .branding-mark > img {
+  display:block; width:100%; height:100%; object-fit:contain;
+}

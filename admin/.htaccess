@@ -1,3 +1,11 @@
+# Keep existing .html links while PHP authorizes before rendering.
+# The original static HTML files must not be deployed alongside the PHP pages:
+# front-end servers such as nginx may serve existing static files directly.
+Options -MultiViews
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^([a-z-]+)\.html$ $1.php [END]
+
 # Back-office pages must never be served from the browser cache.
 #
 # Without this, pressing Back after signing out re-displays the last
@@ -6,7 +14,7 @@
 # "no-store" both forbids caching and disables the bfcache in Chrome and
 # Firefox, which is what actually stops the page coming back.
 <IfModule mod_headers.c>
-    <FilesMatch "\.html$">
+    <FilesMatch "\.(html|php)$">
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Header set Pragma "no-cache"
         Header set Expires "0"

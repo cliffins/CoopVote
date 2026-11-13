@@ -9,13 +9,14 @@
  * One unique decision per request and admin prevents repeat-click inflation.
  * Rejections block opening until a replacement request is reviewed.
  * The admin role row serializes reviews, settings and account deactivation.
- * Generated passwords are returned once and only their bcrypt hash is stored.
+ * New officers verify email and choose their password before activation.
  * Reaching the threshold permits explicit opening; it never opens voting itself.
  */
 declare(strict_types=1);
 require_once __DIR__ . '/../../includes/admin-approvals.php';
 require_once __DIR__ . '/voter.php';
 require_once __DIR__ . '/../../includes/branding.php';
+require_once __DIR__ . '/../../includes/officer-verification.php';
 
 function handle_management(array $args): never
 {
@@ -168,73 +169,91 @@ function management_dispatch(array $args): never
 /**
  * Account operations share the dispatcher's authenticated administrator guard.
  * The governance lock protects edits, creation and status transitions.
- * Passwords are returned once and remain bcrypt hashes in storage.
+ * Email changes are pending until ownership and current password are confirmed.
  * Approval thresholds and self-deactivation are checked before commit.
  */
 function management_accounts(PDO $pdo, int $uid, string $method, array $args): never
 {
-    if ($method === 'PUT' && !empty($args[1])) {
-        require_json_request();
-        $id = (int) $args[1];
-        $name = input_str('name');
-        $email = input_str('email');
-        if ($error = person_name_error($name))
-            governance_fail($error);
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100)
-            governance_fail('Enter a valid email address.');
-        db_transaction(static function (PDO $pdo) use ($id, $name, $email): void {
-            governance_lock($pdo);
-            $s = $pdo->prepare("SELECT u.user_id FROM users u JOIN roles r ON r.role_id=u.role_id WHERE u.user_id=? AND r.slug='admin' FOR UPDATE");
-            $s->execute([$id]);
-            if (!$s->fetchColumn())
-                governance_fail('Admin account not found.', 404);
-            $pdo->prepare('UPDATE users SET email=? WHERE user_id=?')->execute([$email, $id]);
-            $pdo->prepare('INSERT INTO admin_profiles(user_id,display_name) VALUES(?,?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name)')->execute([$id, $name]);
+    $id=(int)($args[1]??0);$operation=$args[2]??'';
+    if ($operation!=='') {
+        require_method('POST');require_json_request();
+        if (!in_array($operation,['resend-verification','cancel-email-change'],true)) governance_fail('Unknown officer action.',404);
+        $job=db_transaction(static function(PDO $pdo) use($id,$uid,$operation): ?array {
+            governance_lock($pdo);$user=officer_locked($pdo,$id);
+            $q=$pdo->prepare('SELECT * FROM officer_email_verifications WHERE user_id=? FOR UPDATE');$q->execute([$id]);$pending=$q->fetch();
+            if (!$pending || $pending['consumed_at']!==null) governance_fail('No pending verification request.',409);
+            if ($operation==='cancel-email-change') {
+                if ($pending['purpose']!=='email_change') governance_fail('This action only cancels a pending email change.',409);
+                $pdo->prepare('UPDATE officer_email_verifications SET token_hash=NULL,consumed_at=NOW() WHERE user_id=?')->execute([$id]);
+                audit($uid,'officer.email_change_cancelled','user',$id,'Cancelled pending email change');return null;
+            }
+            if ($pending['purpose']==='invite') {
+                if (!in_array($user['status'],['pending_verification','deactivated'],true) || $user['email_verified_at']!==null) governance_fail('This account cannot be invited again.',409);
+                $pdo->prepare("UPDATE users SET status='pending_verification' WHERE user_id=?")->execute([$id]);
+            } elseif ($user['status']!=='active') governance_fail('Reactivate the officer before requesting an email change.',409);
+            return officer_issue($pdo,$user,$pending['pending_email'],$pending['purpose'],$uid);
         });
-        audit($uid, 'admin.updated', 'user', $id, 'Updated admin account ' . audit_subject('user', $id));
-        json_out(['ok' => true]);
+        json_out(officer_delivery_response($job,$operation==='cancel-email-change'?'Email change cancelled. The current email is unchanged.':'Verification requested.'));
     }
-    if ($method === 'GET') {
-        json_out($pdo->query("SELECT u.user_id AS id,u.username,u.email,u.status,COALESCE(p.display_name,u.username) AS name FROM users u JOIN roles r ON r.role_id=u.role_id LEFT JOIN admin_profiles p ON p.user_id=u.user_id WHERE r.slug='admin' ORDER BY u.user_id")->fetchAll());
+    if ($method==='PUT' && $id) {
+        require_json_request();$name=input_str('name');$email=strtolower(input_str('email'));
+        if ($error=person_name_error($name)) governance_fail($error);
+        if (!filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($email)>100) governance_fail('Enter a valid email address.');
+        $job=db_transaction(static function(PDO $pdo) use($id,$uid,$name,$email): ?array {
+            governance_lock($pdo);$user=officer_locked($pdo,$id);$job=null;
+            if (strcasecmp($user['email'],$email)!==0) {
+                if ($user['status']==='pending_verification') {
+                    $job=officer_issue($pdo,[...$user,'name'=>$name],$email,'invite',$uid);
+                    $pdo->prepare('UPDATE users SET email=? WHERE user_id=?')->execute([$email,$id]);
+                } elseif ($user['status']==='active') $job=officer_issue($pdo,[...$user,'name'=>$name],$email,'email_change',$uid);
+                else governance_fail('Reactivate this officer before requesting an email change.',409);
+            }
+            $pdo->prepare('INSERT INTO admin_profiles(user_id,display_name) VALUES(?,?) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name)')->execute([$id,$name]);
+            return $job;
+        });
+        audit($uid,'admin.updated','user',$id,'Updated officer profile');
+        json_out(officer_delivery_response($job,$job?'Officer details saved. Email verification is required.':'Officer details saved.'));
     }
-    require_method('POST');
-    require_json_request();
-    $id = (int) ($args[1] ?? 0);
+    if ($method==='GET') {
+        $rows=$pdo->query("SELECT u.user_id AS id,u.username,u.email,u.status,COALESCE(p.display_name,u.username) AS name,v.purpose,v.pending_email AS pendingEmail,v.delivery_status AS deliveryStatus,v.consumed_at,v.verified_at,u.email_verified_at FROM users u JOIN roles r ON r.role_id=u.role_id LEFT JOIN admin_profiles p ON p.user_id=u.user_id LEFT JOIN officer_email_verifications v ON v.user_id=u.user_id WHERE r.slug='admin' ORDER BY u.user_id")->fetchAll();
+        foreach ($rows as &$row) {
+            $pending=$row['purpose']!==null && $row['consumed_at']===null;
+            $row['verification']=($row['status']==='pending_verification' || ($row['purpose']==='invite' && $row['email_verified_at']===null))?'pending':($row['verified_at']!==null?'verified':'existing');
+            $row['canResend']=$pending && ($row['purpose']==='invite'?in_array($row['status'],['pending_verification','deactivated'],true):$row['status']==='active');
+            $row['canActivate']=!($row['purpose']==='invite' && $row['email_verified_at']===null);
+            $row['pendingEmail']=$pending?$row['pendingEmail']:null;
+            $row['canCancelEmailChange']=$pending && $row['purpose']==='email_change';
+            unset($row['consumed_at'],$row['verified_at'],$row['email_verified_at']);
+        }
+        unset($row);json_out($rows);
+    }
+    require_method('POST');require_json_request();
     if (!$id) {
-        $name = input_str('name');
-        $username = input_str('username');
-        $email = input_str('email');
-        if ($error = person_name_error($name))
-            governance_fail($error);
-        if (mb_strlen($name) > 150 || !preg_match('/^[A-Za-z0-9._-]{3,50}$/', $username) || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100)
-            governance_fail('Enter a valid name, username (3–50 letters, numbers, dots, dashes or underscores), and email.');
-        $password = 'Aa9!' . bin2hex(random_bytes(6));
-        $id = db_transaction(static function (PDO $pdo) use ($name, $username, $email, $password): int {
+        $name=input_str('name');$username=input_str('username');$email=strtolower(input_str('email'));
+        if ($error=person_name_error($name)) governance_fail($error);
+        if (!preg_match('/^[A-Za-z0-9._-]{3,50}$/',$username) || !filter_var($email,FILTER_VALIDATE_EMAIL) || strlen($email)>100) governance_fail('Enter a valid username and email address.');
+        $job=db_transaction(static function(PDO $pdo) use($name,$username,$email,$uid): array {
             governance_lock($pdo);
-            $pdo->prepare("INSERT INTO users (username,email,password_hash,role_id,status,email_verified_at) VALUES (?,?,?,(SELECT role_id FROM roles WHERE slug='admin'),'active',NOW())")->execute([$username, $email, password_hash($password, PASSWORD_BCRYPT)]);
-            $id = (int) $pdo->lastInsertId();
-            $pdo->prepare('INSERT INTO admin_profiles (user_id,display_name) VALUES (?,?)')->execute([$id, $name]);
-            return $id;
+            $pdo->prepare("INSERT INTO users(username,email,password_hash,role_id,status,email_verified_at) VALUES(?,?,?,(SELECT role_id FROM roles WHERE slug='admin'),'pending_verification',NULL)")->execute([$username,$email,password_hash(bin2hex(random_bytes(32)),PASSWORD_BCRYPT)]);
+            $id=(int)$pdo->lastInsertId();$pdo->prepare('INSERT INTO admin_profiles(user_id,display_name) VALUES(?,?)')->execute([$id,$name]);
+            return officer_issue($pdo,['user_id'=>$id,'name'=>$name],$email,'invite',$uid);
         });
-        audit($uid, 'admin.created', 'user', $id, 'Created admin ' . audit_subject('user', $id));
-        json_out(['ok' => true, 'username' => $username, 'password' => $password], 201);
+        audit($uid,'admin.created','user',$job['id'],'Created officer pending verification');
+        json_out([...officer_delivery_response($job,'Officer created with access blocked until email verification and password setup.'),'id'=>$job['id'],'username'=>$username],201);
     }
-    $status = input_str('status');
-    if (!in_array($status, ['active', 'deactivated'], true))
-        governance_fail('Choose active or deactivated.');
-    db_transaction(static function (PDO $pdo) use ($id, $uid, $status): void {
-        governance_lock($pdo);
-        $s = $pdo->prepare("SELECT u.user_id FROM users u JOIN roles r ON r.role_id=u.role_id WHERE u.user_id=? AND r.slug='admin' FOR UPDATE");
-        $s->execute([$id]);
-        if (!$s->fetchColumn())
-            governance_fail('Admin account not found.', 404);
-        if ($id === $uid && $status === 'deactivated')
-            governance_fail('You cannot deactivate your own account.', 409);
-        $pdo->prepare('UPDATE users SET status=? WHERE user_id=?')->execute([$status, $id]);
-        $required = max(1, (int) $pdo->query('SELECT required_approvals FROM governance_config WHERE id=1')->fetchColumn(), (int) $pdo->query("SELECT COALESCE(MAX(required_approvals),1) FROM election_approval_requests WHERE state='pending'")->fetchColumn());
-        if (governance_admin_count($pdo) < $required)
-            governance_fail('Keep enough active admins to satisfy the configured and pending approval requirements.', 409);
+    $status=input_str('status');
+    if (!in_array($status,['active','deactivated'],true)) governance_fail('Choose active or deactivated.');
+    db_transaction(static function(PDO $pdo) use($id,$uid,$status): void {
+        governance_lock($pdo);officer_locked($pdo,$id);
+        if ($status==='active') {
+            $q=$pdo->prepare("SELECT 1 FROM officer_email_verifications v JOIN users u ON u.user_id=v.user_id WHERE v.user_id=? AND v.purpose='invite' AND u.email_verified_at IS NULL");$q->execute([$id]);
+            if ($q->fetchColumn()) governance_fail('This officer must verify their email and set a password. Use Resend Verification.',409);
+        }
+        if ($id===$uid && $status==='deactivated') governance_fail('You cannot deactivate your own account.',409);
+        $pdo->prepare('UPDATE users SET status=? WHERE user_id=?')->execute([$status,$id]);
+        if ($status==='deactivated') $pdo->prepare('UPDATE officer_email_verifications SET token_hash=NULL WHERE user_id=? AND consumed_at IS NULL')->execute([$id]);
+        $required=max(1,(int)$pdo->query('SELECT required_approvals FROM governance_config WHERE id=1')->fetchColumn(),(int)$pdo->query("SELECT COALESCE(MAX(required_approvals),1) FROM election_approval_requests WHERE state='pending'")->fetchColumn());
+        if (governance_admin_count($pdo)<$required) governance_fail('Keep enough active admins to satisfy the configured and pending approval requirements.',409);
     });
-    audit($uid, 'admin.status_changed', 'user', $id, ucfirst($status) . ' admin account ' . audit_subject('user', $id));
-    json_out(['ok' => true]);
+    audit($uid,'admin.status_changed','user',$id,ucfirst($status).' officer account');json_out(['ok'=>true]);
 }

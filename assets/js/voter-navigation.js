@@ -21,8 +21,8 @@
       badge.className = 'nav-badge ' + color;
       badge.textContent = text;
     };
-    setBadge('election.html', 'Live', 'green', live.length > 0);
-    setBadge('ballot.html', 'Vote!', 'gold', live.some(e => !e.hasVoted && !recordedVotes.has(String(e.id))));
+    setBadge('election.php', 'Live', 'green', live.length > 0);
+    setBadge('ballot.php', 'Vote!', 'gold', live.some(e => !e.hasVoted && !recordedVotes.has(String(e.id))));
     clearTimeout(expiryTimer);
     const remaining = live.map(e => Date.parse(e.endDateISO) - Date.now()).filter(ms => ms > 0);
     if (remaining.length) expiryTimer = setTimeout(render, Math.min(2147483647, Math.min(...remaining) + 20));
@@ -58,9 +58,9 @@
       const link = event.target.closest('a[href]');
       if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self') || link.getAttribute('aria-disabled') === 'true') return;
       const page = new URL(link.href).pathname.split('/').pop();
-      if (page !== 'election.html' && page !== 'ballot.html') return;
+      if (page !== 'election.php' && page !== 'ballot.php') return;
       let available = liveElections();
-      if (page === 'ballot.html') available = available.filter(e => !e.hasVoted && !recordedVotes.has(String(e.id)));
+      if (page === 'ballot.php') available = available.filter(e => !e.hasVoted && !recordedVotes.has(String(e.id)));
       const chosen = available.find(e => String(e.id) === window.CoopVote.selectedElection()) || available[0];
       if (chosen) window.CoopVote.setSelectedElection(chosen.id);
     });

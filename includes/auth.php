@@ -8,6 +8,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/audit-description.php';
 require_once __DIR__ . '/session-storage.php';
+require_once __DIR__ . '/ip-address.php';
 
 const MAX_FAILED_ATTEMPTS = 5;
 
@@ -86,7 +87,7 @@ function current_user(): ?array
     $stmt->execute([$uid]);
     $row = $stmt->fetch();
 
-    if (!$row) {
+    if (!$row || (int)($_SESSION['auth_version'] ?? 0) !== (int)($row['auth_version'] ?? 0)) {
         // Stale session pointing at a deleted user.
         auth_logout();
         return null;
@@ -329,10 +330,11 @@ function record_login_attempt(string $identifier, bool $success): void
 /** True when this IP is on the block list. */
 function is_ip_blocked(?string $ip = null): bool
 {
-    $ip = $ip ?? client_ip();
+    $ip = normalized_ip($ip ?? client_ip());
+    if ($ip === null) return false;
     try {
-        $s = db()->prepare('SELECT 1 FROM blocked_ips WHERE ip_address = ? LIMIT 1');
-        $s->execute([$ip]);
+        $s = db()->prepare('SELECT 1 FROM blocked_ips WHERE ip_address = ? OR INET6_ATON(ip_address) = INET6_ATON(?) LIMIT 1');
+        $s->execute([$ip,$ip]);
         return (bool) $s->fetchColumn();
     } catch (Throwable) {
         return false;
@@ -346,14 +348,14 @@ function is_ip_blocked(?string $ip = null): bool
  */
 function auth_attempt(string $identifier, string $password): array
 {
+    $pdo = db();
     auth_boot();
-
     /*
      * Accept username, email address or cooperative member number.
      * Each placeholder is distinct: native prepared statements (emulation
      * is off) will not let one named parameter be reused.
      */
-    $stmt = db()->prepare(
+    $stmt = $pdo->prepare(
         'SELECT u.*, r.slug AS role_slug, r.role_name
            FROM users u
            JOIN roles r ON r.role_id = u.role_id
@@ -390,7 +392,7 @@ function auth_attempt(string $identifier, string $password): array
             $lockoutNo = (int) ($user['lockout_count'] ?? 0) + 1;
             $wait      = lockout_seconds($lockoutNo);
 
-            db()->prepare(
+            $pdo->prepare(
                 'UPDATE users
                     SET failed_attempts = 0,
                         lockout_count   = ?,
@@ -409,7 +411,7 @@ function auth_attempt(string $identifier, string $password): array
             ];
         }
 
-        db()->prepare('UPDATE users SET failed_attempts = ? WHERE user_id = ?')
+        $pdo->prepare('UPDATE users SET failed_attempts = ? WHERE user_id = ?')
             ->execute([$attempts, $user['user_id']]);
 
         $left = MAX_FAILED_ATTEMPTS - $attempts;
@@ -426,6 +428,9 @@ function auth_attempt(string $identifier, string $password): array
      * step — otherwise somebody who lost their first code can never get in,
      * and cannot register again either because the username is taken.
      */
+    if ($user['status'] === 'pending_verification' && $user['role_slug'] === 'admin') {
+        return ['ok'=>false,'user'=>$user,'error'=>'Use the officer verification link in your email to set your password and activate your account.'];
+    }
     if ($user['status'] === 'pending_verification') {
         return ['ok' => false, 'user' => $user, 'needsVerification' => true,
                 'error' => 'Your email address has not been verified yet.'];
@@ -442,19 +447,24 @@ function auth_attempt(string $identifier, string $password): array
         return ['ok' => false, 'user' => $user, 'error' => $blocked[$user['status']]];
     }
 
-    /* Success — reset counters, stamp the login, rotate the session id. */
-    /* lockout_count resets too: getting in proves this is the real member,
-       so the next mistyped password starts again at the shortest wait. */
-    db()->prepare(
+    /* Rotate and persist the session before acknowledging a successful login. */
+    if (!@session_regenerate_id(true)) {
+        session_abort();
+        throw new RuntimeException('SESSION_STORAGE_UNAVAILABLE');
+    }
+    $_SESSION['user_id']    = (int) $user['user_id'];
+    $_SESSION['role_slug']  = $user['role_slug'];
+    $_SESSION['last_allowed_page'] = role_home($user['role_slug']);
+    $_SESSION['login_time'] = time();
+    $_SESSION['auth_version'] = (int)($user['auth_version'] ?? 0);
+    persist_login_session();
+
+    /* A persisted sign-in resets the counters; storage failure must not do so. */
+    $pdo->prepare(
         'UPDATE users
             SET failed_attempts = 0, lockout_count = 0, locked_until = NULL, last_login_at = NOW()
           WHERE user_id = ?'
     )->execute([$user['user_id']]);
-
-    session_regenerate_id(true);
-    $_SESSION['user_id']    = (int) $user['user_id'];
-    $_SESSION['role_slug']  = $user['role_slug'];
-    $_SESSION['login_time'] = time();
 
     return ['ok' => true, 'user' => $user];
 }
@@ -475,5 +485,5 @@ function auth_logout(): void
 /** Map a role slug to the landing page the UI expects. */
 function role_home(string $slug): string
 {
-    return $slug === 'voter' ? 'voter/dashboard.html' : 'admin/dashboard.html';
+    return $slug === 'voter' ? 'voter/dashboard.php' : 'admin/dashboard.php';
 }

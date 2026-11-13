@@ -3,7 +3,7 @@
   function render(id) {
     const host = document.getElementById('election-qr');
     if (!host) return;
-    const link = new URL('../voter/election.html', location.href);
+    const link = new URL('../login.php', location.href);
     link.searchParams.set('election', String(id));
     const canvas = host.querySelector('canvas');
     const copy = host.querySelector('[data-qr-copy]');

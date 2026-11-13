@@ -10,6 +10,44 @@ declare(strict_types=1);
 require_once __DIR__ . '/election-reports.php';
 require_once __DIR__ . '/admin-approvals.php';
 
+/** Call under an election row lock when authorizing a write. */
+function election_preopening_error(PDO $pdo, array $e): ?string
+{
+    $state = election_status($e);
+    if (!in_array($state, ['Draft', 'Upcoming', 'Postponed'], true)) {
+        return 'Only an election that has not opened can be rescheduled.';
+    }
+    if ($state === 'Postponed' && strtotime($e['start_datetime']) <= time()) {
+        return 'This election cannot be verified as unopened.';
+    }
+    $id = (int)$e['election_id'];
+    // Include abstentions, legacy records and prior openings, even with zero votes.
+    foreach ([
+        'SELECT 1 FROM ballots WHERE election_id=? AND (has_voted=1 OR voted_at IS NOT NULL) LIMIT 1',
+        'SELECT 1 FROM votes WHERE election_id=? LIMIT 1',
+        'SELECT 1 FROM election_reports WHERE election_id=? LIMIT 1',
+        "SELECT 1 FROM audit_logs WHERE entity_type='election' AND entity_id=? AND action IN ('election.published','election.reopened') LIMIT 1",
+        "SELECT 1 FROM election_approval_requests WHERE election_id=? AND state='opened' LIMIT 1",
+    ] as $sql) {
+        $s = $pdo->prepare($sql);
+        $s->execute([$id]);
+        if ($s->fetchColumn()) return 'This election has already opened or contains voting records. It cannot be rescheduled.';
+    }
+    if (!empty($e['results_released_at'])) return 'An election with released results cannot be rescheduled.';
+    return null;
+}
+
+/** Deletion is limited to elections that have never opened or recorded participation.
+ * Legacy cancelled, unopened records can still be removed; cancellation does not
+ * erase opening history. The write caller must hold the election row lock.
+ */
+function election_deletion_error(PDO $pdo, array $e): ?string
+{
+    if ($e['status'] === 'cancelled') $e['status'] = 'draft';
+    return election_preopening_error($pdo, $e) === null ? null
+        : 'This election has already opened or contains voting records and cannot be deleted.';
+}
+
 /** Election cards include approval readiness so opening actions can lead to review. */
 function admin_elections_list(): array
 {
@@ -21,6 +59,7 @@ function admin_elections_list(): array
         $eid       = (int) $e['election_id'];
         $positions = vt_positions($eid);
         $cands     = vt_candidates($eid, true);
+        $canChangeSchedule = election_preopening_error(db(), $e) === null;
         $request = governance_request(db(), $eid);
         $approvalReady = $request && !$request['stale'] && !$request['rejections'] && $request['approvals'] >= (int)$request['required_approvals'];
 
@@ -35,8 +74,8 @@ function admin_elections_list(): array
                 'id'             => $pid,
                 'name'           => $p['position_name'],
                 'candidateCount' => count($mine),
-                'topVotes'       => $top,
-                'maxVotes'       => max($top, 1),
+                'topVotes'       => in_array($pid, privacy_visible_positions($eid), true) ? $top : null,
+                'maxVotes'       => in_array($pid, privacy_visible_positions($eid), true) ? max($top, 1) : null,
             ];
         }
 
@@ -50,6 +89,8 @@ function admin_elections_list(): array
             'endISO'       => date('Y-m-d\TH:i', strtotime((string) $e['end_datetime'])),
             'year'         => (int) date('Y', strtotime((string) $e['start_datetime'])),
             'status'       => election_status($e),
+            'canReschedule' => $canChangeSchedule,
+            'canDelete'    => $e['status'] === 'cancelled' ? election_deletion_error(db(), $e) === null : $canChangeSchedule,
             'published'    => !empty($e['results_released_at']),
             'voters'       => $totalVoters,
             'voted'        => vt_votes_cast($eid),
@@ -69,6 +110,9 @@ function admin_elections_open(int $electionId, array $me): never
     $result = db_transaction(static function (PDO $pdo) use ($electionId, $me): array {
         governance_lock($pdo);
         $e = governance_election($pdo, $electionId);
+        if ($e['status'] === 'cancelled') return ['error' => 'A cancelled election cannot be opened. Create a new election instead.'];
+        if (election_status($e) === 'Closed') return ['error'=>'Use Reopen Election with an approved new deadline to resume this closed election.'];
+        if (election_status($e) !== 'Active' && vt_votes_cast($electionId) > 0) return ['error'=>'An election with recorded participation cannot be started through Activate. Use Reopen Election for a closed election.'];
         if (election_status($e) === 'Active') return ['ok' => true, 'status' => 'Active'];
         if (strtotime($e['end_datetime']) <= time()) return ['error' => 'The end date has passed. Use Reopen Election for a closed election.'];
         if (!vt_positions($electionId) || !array_filter(vt_candidates($electionId), static fn($c) => (bool)$c['is_active'])) return ['error' => 'Add at least one position and active candidate before starting this election.'];
@@ -139,6 +183,7 @@ function admin_operations(array $args): never
     $e = $s->fetch();
     if (!$e) json_out(['election' => null]);
     if ($action === 'report') {
+        if (!privacy_results_available($eid)) json_error(privacy_message(), 409, ['code'=>'RESULTS_PRIVATE']);
         $report = election_report_capture($eid);
         if (!$report) $report = db_transaction(static fn() => election_report_data($e));
         $format = (string) ($_GET['format'] ?? 'html');
@@ -151,6 +196,6 @@ function admin_operations(array $args): never
     $s = db()->prepare('SELECT generated_at FROM election_reports WHERE election_id = ? AND superseded_at IS NULL');
     $s->execute([$eid]);
     json_out(['election' => ['id' => $eid, 'title' => $e['title'], 'status' => election_status($e)],
-        'integrity' => integrity_verify($eid),
+        'integrity' => ['status'=>integrity_verify($eid)['status'], 'message'=>'Integrity status only; selection counts are private until final release.'],
         'reportGeneratedAt' => $s->fetchColumn() ?: null, 'updatedAt' => date('c')]);
 }

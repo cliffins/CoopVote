@@ -1,0 +1,1449 @@
+<?php require __DIR__ . '/includes/page-cache.php'; ?>
+<!DOCTYPE html>
+<html lang="en" data-cv-theme="<?= device_theme() ?>">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+  <title>CoopVote — Sign In</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --navy: #0b1931;
+      --navy2: #0e2040;
+      --navy3: #162a52;
+      --gold: #c9a84c;
+      --gold2: #e8c96a;
+      --white: #fff;
+      --muted: #7a8ba0;
+      --muted2: #a8b8cc;
+      --danger: #e05c5c;
+      --success: #4caf82;
+    }
+
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%
+    }
+
+    body {
+      min-height: 100%;
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Always-present decoration: WebGL and network-loaded scripts are optional. */
+    .login-backdrop {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 12% 20%, rgba(201,168,76,.20), transparent 40%),
+        radial-gradient(ellipse at 85% 75%, rgba(74,159,212,.22), transparent 45%),
+        radial-gradient(ellipse at 22% 88%, rgba(76,175,130,.13), transparent 40%);
+    }
+    .login-backdrop::before,
+    .login-backdrop::after {
+      content: '';
+      position: absolute;
+      width: 42vw;
+      height: 42vw;
+      min-width: 230px;
+      min-height: 230px;
+      border: 1px solid rgba(201,168,76,.22);
+      border-radius: 50%;
+      box-shadow: 0 0 60px rgba(201,168,76,.05), inset 0 0 60px rgba(201,168,76,.05);
+      transform: rotate(-30deg) scaleY(.6);
+      --orbit-angle: -30deg;
+      animation: backdrop-orbit 18s ease-in-out infinite alternate;
+      left: -12%;
+      top: 8%;
+    }
+    .login-backdrop::after {
+      left: auto;
+      top: auto;
+      right: -10%;
+      bottom: 4%;
+      border-color: rgba(74,159,212,.25);
+      transform: rotate(35deg) scaleY(.65);
+      --orbit-angle: 35deg;
+      animation-direction: alternate-reverse;
+      animation-duration: 23s;
+    }
+    @keyframes backdrop-orbit {
+      from { transform: translate3d(0, 0, 0) rotate(var(--orbit-angle)) scaleY(.65); }
+      to { transform: translate3d(20px, -16px, 0) rotate(calc(var(--orbit-angle) + 18deg)) scaleY(.65); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .login-backdrop::before, .login-backdrop::after { animation: none; }
+    }
+
+    /* ── 3D CANVAS ── */
+    #three-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── OVERLAYS ── */
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(201, 168, 76, .03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201, 168, 76, .03) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+    }
+
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(ellipse 120% 120% at 50% 50%, transparent 30%, rgba(11, 25, 49, .88) 100%);
+    }
+
+    /* ── PAGE WRAPPER ── */
+    .page {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+
+    /* ── LOGIN CARD ── */
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(14, 32, 64, .88);
+      border: 1px solid rgba(255, 255, 255, .1);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-radius: 28px;
+      padding: 44px 40px 40px;
+      box-shadow:
+        0 32px 80px rgba(0, 0, 0, .55),
+        0 0 0 1px rgba(201, 168, 76, .08) inset;
+      position: relative;
+      overflow: hidden;
+      animation: cardIn .8s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201, 168, 76, .1), transparent 70%);
+      pointer-events: none;
+    }
+
+    .login-card::after {
+      content: '';
+      position: absolute;
+      bottom: -60px;
+      left: -40px;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76, 175, 130, .07), transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── BRAND ── */
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      animation: fadeUp .7s .05s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    .brand-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 13px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 20px rgba(201, 168, 76, .4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand-icon::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -60%;
+      width: 40%;
+      height: 100%;
+      background: rgba(255, 255, 255, .35);
+      transform: skewX(-20deg);
+      animation: shimmerBar 3.5s ease-in-out infinite;
+    }
+
+    .brand-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: var(--navy);
+      position: relative;
+      z-index: 1
+    }
+
+    .brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: .3px
+    }
+
+    .brand-name span {
+      color: var(--gold)
+    }
+
+    /* ── HEADLINE ── */
+    .headline-wrap {
+      text-align: center;
+      margin-bottom: 28px;
+      animation: fadeUp .7s .1s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .headline {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.5rem, 5vw, 2.1rem);
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -.3px;
+      margin-bottom: 10px;
+    }
+
+    .hl-gold {
+      color: var(--gold)
+    }
+
+    .tagline {
+      font-size: .83rem;
+      color: var(--muted);
+      line-height: 1.65
+    }
+
+    /* divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      animation: fadeUp .7s .14s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    .div-line {
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, .08)
+    }
+
+    .div-text {
+      font-size: .72rem;
+      color: var(--muted);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      white-space: nowrap
+    }
+
+    /* ── FIELDS ── */
+    .field {
+      margin-bottom: 18px
+    }
+
+    .field:nth-child(1) {
+      animation: fadeUp .7s .18s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .field:nth-child(2) {
+      animation: fadeUp .7s .23s cubic-bezier(.22, 1, .36, 1) both
+    }
+
+    .field label {
+      display: block;
+      font-size: .71rem;
+      font-weight: 700;
+      letter-spacing: .9px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 7px;
+      transition: color .2s;
+    }
+
+    .field.focused label {
+      color: var(--gold)
+    }
+
+    .input-wrap {
+      position: relative
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      pointer-events: none;
+      transition: color .2s;
+    }
+
+    .input-wrap:focus-within .input-icon {
+      color: var(--gold)
+    }
+
+    .field input {
+      width: 100%;
+      padding: 13px 44px 13px 44px;
+      background: rgba(255, 255, 255, .07);
+      border: 1.5px solid rgba(255, 255, 255, .1);
+      border-radius: 12px;
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .93rem;
+      outline: none;
+      transition: border-color .22s, background .22s, box-shadow .22s;
+    }
+
+    .field input::placeholder {
+      color: rgba(255, 255, 255, .22)
+    }
+
+    .field input:focus {
+      border-color: var(--gold);
+      background: rgba(201, 168, 76, .07);
+      box-shadow: 0 0 0 3px rgba(201, 168, 76, .13);
+    }
+
+    .eye-btn {
+      position: absolute;
+      right: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      transition: color .2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .eye-btn:hover {
+      color: var(--gold)
+    }
+
+    /* ── FORGOT ── */
+    .forgot {
+      text-align: right;
+      margin-top: -6px;
+      margin-bottom: 22px;
+      animation: fadeUp .7s .28s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    .forgot a {
+      font-size: .79rem;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color .2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .forgot a:hover {
+      color: var(--gold)
+    }
+
+    /* ── ALERT ── */
+    /* ── Inline alert ──────────────────────────────────────────
+       Anything the member must act on — a blank field, a wrong
+       password — stays inside the card, next to the inputs it
+       refers to. */
+    .alert {
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: .82rem;
+      margin-bottom: 18px;
+      display: none;
+      align-items: center;
+      gap: 9px;
+      animation: fadeUp .35s ease;
+    }
+
+    /* ── Corner notice ─────────────────────────────────────────
+       Status of the session itself (signed out, session ended).
+       It concerns no particular field, so it floats clear of the
+       form instead of pushing the fields down. */
+    .notice {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 5000;
+      width: max-content;
+      max-width: min(360px, calc(100vw - 40px));
+      border-radius: 11px;
+      padding: 12px 15px;
+      font-size: .82rem;
+      line-height: 1.45;
+      display: none;
+      align-items: flex-start;
+      gap: 9px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, .5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* An explicit size is required: the markup carries only a viewBox,
+       so without this the icon expands and squeezes the text away. */
+    .notice svg {
+      flex-shrink: 0;
+      width: 15px;
+      height: 15px;
+      margin-top: 2px;
+    }
+
+    /* Solid backing: it floats over the animated scene, where a
+       near-transparent panel was hard to read. */
+    .notice.show-error {
+      display: flex;
+      background: rgba(46, 20, 24, .94);
+      border: 1px solid rgba(224, 92, 92, .45);
+      border-left: 3px solid var(--danger);
+      color: #f4a4a4;
+    }
+
+    .notice.show-success {
+      display: flex;
+      background: rgba(15, 40, 32, .94);
+      border: 1px solid rgba(76, 175, 130, .45);
+      border-left: 3px solid var(--success);
+      color: #80dbb4;
+    }
+
+    @media(max-width:480px) {
+      .notice {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-width: none;
+      }
+    }
+
+    .alert.show-error {
+      display: flex;
+      background: rgba(224, 92, 92, .12);
+      border: 1px solid rgba(224, 92, 92, .3);
+      color: #f4a4a4;
+      animation: shake .4s ease;
+    }
+
+    .alert.show-success {
+      display: flex;
+      background: rgba(76, 175, 130, .12);
+      border: 1px solid rgba(76, 175, 130, .3);
+      color: #80dbb4;
+    }
+
+    /* Notices that dismiss themselves fade out rather than blink away.
+       Duration matches ALERT_FADE_MS in the script. */
+    .alert.fading {
+      opacity: 0;
+      transition: opacity .4s ease;
+    }
+
+    .alert svg {
+      flex-shrink: 0;
+      width: 15px;
+      height: 15px
+    }
+
+    /* ── SUBMIT BUTTON ── */
+    .btn-login {
+      width: 100%;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .96rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .4px;
+      box-shadow: 0 8px 28px rgba(201, 168, 76, .35);
+      transition: transform .18s, box-shadow .18s, filter .18s;
+      position: relative;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      animation: fadeUp .7s .32s cubic-bezier(.22, 1, .36, 1) both;
+      touch-action: manipulation;
+    }
+
+    .btn-login::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .14));
+      opacity: 0;
+      transition: opacity .2s;
+    }
+
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 38px rgba(201, 168, 76, .5);
+      filter: brightness(1.05)
+    }
+
+    .btn-login:hover::before {
+      opacity: 1
+    }
+
+    .btn-login:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 14px rgba(201, 168, 76, .3)
+    }
+
+    .btn-login.loading {
+      pointer-events: none
+    }
+
+    .btn-text {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity .2s;
+    }
+
+    .btn-login.loading .btn-text {
+      opacity: 0
+    }
+
+    .btn-spinner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity .2s;
+    }
+
+    .btn-login.loading .btn-spinner {
+      opacity: 1
+    }
+
+    .btn-spinner svg {
+      width: 22px;
+      height: 22px;
+      animation: spin .7s linear infinite
+    }
+
+    /* ── SECURITY FOOTER ── */
+    .sec-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      color: rgba(255, 255, 255, .22);
+      font-size: .7rem;
+      margin-top: 24px;
+      flex-wrap: wrap;
+      row-gap: 4px;
+      animation: fadeUp .7s .38s cubic-bezier(.22, 1, .36, 1) both;
+    }
+
+    .sec-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .2);
+      flex-shrink: 0
+    }
+
+    /* ── TYPEWRITER HEADLINE ── */
+    .headline {
+      min-height: 2.5em
+    }
+
+    .tw-cursor {
+      display: inline-block;
+      width: 2.5px;
+      height: .85em;
+      background: var(--gold);
+      margin-left: 2px;
+      vertical-align: middle;
+      border-radius: 1px;
+      animation: twBlink .9s step-end infinite;
+    }
+
+    .tw-cursor.pause {
+      animation-play-state: paused;
+      opacity: 1
+    }
+
+    /* ── PLACEHOLDER TYPEWRITER ── */
+    .input-wrap {
+      position: relative
+    }
+
+    /* fake animated placeholder sits behind the real input */
+    .tw-placeholder {
+      position: absolute;
+      left: 44px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .93rem;
+      color: rgba(255, 255, 255, .3);
+      pointer-events: none;
+      white-space: nowrap;
+      overflow: hidden;
+      letter-spacing: normal;
+      line-height: 1;
+    }
+
+    /* hide native placeholder when our animated one is active */
+    .field input.tw-active::placeholder {
+      color: transparent
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes cardIn {
+      from {
+        opacity: 0;
+        transform: translateY(28px) scale(.97)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1)
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes shimmerBar {
+
+      0%,
+      100% {
+        left: -60%
+      }
+
+      50% {
+        left: 140%
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0)
+      }
+
+      20%,
+      60% {
+        transform: translateX(-6px)
+      }
+
+      40%,
+      80% {
+        transform: translateX(6px)
+      }
+    }
+
+    @keyframes twBlink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0
+      }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:480px) {
+      .page {
+        padding: 20px 12px
+      }
+
+      .login-card {
+        padding: 36px 24px 32px;
+        border-radius: 22px
+      }
+
+      .brand {
+        margin-bottom: 22px
+      }
+
+      .headline-wrap {
+        margin-bottom: 22px
+      }
+
+      .headline {
+        font-size: 1.5rem
+      }
+
+      .field input {
+        font-size: 1rem;
+        padding: 13px 44px
+      }
+
+      .btn-login {
+        font-size: 1rem;
+        padding: 15px 24px
+      }
+    }
+
+    @media(max-width:360px) {
+      .login-card {
+        padding: 30px 18px 28px;
+        border-radius: 18px
+      }
+    }
+
+    @media(min-height:800px) {
+      .page {
+        padding: 40px 16px
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="assets/css/responsive.css?v=20261019-mobile-layout" />
+  <script src="assets/js/viewport.js?v=20260911-layout1" defer></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=20260915">
+  <script src="assets/js/appearance.js?v=20261019-named-pages"></script>
+  <script>
+    if (new URLSearchParams(location.search).has('bye')) {
+      document.documentElement.classList.add('cv-logout-arrival');
+    }
+  </script>
+  <style>
+    /* Match the dashboard entrance after login, without capturing the sidebar. */
+    @keyframes cv-module-enter { from { opacity: 0; } to { opacity: 1; } }
+    .cv-logout-arrival .login-card { animation: cv-module-enter 180ms ease-out both; }
+    .cv-logout-arrival .login-card :is(.brand, .headline-wrap, .divider, .field, .forgot, .btn-login, .sec-footer) { animation: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .cv-logout-arrival .login-card { animation: none; }
+    }
+  </style>
+  <link rel="stylesheet" href="assets/css/compact-ui.css?v=20261113-clean-logo" />
+</head>
+
+<body class="auth-page">
+
+  <!-- SESSION NOTICE — a direct child of <body> on purpose. Inside
+       .login-card its backdrop-filter would become the containing block
+       for position:fixed, pinning this to the card instead of the viewport. -->
+  <div class="notice" id="notice-box" role="status" aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="notice-icon">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+    <span id="notice-msg"></span>
+  </div>
+
+  <div class="login-backdrop" aria-hidden="true"></div>
+  <canvas id="three-canvas" aria-hidden="true"></canvas>
+  <div class="grid-overlay"></div>
+  <div class="vignette"></div>
+
+  <div class="page">
+    <div class="login-card">
+
+      <!-- BRAND -->
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <div class="brand-name">Coop<span>Vote</span></div>
+      </div>
+
+      <!-- HEADLINE (typewriter) -->
+      <div class="headline-wrap">
+        <h1 class="headline" id="tw-headline"><span class="tw-cursor" id="tw-cursor"></span></h1>
+        <p class="tagline" id="tw-tagline" style="opacity:0">Sign in to access your cooperative voting portal.</p>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="divider">
+        <div class="div-line"></div>
+        <div class="div-text">Secure Sign In</div>
+        <div class="div-line"></div>
+      </div>
+
+      <!-- ALERT — validation and credential problems, shown with the form -->
+      <div class="alert" id="alert-box" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="alert-icon">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span id="alert-msg"></span>
+      </div>
+
+      <!-- FORM -->
+      <form id="login-form" onsubmit="handleSubmit(event)" novalidate>
+
+        <div class="field" id="field-user">
+          <label for="username">Username or Member ID</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <input type="text" id="username" name="username" placeholder="Enter username or member ID"
+              autocomplete="username" spellcheck="false" autocorrect="off" autocapitalize="none" inputmode="text"
+              onfocus="this.closest('.field').classList.add('focused')"
+              onblur="this.closest('.field').classList.remove('focused')" />
+            <span class="tw-placeholder" id="ph-user"></span>
+          </div>
+        </div>
+
+        <div class="field" id="field-pw">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <input type="password" id="password" name="password" placeholder="Enter your password"
+              autocomplete="current-password" onfocus="this.closest('.field').classList.add('focused')"
+              onblur="this.closest('.field').classList.remove('focused')" />
+            <span class="tw-placeholder" id="ph-pass"></span>
+            <button type="button" class="eye-btn" onclick="togglePassword()" tabindex="-1"
+              aria-label="Toggle password visibility">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                id="eye-icon">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="forgot"><a href="password-recovery.php">Forgot password?</a></div>
+
+        <button type="submit" class="btn-login" id="login-btn">
+          <span class="btn-text" id="btn-text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Sign In
+          </span>
+          <div class="btn-spinner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path
+                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          </div>
+        </button>
+
+      </form>
+
+      <div class="forgot" style="text-align:center;margin-top:18px">
+        <span style="color:var(--muted)">Not registered yet? Visit the
+          cooperative office to have your account created.</span>
+      </div>
+
+      <div class="sec-footer">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        SSL/TLS Secured
+        <div class="sec-dot"></div>
+        Encrypted Connection
+        <div class="sec-dot"></div>
+        CoopVote v2.0
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Three.js r128 -->
+  <!-- Bundled locally: the cooperative runs this on a XAMPP machine that may
+       have no internet, and a failed CDN fetch used to take the whole page
+       script down with it. -->
+  <script src="assets/js/login-background-loader.js?v=20261019-fallback" defer></script>
+  <script src="assets/js/validation.js?v=20260911-required2"></script>
+  <script src="assets/js/app.js?v=20261113-top-right-toasts"></script>
+  <script>
+    // Form behavior is independent of the decorative background.
+    function togglePassword() {
+      const inp = document.getElementById('password');
+      const icon = document.getElementById('eye-icon');
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+      } else {
+        inp.type = 'password';
+        icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+      }
+    }
+
+    const ICON_ERROR = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+    const ICON_OK = '<polyline points="20 6 9 17 4 12"/>';
+
+    /**
+     * Inline alert, inside the card with the form.
+     * Used for anything the member has to fix — an empty field, a wrong
+     * password — so the message sits beside the inputs it refers to and
+     * stays put until they try again.
+     */
+    function showAlert(msg, type = 'error') {
+      const box = document.getElementById('alert-box');
+      document.getElementById('alert-msg').textContent = msg;
+      box.className = 'alert ' + (type === 'error' ? 'show-error' : 'show-success');
+      document.getElementById('alert-icon').innerHTML = type === 'error' ? ICON_ERROR : ICON_OK;
+    }
+    function hideAlert() {
+      document.getElementById('alert-box').className = 'alert';
+    }
+
+    /* ── Corner notice ─────────────────────────────────────────
+       For the state of the session itself — signed out, session ended.
+       It belongs to no field, so it floats clear of the form and
+       clears itself. */
+    let cancelNoticeMotion = null;
+
+    /**
+     * @param dismissAfterMs  readable time before fading out.
+     *                        0 leaves it on screen.
+     */
+    function showNotice(msg, type = 'success', dismissAfterMs = 0) {
+      const box = document.getElementById('notice-box');
+      document.getElementById('notice-msg').textContent = msg;
+      box.className = 'notice ' + (type === 'error' ? 'show-error' : 'show-success');
+      document.getElementById('notice-icon').innerHTML = type === 'error' ? ICON_ERROR : ICON_OK;
+
+      cancelNoticeMotion = CoopVote.presentToast(box, dismissAfterMs, hideNotice);
+    }
+
+    function hideNotice() {
+      if (cancelNoticeMotion) cancelNoticeMotion();
+      document.getElementById('notice-box').className = 'notice';
+    }
+
+    /* Anything the shared runtime reports here is session-level, so it
+       goes to the corner rather than into the form. */
+    window.showToast = function (msg, type) {
+      showNotice(msg, type === 'error' || type === 'warn' ? 'error' : 'success', 2000);
+    };
+
+
+
+    /*
+     * ?expired=1 — the session ended or a protected page was opened without one
+     * ?bye=1     — the member signed out deliberately
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      const q = new URLSearchParams(window.location.search);
+
+      /* Session status, not a form problem — corner notice, gone in 2s. */
+      if (q.has('bye')) {
+        showNotice('You have been signed out. Sign in again to continue.', 'success', 2000);
+      } else if (q.has('expired')) {
+        showNotice('Your session has ended. Please sign in again.', 'error', 2000);
+      }
+
+      /*
+       * The notice has been delivered, so drop the flag from the address bar.
+       * Leaving it there made every refresh repeat the same message, and it
+       * kept the reason for signing out on screen long after it mattered.
+       * replaceState() rewrites the entry in place — no new history step.
+       */
+      if (q.has('bye') || q.has('expired')) {
+        q.delete('bye'); q.delete('expired');
+        history.replaceState(null, '', window.location.pathname + (q.toString() ? '?' + q.toString() : ''));
+      }
+
+      /* Already signed in? Go straight to the right dashboard. */
+      CoopVote.api('auth/me')
+        .then(d => { window.location.replace(CoopVote.loginDestination(d.user)); })
+        .catch(() => { /* not signed in — stay here */ });
+    });
+
+    /*
+     * HANDLE SUBMIT
+     * ─────────────────────────────────────────────
+     * Replace simulation with your real API:
+     *
+     * fetch('/api/auth/login', {
+     *   method:'POST',
+     *   headers:{'Content-Type':'application/json'},
+     *   body: JSON.stringify({ username: u, password: p })
+     * })
+     * .then(r => r.json())
+     * .then(data => {
+     *   btn.classList.remove('loading');
+     *   if(data.role === 'admin') {
+     *     showAlert('Welcome back, Administrator!','success');
+     *     setTimeout(() => window.location.href = 'admin/dashboard.php', 1200);
+     *   } else if(data.role === 'member') {
+     *     showAlert('Login successful!','success');
+     *     setTimeout(() => window.location.href = 'voter/dashboard.php', 1200);
+     *   } else {
+     *     showAlert('Invalid credentials. Please try again.');
+     *   }
+     * })
+     * .catch(() => {
+     *   btn.classList.remove('loading');
+     *   showAlert('Connection error. Please try again.');
+     * });
+     * ─────────────────────────────────────────────
+     */
+    function handleSubmit(e) {
+      e.preventDefault();
+      hideAlert();
+
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      const btn = document.getElementById('login-btn');
+      const btxt = document.getElementById('btn-text');
+
+      if (!u) { showAlert('Please enter your username or member ID.'); return }
+      if (CoopVoteValidation.isBlank(p)) { showAlert('Please enter your password.'); return }
+
+      btn.classList.add('loading');
+
+      CoopVote.api('auth/login', { method: 'POST', body: { username: u, password: p } })
+        .then(data => {
+          btn.classList.remove('loading');
+          /* Signing in is a session event, like signing out — corner notice.
+             It stays up until the redirect carries the page away. */
+          hideAlert();
+          showNotice(
+            data.role === 'admin'
+              ? `Welcome back, ${data.roleName}! Redirecting…`
+              : (CoopVote.requestedElection()
+                ? 'Login successful! Opening your election…'
+                : 'Login successful! Redirecting to your dashboard…'),
+            'success'
+          );
+          btxt.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Redirecting…`;
+          /*
+           * replace(), not href: pushing would leave the sign-in page in
+           * history, so pressing Back from the dashboard landed on it, and
+           * the "already signed in" check immediately threw the member
+           * forward again — Back looked broken.
+           */
+          setTimeout(() => window.location.replace(CoopVote.loginDestination(data)), 900);
+        })
+        .catch(err => {
+          btn.classList.remove('loading');
+
+          /* Right password, email never verified — finish that here rather
+             than leaving the member stuck with an account they cannot use. */
+          if (err.code === 'NEEDS_VERIFICATION' || err.needsVerification) {
+            renderVerifyStep(err);
+            return;
+          }
+          showAlert(err.message || 'Sign-in failed. Please try again.');
+        });
+    }
+
+    /* ─────────────────────────────────────────
+       EMAIL VERIFICATION (for an unverified account)
+    ───────────────────────────────────────── */
+    function renderVerifyStep(info) {
+      const form = document.getElementById('login-form');
+      const card = form.closest('.login-card');
+      if (document.getElementById('verify-step')) return;
+
+      form.style.display = 'none';
+      card.querySelectorAll('.forgot').forEach(el => el.style.display = 'none');
+      hideAlert();
+
+      const box = document.createElement('div');
+      box.id = 'verify-step';
+      box.style.cssText = 'text-align:center';
+      box.innerHTML = `
+        <p style="color:var(--muted);font-size:.85rem;line-height:1.65;margin-bottom:16px">
+          Your account still needs its email address verified.
+          We sent a 6-digit code to <strong style="color:var(--muted2)">${esc(info.email || 'your email')}</strong>.
+        </p>
+        <input type="text" id="lg-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+          placeholder="000000" aria-label="Verification code"
+          style="width:100%;max-width:230px;margin:0 auto 6px;display:block;text-align:center;
+                 font-size:1.5rem;font-weight:700;letter-spacing:.4em;text-indent:.4em;
+                 padding:12px 10px;background:rgba(255,255,255,.07);
+                 border:1.5px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;
+                 font-family:'DM Sans',sans-serif;outline:none" data-input="digits" />
+        <button type="button" class="btn-login" id="lg-verify-btn" style="margin-top:10px">
+          <span class="btn-text">Verify &amp; Continue</span>
+          <div class="btn-spinner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg></div>
+        </button>
+        <p style="margin-top:12px;font-size:.78rem;color:var(--muted)">
+          Didn't get it? Check spam, or <a href="#" id="lg-resend" style="color:var(--gold)">send it again</a>.
+        </p>`;
+
+      form.parentNode.insertBefore(box, form);
+
+      const input = document.getElementById('lg-otp');
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(0, 6);
+        if (input.value.length === 6) doVerify();
+      });
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') doVerify(); });
+      document.getElementById('lg-verify-btn').addEventListener('click', doVerify);
+      document.getElementById('lg-resend').addEventListener('click', e => {
+        e.preventDefault();
+        CoopVote.api('auth/resend-otp', { method: 'POST' })
+          .then(r => showAlert('A new code is on its way to ' + r.email + '.', 'success'))
+          .catch(er => showAlert(er.message || 'Could not send another code.'));
+      });
+      input.focus();
+
+      if (info.mailSent === false) {
+        showAlert('We could not send the code. Please contact the cooperative office.');
+      }
+    }
+
+    function doVerify() {
+      const input = document.getElementById('lg-otp');
+      const btn = document.getElementById('lg-verify-btn');
+      const code = (input.value || '').trim();
+
+      if (code.length !== 6) { showAlert('Enter the 6-digit code from your email.'); return; }
+      if (btn.classList.contains('loading')) return;
+      btn.classList.add('loading');
+
+      CoopVote.api('auth/verify-otp', { method: 'POST', body: { code } })
+        .then(() => {
+          btn.classList.remove('loading');
+          document.getElementById('verify-step').remove();
+          document.getElementById('login-form').style.display = '';
+          showAlert('Email verified. An administrator will review your membership shortly.', 'success');
+        })
+        .catch(err => {
+          btn.classList.remove('loading');
+          showAlert(err.message || 'That code could not be verified.');
+          input.select();
+        });
+    }
+
+
+    /* ═══════════════════════════════════════
+       TYPEWRITER ENGINE
+       ─────────────────────────────────────
+       1. Headline: types "Welcome Back" word by word with color
+       2. Username placeholder: cycles through sample usernames
+       3. Password placeholder: cycles through hints
+    ═══════════════════════════════════════ */
+    (function () {
+      /* ── 1. HEADLINE TYPEWRITER ── */
+      const headlineEl = document.getElementById('tw-headline');
+      const cursorEl = document.getElementById('tw-cursor');
+      const taglineEl = document.getElementById('tw-tagline');
+
+      // Segments: [text, isGold]
+      const segments = [
+        { text: 'Welcome ', gold: false },
+        { text: 'Back', gold: true },
+      ];
+
+      /* Timings (ms) */
+      const TYPE_SPEED  = 68;    // per character while typing
+      const ERASE_SPEED = 34;    // per character while erasing — faster reads better
+      const SEG_GAP     = 120;   // between "Welcome " and "Back"
+      const HOLD_FULL   = 2200;  // dwell on the finished phrase
+      const HOLD_EMPTY  = 420;   // dwell before typing it again
+      const FIRST_DELAY = document.documentElement.classList.contains('cv-logout-arrival') ? 0 : 500;
+
+      let firstPass = true;
+
+      /** Text of a node, whether it is a text node or the gold <span>. */
+      function nodeText(node) {
+        return node.nodeType === 3 ? node.nodeValue : node.textContent;
+      }
+      function setNodeText(node, value) {
+        if (node.nodeType === 3) node.nodeValue = value;
+        else node.textContent = value;
+      }
+
+      /** Remove every rendered character, leaving the cursor in place. */
+      function clearHeadline() {
+        Array.prototype.slice.call(headlineEl.childNodes).forEach(n => {
+          if (n !== cursorEl) headlineEl.removeChild(n);
+        });
+      }
+
+      /** Type the phrase in, then hand back the nodes it created. */
+      function typePhrase(done) {
+        let segIdx = 0, charIdx = 0;
+        const built = [];
+
+        function tick() {
+          if (segIdx >= segments.length) { done(built); return; }
+
+          const seg = segments[segIdx];
+          if (charIdx === 0) {
+            let node;
+            if (seg.gold) {
+              node = document.createElement('span');
+              node.style.color = 'var(--gold)';
+            } else {
+              node = document.createTextNode('');
+            }
+            headlineEl.insertBefore(node, cursorEl);   // always sits before the cursor
+            built.push(node);
+          }
+
+          charIdx++;
+          setNodeText(built[built.length - 1], seg.text.slice(0, charIdx));
+
+          if (charIdx >= seg.text.length) {
+            segIdx++;
+            charIdx = 0;
+            setTimeout(tick, segIdx < segments.length ? SEG_GAP : 0);
+          } else {
+            setTimeout(tick, TYPE_SPEED);
+          }
+        }
+
+        setTimeout(tick, firstPass ? FIRST_DELAY : 0);
+      }
+
+      /** Backspace the phrase away, dropping each node as it empties. */
+      function erasePhrase(built, done) {
+        function tick() {
+          while (built.length) {
+            const node = built[built.length - 1];
+            const text = nodeText(node);
+
+            if (text.length) {
+              setNodeText(node, text.slice(0, -1));
+              setTimeout(tick, ERASE_SPEED);
+              return;
+            }
+            headlineEl.removeChild(node);
+            built.pop();
+          }
+          done();
+        }
+        tick();
+      }
+
+      /** Type → hold → erase → repeat, for as long as the page is open. */
+      function loopHeadline() {
+        clearHeadline();
+
+        typePhrase(built => {
+          cursorEl.classList.add('pause');        // hold the cursor steady
+
+          /* The tagline and the input placeholders belong to the first
+             pass only — they should not restart on every cycle. */
+          if (firstPass) {
+            firstPass = false;
+            taglineEl.style.transition = 'opacity .7s ease';
+            taglineEl.style.opacity = '1';
+            setTimeout(startPlaceholders, 600);
+          }
+
+          setTimeout(() => {
+            cursorEl.classList.remove('pause');   // blink again while erasing
+            erasePhrase(built, () => setTimeout(loopHeadline, HOLD_EMPTY));
+          }, HOLD_FULL);
+        });
+      }
+
+      /* Anyone who asks for less motion gets the headline without the loop. */
+      const stillness = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      const returningFromLogout = document.documentElement.classList.contains('cv-logout-arrival');
+      if (stillness.matches || returningFromLogout) {
+        const built = [];
+        segments.forEach(seg => {
+          let node;
+          if (seg.gold) {
+            node = document.createElement('span');
+            node.style.color = 'var(--gold)';
+            node.textContent = seg.text;
+          } else {
+            node = document.createTextNode(seg.text);
+          }
+          headlineEl.insertBefore(node, cursorEl);
+          built.push(node);
+        });
+        if (stillness.matches) cursorEl.style.display = 'none';
+        taglineEl.style.opacity = '1';
+        setTimeout(startPlaceholders, 300);
+        if (returningFromLogout && !stillness.matches) {
+          firstPass = false;
+          setTimeout(() => erasePhrase(built, () => setTimeout(loopHeadline, HOLD_EMPTY)), HOLD_FULL);
+        }
+      } else {
+        loopHeadline();
+      }
+
+      /* ── 2. PLACEHOLDER TYPEWRITER ── */
+      function startPlaceholders() {
+        animatePlaceholder('username', 'ph-user', [
+          'member@coop',
+          'juan.delacruz',
+          'MBR-2024-0042',
+        ]);
+
+        setTimeout(() => {
+          animatePlaceholder('password', 'ph-pass', [
+            'Enter password',
+            'MyP@ssw0rd',
+            '••••••••••',
+          ]);
+        }, 800);
+      }
+
+      function animatePlaceholder(inputId, spanId, phrases) {
+        const input = document.getElementById(inputId);
+        const span = document.getElementById(spanId);
+        if (!input || !span) return;
+
+        let pIdx = 0;
+
+        function showPhrase() {
+          // Don't animate while user is typing or focused
+          if (document.activeElement === input || input.value.length > 0) {
+            setTimeout(showPhrase, 1200);
+            return;
+          }
+
+          input.classList.add('tw-active');
+          const phrase = phrases[pIdx];
+          pIdx = (pIdx + 1) % phrases.length;
+
+          // Type it in
+          let i = 0;
+          span.textContent = '';
+          span.style.opacity = '1';
+
+          function typeChar() {
+            if (document.activeElement === input || input.value.length > 0) {
+              span.textContent = '';
+              input.classList.remove('tw-active');
+              setTimeout(showPhrase, 1200);
+              return;
+            }
+            i++;
+            span.textContent = phrase.slice(0, i);
+            if (i < phrase.length) {
+              setTimeout(typeChar, inputId === 'password' ? 55 : 62);
+            } else {
+              // Hold, then erase
+              setTimeout(eraseChar, 1800);
+            }
+          }
+
+          function eraseChar() {
+            if (document.activeElement === input || input.value.length > 0) {
+              span.textContent = '';
+              input.classList.remove('tw-active');
+              setTimeout(showPhrase, 1200);
+              return;
+            }
+            if (span.textContent.length > 0) {
+              span.textContent = span.textContent.slice(0, -1);
+              setTimeout(eraseChar, 32);
+            } else {
+              input.classList.remove('tw-active');
+              setTimeout(showPhrase, 500);
+            }
+          }
+
+          typeChar();
+        }
+
+        // Hide the span when input is focused or has value
+        input.addEventListener('focus', () => {
+          span.style.opacity = '0';
+          input.classList.remove('tw-active');
+        });
+        input.addEventListener('blur', () => {
+          if (input.value.length === 0) {
+            span.style.opacity = '1';
+          }
+        });
+        input.addEventListener('input', () => {
+          if (input.value.length > 0) {
+            span.style.opacity = '0';
+            input.classList.remove('tw-active');
+          }
+        });
+
+        setTimeout(showPhrase, 300);
+      }
+    })();
+
+    /* prevent zoom on double-tap on iOS */
+    document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+  </script>
+</body>
+
+</html>

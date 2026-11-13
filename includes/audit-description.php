@@ -8,7 +8,6 @@ function audit_subject(string $type, int $id): string
         'candidate'=>'SELECT m.full_name AS name, p.position_name AS position, e.title AS election FROM candidates c JOIN members m ON m.member_id=c.member_id JOIN positions p ON p.position_id=c.position_id JOIN elections e ON e.election_id=c.election_id WHERE c.candidate_id=?',
         'position'=>'SELECT p.position_name AS name, e.title AS election FROM positions p JOIN elections e ON e.election_id=p.election_id WHERE p.position_id=?',
         'election'=>'SELECT title AS name FROM elections WHERE election_id=?',
-        'announcement'=>'SELECT title AS name FROM announcements WHERE announcement_id=?',
     ];
     if (!isset($queries[$type])) return '(details unavailable)';
     $q = db()->prepare($queries[$type]); $q->execute([$id]); $row = $q->fetch();

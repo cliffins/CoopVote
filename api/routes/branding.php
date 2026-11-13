@@ -7,14 +7,13 @@
 declare(strict_types=1);
 require_once __DIR__.'/../../includes/validation.php';
 require_once __DIR__.'/../../includes/branding.php';
-function handle_branding(): never
+
+function handle_branding()
 {
+    $pdo = db();
+
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        $s=db()->prepare('SELECT setting_value FROM settings WHERE setting_key=?');
-        $s->execute(['site_branding']);
-        $data=json_decode($s->fetchColumn() ?: 'null',true) ?: ['text'=>'CoopVote','logo'=>null];
-        $data['coopName']=coop_setting('coop_name',branding_defaults()['coopName']);
-        json_out($data);
+        json_out(branding_read());
     }
     require_method('PUT');$me=require_admin();require_json_request();
     $text=input('text');$logo=input('logo');

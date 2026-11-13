@@ -35,6 +35,17 @@ function person_name_error(string $name): ?string
     return null;
 }
 
+/** Ballot position names contain letters and spaces, not numbers or symbols. */
+function position_name_error(string $name): ?string
+{
+    if (blank_form_value($name)) return 'Please enter a position name.';
+    if (!preg_match('/^[\p{L}\p{M} ]+$/u', $name) || !preg_match('/\p{L}/u', $name)) {
+        return 'Use letters and spaces only for the position name.';
+    }
+    if (mb_strlen($name, 'UTF-8') > 100) return 'Use at most 100 characters for the position name.';
+    return null;
+}
+
 function phone_number_error(string $phone): ?string
 {
     if ($phone === '') return null;

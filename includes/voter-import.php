@@ -2,7 +2,7 @@
 /** Session-bound CSV preview and atomic voter creation; no live records change at preview. */
 declare(strict_types=1);
 
-const VOTER_IMPORT_HEADERS = ['memberId', 'first', 'last', 'email', 'phone', 'address', 'dob', 'username'];
+const VOTER_IMPORT_HEADERS = ['memberId', 'first', 'last', 'email', 'address', 'dob', 'username'];
 const VOTER_IMPORT_LIMIT = 100;
 
 /** Parse Excel's CSV UTF-8 export, including quoted commas and multiline addresses. */
@@ -15,18 +15,20 @@ function voter_import_parse(string $csv): array
     fwrite($stream, $csv); rewind($stream);
     try {
         $headers = fgetcsv($stream, 0, ',', '"', '');
-        if (!$headers || array_map('trim_form_text', $headers) !== VOTER_IMPORT_HEADERS) {
-            throw new InvalidArgumentException('Use the template column names and order: ' . implode(', ', VOTER_IMPORT_HEADERS) . '.');
+        $headers = $headers ? array_map('trim_form_text', $headers) : [];
+        if ($headers !== VOTER_IMPORT_HEADERS) {
+            throw new InvalidArgumentException('Download the current template and use these column names and order: ' . implode(', ', VOTER_IMPORT_HEADERS) . '.');
         }
+        $columnCount = count($headers);
         $rows = []; $record = 1;
         while (($values = fgetcsv($stream, 0, ',', '"', '')) !== false) {
             $record++;
             // Excel may export its formatted blank input rows as comma-only records.
             if (!array_filter($values, static fn($v) => trim_form_text((string)$v) !== '')) continue;
             if (count($rows) >= VOTER_IMPORT_LIMIT) throw new InvalidArgumentException('Import up to 100 voters per file. Split this list into smaller files.');
-            $error = count($values) === count(VOTER_IMPORT_HEADERS) ? [] : ['csv' => 'This row must have 8 columns. Use quotes around values containing commas.'];
-            $values = array_map(static fn($v) => trim_form_text((string) $v), array_slice(array_pad($values, 8, ''), 0, 8));
-            $data = array_combine(VOTER_IMPORT_HEADERS, $values);
+            $error = count($values) === $columnCount ? [] : ['csv' => 'This row must have ' . $columnCount . ' columns. Use quotes around values containing commas.'];
+            $values = array_map(static fn($v) => trim_form_text((string) $v), array_slice(array_pad($values, $columnCount, ''), 0, $columnCount));
+            $data = array_combine($headers, $values);
             $data['email'] = strtolower($data['email']);
             $rows[] = ['row' => $record, 'data' => $data, 'errors' => $error];
         }
@@ -35,19 +37,33 @@ function voter_import_parse(string $csv): array
     } finally { fclose($stream); }
 }
 
+/** CSV slash dates are explicitly day/month/year, never locale-dependent. */
+function voter_import_birth_date(string $value): string
+{
+    if (preg_match('/^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})$/D', $value, $parts)) {
+        $day = (int) $parts[1]; $month = (int) $parts[2]; $year = (int) $parts[3];
+        // Keep impossible dates unchanged so the normal validator rejects them.
+        if ($year >= 1000 && checkdate($month, $day, $year)) {
+            return sprintf('%04d-%02d-%02d', $year, $month, $day);
+        }
+    }
+    return $value;
+}
+
 /** Reuse the single-voter field rules and detect duplicates before committing. */
 function voter_import_validate(array $rows): array
 {
     $seen = [];
     foreach ($rows as $i => &$row) {
+        $row['data']['dob'] = voter_import_birth_date($row['data']['dob']);
         $d = $row['data'];
         $row['errors'] = array_intersect_key($row['errors'], ['csv' => true]);
-        $row['errors'] += person_fields_errors($d['first'], $d['last'], $d['phone']);
-        foreach (['email','phone','address','dob'] as $field) {
+        $row['errors'] += person_fields_errors($d['first'], $d['last']);
+        foreach (['email','address','dob'] as $field) {
             if ($d[$field] === '') $row['errors'][$field] = ucfirst($field) . ' is required.';
         }
         if (!filter_var($d['email'], FILTER_VALIDATE_EMAIL) || strlen($d['email']) > 100) $row['errors']['email'] = 'Enter a valid email address (up to 100 characters).';
-        if ($error = birth_date_error($d['dob'])) $row['errors']['dob'] = $error . ' Use YYYY-MM-DD.';
+        if ($error = birth_date_error($d['dob'])) $row['errors']['dob'] = $error . ' Use YYYY-MM-DD or DD/MM/YYYY (day/month/year).';
         if (mb_strlen($d['address']) > 255) $row['errors']['address'] = 'Use at most 255 characters for the address.';
         if (mb_strlen($d['memberId']) > 30) $row['errors']['memberId'] = 'Use at most 30 characters for the member ID.';
         if ($d['username'] !== '' && !preg_match('/^[a-zA-Z0-9._-]{3,50}$/D', $d['username'])) $row['errors']['username'] = 'Use 3–50 letters, numbers, dots, underscores or hyphens.';
@@ -104,6 +120,8 @@ function admin_voter_import(string $action): never
         if ($format !== 'csv') json_error('Choose Excel or CSV for the template.',422);
         csv_out('coopvote-voter-template.csv', VOTER_IMPORT_HEADERS, []);
     }
+    // Require a fresh preview after the CSV format changes; retain completed downloads.
+    if (isset($_SESSION['voter_import']['rows']) && ($_SESSION['voter_import']['format'] ?? null) !== 2) unset($_SESSION['voter_import']);
     if (isset($_SESSION['voter_import']) && $_SESSION['voter_import']['expires'] < time()) unset($_SESSION['voter_import']);
     if ($action === 'status') {
         require_method('GET');
@@ -132,7 +150,7 @@ function admin_voter_import(string $action): never
         if (isset($_SESSION['voter_import']['created'])) json_error('Finish the previous import before uploading another file.',409);
         try { $rows = voter_import_validate(voter_import_parse(input_str('csv'))); }
         catch (InvalidArgumentException $e) { json_error($e->getMessage(),422); }
-        $batch = ['token'=>bin2hex(random_bytes(24)), 'rows'=>$rows, 'expires'=>time()+1800];
+        $batch = ['token'=>bin2hex(random_bytes(24)), 'rows'=>$rows, 'format'=>2, 'expires'=>time()+1800];
         $_SESSION['voter_import'] = $batch;
         json_out(voter_import_public($batch));
     }
@@ -168,8 +186,8 @@ function admin_voter_import(string $action): never
             $pdo->prepare("INSERT INTO users(username,email,password_hash,role_id,status,email_verified_at) VALUES(?,?,?,(SELECT role_id FROM roles WHERE slug='voter'),'active',NOW())")
                 ->execute([$username,$d['email'],password_hash($password,PASSWORD_BCRYPT)]);
             $id=(int)$pdo->lastInsertId(); $name=$d['first'].' '.$d['last'];
-            $pdo->prepare("INSERT INTO members(user_id,member_no,full_name,date_of_birth,contact_no,address,membership_status,approved_by,approved_at) VALUES(?,?,?,?,?,?,'active',?,NOW())")
-                ->execute([$id,$memberNo,$name,$d['dob'],$d['phone'],$d['address'],$me]);
+            $pdo->prepare("INSERT INTO members(user_id,member_no,full_name,date_of_birth,address,membership_status,approved_by,approved_at) VALUES(?,?,?,?,?,'active',?,NOW())")
+                ->execute([$id,$memberNo,$name,$d['dob'],$d['address'],$me]);
             audit($me,'member.created','user',$id,'Imported member "'.$name.'" ('.$memberNo.') as '.$username);
             $created[]=['row'=>$row['row'],'id'=>$id,'name'=>$name,'memberNo'=>$memberNo,'username'=>$username,'email'=>$d['email'],'password'=>$password,'delivery'=>MAIL_ENABLED?'pending':'disabled'];
         }

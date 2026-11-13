@@ -1,19 +1,36 @@
-# Generated test output; keep the directory for browser/report scripts.
-# A Windows process may create this literal environment-variable directory.
-/%SystemDrive%/
-/tests/reports/*
-!/tests/reports/.gitkeep
-/database/test-data/screenshots/
-/database/test-data/*.log
-
-# Runtime logs are generated locally.
-/logs/*.log
-/logs/pre-officer-security-*.sql
-
-# Private deployment keys, exported data and authenticated encrypted backups.
-/config/security-local.php
+# Deployment secrets and local settings
+.env
+.env.*
+!.env.example
 /config/integrity-key.php
-/database/backups/*
-/logs/*.sql
+/config/security-local.php
+/private/
+*.pem
+*.key
+# User data and generated evidence
+/uploads/
+/logs/
+/audit/
+/backups/
+/database/test-data/
+/database/tests/evidence/
+/docs/evidence/
+*.log
+*.sql.gz
+*.dump
+*.bak
+*.zip
+*.tar
+*.gz
+# Local tools and generated files
+node_modules/
+__pycache__/
+*.pyc
+.vscode/
+.well-known/
+.user.ini
+.DS_Store
+
+/database/backups/
 *.cvbak
 *.cvbak.json
